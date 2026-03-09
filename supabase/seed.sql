@@ -1,0 +1,2 @@
+-- Seed inicial del proyecto.
+-- Se definirá en el chat específico de Supabase.
