@@ -1,2 +1,18 @@
-// Devuelve el usuario autenticado actual.
-// Implementación real en el chat específico de auth / Supabase.
+// Devuelve el usuario autenticado actual o null.
+
+import { createClient } from '@/lib/supabase/server';
+
+export async function getCurrentUser() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error) {
+    return null;
+  }
+
+  return user;
+}

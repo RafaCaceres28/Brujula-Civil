@@ -1,13 +1,10 @@
-import { PageShell } from '@/components/layout/page-shell';
-import { SectionHeader } from '@/components/layout/section-header';
+import { requireUser } from '@/features/auth/server/require-user';
+import { resolveOnboardingEntry } from '@/features/wizard/server/resolve-onboarding-entry';
+import { redirect } from 'next/navigation';
 
-export default function OnboardingPage() {
-  return (
-    <PageShell>
-      <SectionHeader
-        title="Onboarding"
-        description="Wizard guiado para recoger la información base del perfil."
-      />
-    </PageShell>
-  );
+export default async function OnboardingPage() {
+  const user = await requireUser();
+  const targetRoute = await resolveOnboardingEntry(user.id);
+
+  redirect(targetRoute);
 }

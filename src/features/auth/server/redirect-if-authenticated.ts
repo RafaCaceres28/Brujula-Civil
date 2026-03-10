@@ -1,14 +1,12 @@
-//redirect si no hay usuario
+//redirect si ya hay usuario
 
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from './get-current-user';
 
-export async function requireUser() {
+export async function redirectIfAuthenticated() {
   const user = await getCurrentUser();
 
-  if (!user) {
-    redirect('/login');
+  if (user) {
+    redirect('/dashboard');
   }
-
-  return user;
 }
