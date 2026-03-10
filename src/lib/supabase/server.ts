@@ -1,5 +1,6 @@
 // Cliente Supabase para Server Components, Route Handlers y Server Actions.
 // Implementación real en el chat específico de Supabase.
+
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
