@@ -1,76 +1,44 @@
-import { PageShell } from '@/components/layout/page-shell';
-import { SectionHeader } from '@/components/layout/section-header';
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  FormField,
-  Input,
-  Spinner,
-  Textarea,
-} from '@/components/ui';
+import { requireUser } from '@/features/auth/server/require-user';
+import { resetOnboardingAction } from '@/features/wizard/actions/reset-onboarding-action';
+import { getOnboardingState } from '@/features/wizard/server/get-onboarding-state';
+import Link from 'next/link';
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const user = await requireUser();
+  const state = await getOnboardingState(user.id);
+
+  const isCompleted = state?.is_completed ?? false;
+  const completionPercent = Number(state?.completion_percent ?? 0);
+
   return (
-    <PageShell>
-      <SectionHeader
-        title="Dashboard"
-        description="Resumen general del progreso del usuario dentro de Brújula Civil."
-        action={<Button>Acción principal</Button>}
-      />
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader
-            title="Estado del perfil"
-            description="Base visual de tarjetas y acciones reutilizables."
-          />
-          <CardContent className="space-y-4">
-            <p className="text-sm text-slate-600">
-              Este bloque valida la consistencia de la capa UI inicial.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="primary">Primario</Button>
-              <Button variant="secondary">Secundario</Button>
-              <Button variant="ghost">Ghost</Button>
-              <Button variant="danger">Danger</Button>
-            </div>
-          </CardContent>
-        </Card>
+        <p className="mt-2 text-slate-600">
+          Estado actual del onboarding: {isCompleted ? 'Completado' : 'En progreso'} (
+          {completionPercent}%)
+        </p>
 
-        <Card>
-          <CardHeader
-            title="Prueba de formulario"
-            description="Inputs base para los formularios del onboarding y perfil."
-          />
-          <CardContent className="space-y-4">
-            <FormField
-              label="Puesto militar"
-              htmlFor="puesto"
-              hint="Ejemplo: Cabo primero, operador RF, mantenimiento, logística."
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link
+            href="/onboarding"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            <span> {isCompleted ? 'Revisar onboarding' : 'Continuar onboarding'} </span>
+          </Link>
+
+          <form action={resetOnboardingAction}>
+            <button
+              type="submit"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium whitespace-nowrap shadow-sm"
+              style={{ color: '#ffffff' }}
             >
-              <Input id="puesto" placeholder="Introduce tu puesto o especialidad" />
-            </FormField>
-
-            <FormField
-              label="Resumen"
-              htmlFor="resumen"
-              hint="Texto orientado a traducción futura del perfil."
-            >
-              <Textarea
-                id="resumen"
-                placeholder="Describe funciones, responsabilidad, entorno operativo y competencias."
-              />
-            </FormField>
-
-            <div className="flex items-center justify-between gap-3">
-              <Button variant="secondary">Guardar borrador</Button>
-              <Spinner label="Componente de carga" />
-            </div>
-          </CardContent>
-        </Card>
+              <span style={{ color: '#ffffff' }}>Reset onboarding</span>
+            </button>
+          </form>
+        </div>
       </div>
-    </PageShell>
+    </div>
   );
 }

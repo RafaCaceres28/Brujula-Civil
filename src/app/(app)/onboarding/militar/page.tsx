@@ -8,7 +8,7 @@ export default async function MilitarStepPage() {
 
   const payload = (stepState?.payload_jsonb ?? {}) as {
     army?: string | null;
-    branch?: string | null;
+    cuerpo?: string | null;
     rank?: string | null;
     specialty?: string | null;
     yearsOfService?: number | null;
@@ -23,8 +23,8 @@ export default async function MilitarStepPage() {
       </div>
 
       <div>
-        <label htmlFor="branch">Rama</label>
-        <input id="branch" name="branch" defaultValue={payload.branch ?? ''} />
+        <label htmlFor="cuerpo">Cuerpo</label>
+        <input id="cuerpo" name="cuerpo" defaultValue={payload.cuerpo ?? ''} />
       </div>
 
       <div>

@@ -49,7 +49,7 @@ export async function recalculateOnboardingState(userId: string) {
 
   const now = new Date().toISOString();
 
-  const { error: updateError } = await supabase
+  const { error: updateWizardStateError } = await supabase
     .from('user_wizard_state')
     .update({
       current_step: currentStep,
@@ -61,8 +61,21 @@ export async function recalculateOnboardingState(userId: string) {
     })
     .eq('user_id', userId);
 
-  if (updateError) {
-    throw new Error(`Error updating user_wizard_state: ${updateError.message}`);
+  if (updateWizardStateError) {
+    throw new Error(`Error updating user_wizard_state: ${updateWizardStateError.message}`);
+  }
+
+  const { error: updateProfileError } = await supabase
+    .from('app_user_profiles')
+    .update({
+      onboarding_completed: isCompleted,
+    })
+    .eq('user_id', userId);
+
+  if (updateProfileError) {
+    throw new Error(
+      `Error updating app_user_profiles.onboarding_completed: ${updateProfileError.message}`,
+    );
   }
 
   return {

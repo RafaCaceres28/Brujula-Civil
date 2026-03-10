@@ -50,6 +50,14 @@ export function getStepByDbKey(dbKey: WizardStepKeyDb) {
   return WIZARD_STEPS.find((step) => step.dbKey === dbKey) ?? null;
 }
 
+export function getAllStepSlugs() {
+  return WIZARD_STEPS.map((step) => step.slug);
+}
+
+export function getAllDbKeys() {
+  return WIZARD_STEPS.map((step) => step.dbKey);
+}
+
 export function getStepRouteBySlug(slug: WizardStepSlug) {
   return getStepBySlug(slug).route;
 }

@@ -7,7 +7,7 @@ export type WizardStatus = 'not_started' | 'in_progress' | 'completed';
 
 export type MilitarStepPayload = {
   army: string | null;
-  branch: string | null;
+  cuerpo: string | null;
   rank: string | null;
   specialty: string | null;
   yearsOfService: number | null;
