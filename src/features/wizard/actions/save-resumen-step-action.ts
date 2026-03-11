@@ -1,29 +1,20 @@
 'use server';
 
 import { requireUser } from '@/features/auth/server/require-user';
-import { projectWizardToMilitaryProfile } from '@/features/profile/server/project-wizard-to-military-profile';
+import { projectWizardToProfiles } from '@/features/profile/server/project-wizard-to-profiles';
 import { redirect } from 'next/navigation';
-import { resumenStepSchema } from '../schemas/wizard.schema';
 import { saveOnboardingStep } from '../server/save-onboarding-step';
+import { parseResumenFormData } from '../services/wizard-form.mapper';
 
 export async function saveResumenStepAction(formData: FormData) {
   const user = await requireUser();
+  const payload = parseResumenFormData(formData);
 
-  const rawPayload = {
-    confirmed: formData.get('confirmed') === 'on' || formData.get('confirmed') === 'true',
-  };
-
-  const parsed = resumenStepSchema.safeParse(rawPayload);
-
-  if (!parsed.success) {
-    throw new Error('Debes confirmar para finalizar el onboarding.');
-  }
-
-  await saveOnboardingStep(user.id, 'resumen', parsed.data, {
+  await saveOnboardingStep(user.id, 'resumen', payload, {
     markCompleted: true,
   });
 
-  await projectWizardToMilitaryProfile(user.id);
+  await projectWizardToProfiles(user.id);
 
   redirect('/dashboard');
 }

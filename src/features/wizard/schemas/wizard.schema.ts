@@ -35,3 +35,39 @@ export const objetivosStepSchema = z.object({
 export const resumenStepSchema = z.object({
   confirmed: z.literal(true),
 });
+
+export const onboardingDraftSchema = z.object({
+  militar: militarStepSchema.default({
+    army: null,
+    cuerpo: null,
+    rank: null,
+    specialty: null,
+    yearsOfService: null,
+    destinationType: null,
+  }),
+  experiencia: experienciaStepSchema.default({
+    responsibilities: [],
+    missions: [],
+    achievements: [],
+    tools: [],
+  }),
+  competencias: competenciasStepSchema.default({
+    technicalSkills: [],
+    softSkills: [],
+    certifications: [],
+    languages: [],
+  }),
+  objetivos: objetivosStepSchema.default({
+    targetRoles: [],
+    targetSectors: [],
+    preferredLocations: [],
+    workModel: null,
+  }),
+  resumen: z
+    .object({
+      confirmed: z.boolean().default(false),
+    })
+    .default({
+      confirmed: false,
+    }),
+});

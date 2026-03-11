@@ -30,6 +30,10 @@ export function StepGuard({ requestedStepSlug, wizardState, children }: StepGuar
     return <>{children}</>;
   }
 
+  if (currentStep === 'completed' || wizardState?.is_completed) {
+    redirect('/dashboard');
+  }
+
   const allowedSteps = ALLOWED_DB_STEPS_BY_SLUG[requestedStepSlug];
 
   if (!allowedSteps.includes(currentStep)) {

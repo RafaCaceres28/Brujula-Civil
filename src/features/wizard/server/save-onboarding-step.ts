@@ -1,13 +1,14 @@
-// Guarda el progreso de un paso del onboarding.
-
 import { createClient } from '@/lib/supabase/server';
-import { getDbKeyBySlug, getStepOrderBySlug, type WizardStepSlug } from '../config/wizard-steps';
+import type { WizardStepSlug } from '../config/wizard-steps';
+import { getDbKeyBySlug, getStepOrderBySlug } from '../config/wizard-steps';
+import { onboardingDraftSchema } from '../schemas/wizard.schema';
+import type { WizardPayloadBySlug } from '../types/wizard.types';
 import { recalculateOnboardingState } from './recalculate-onboarding-state';
 
-export async function saveOnboardingStep(
+export async function saveOnboardingStep<TStep extends WizardStepSlug>(
   userId: string,
-  stepSlug: WizardStepSlug,
-  payload: unknown,
+  stepSlug: TStep,
+  payload: WizardPayloadBySlug[TStep],
   options?: {
     markCompleted?: boolean;
   },
@@ -49,17 +50,13 @@ export async function saveOnboardingStep(
     );
   }
 
-  const previousDraft =
-    currentWizardState?.aggregated_draft_jsonb &&
-    typeof currentWizardState.aggregated_draft_jsonb === 'object' &&
-    !Array.isArray(currentWizardState.aggregated_draft_jsonb)
-      ? currentWizardState.aggregated_draft_jsonb
-      : {};
-
-  const mergedDraft = {
+  const previousDraft = onboardingDraftSchema.parse(
+    currentWizardState?.aggregated_draft_jsonb ?? {},
+  );
+  const mergedDraft = onboardingDraftSchema.parse({
     ...previousDraft,
     [stepSlug]: payload,
-  };
+  });
 
   const { error: updateWizardStateError } = await supabase
     .from('user_wizard_state')
