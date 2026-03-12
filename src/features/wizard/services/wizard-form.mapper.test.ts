@@ -1,0 +1,102 @@
+import { describe, expect, it } from 'vitest';
+import { createFormData } from '../../../../test/factories/form-data';
+import {
+  getResumenStepDefaults,
+  parseCompetenciasFormData,
+  parseExperienciaFormData,
+  parseMilitarFormData,
+  parseObjetivosFormData,
+} from './wizard-form.mapper';
+
+describe('wizard-form.mapper', () => {
+  it('parses militar payload using canonical keys and option labels', () => {
+    const formData = createFormData({
+      branch: 'army',
+      corps: 'signals',
+      rankCode: 'captain',
+      specialtyCode: 'communications',
+      serviceYears: '9',
+      destinationContext: 'hq_staff',
+      leadershipLevel: 'section_lead',
+      teamSize: '6_15',
+      unitName: 'Batallon Alfa',
+      notes: 'Turnos multinacionales',
+    });
+
+    const parsed = parseMilitarFormData(formData);
+
+    expect(parsed.rank).toEqual({ code: 'captain', label: 'Capitán' });
+    expect(parsed.specialty).toEqual({
+      code: 'communications',
+      label: 'Comunicaciones / Sistemas',
+    });
+    expect(parsed.serviceYears).toBe(9);
+    expect(parsed.destinationContext).toBe('hq_staff');
+  });
+
+  it('parses experiencia payload with deterministic optional handling', () => {
+    const formData = createFormData({
+      responsibilityAreas: ['operations', 'planning'],
+      missionTypes: ['intl_stability'],
+      functionTypes: ['coordination'],
+      tools: ['erp'],
+      leadershipScopes: ['team_supervision'],
+      achievements: ['Reduci tiempos 30%'],
+      additionalContext: '',
+    });
+
+    const parsed = parseExperienciaFormData(formData);
+
+    expect(parsed).toMatchObject({
+      responsibilityAreas: ['operations', 'planning'],
+      missionTypes: ['intl_stability'],
+      functionTypes: ['coordination'],
+      tools: ['erp'],
+      leadershipScopes: ['team_supervision'],
+      achievements: ['Reduci tiempos 30%'],
+      additionalContext: null,
+    });
+  });
+
+  it('parses competencias language lines as name-level objects', () => {
+    const formData = createFormData({
+      technicalSkills: ['operations_management'],
+      softSkills: ['leadership'],
+      certifications: ['quality_iso'],
+      languages: ['Ingles:advanced', 'Frances'],
+      drivingLicenses: ['c'],
+      officeTools: ['excel'],
+      extraTraining: 'Curso de liderazgo',
+    });
+
+    const parsed = parseCompetenciasFormData(formData);
+
+    expect(parsed.languages).toEqual([
+      { name: 'Ingles', level: 'advanced' },
+      { name: 'Frances', level: 'intermediate' },
+    ]);
+    expect(parsed.drivingLicenses).toEqual(['c']);
+  });
+
+  it('parses objetivos target roles into canonical slug-label shape', () => {
+    const formData = createFormData({
+      targetRoles: ['Jefe de Logistica'],
+      targetSectors: ['logistics'],
+      preferredLocations: ['madrid'],
+      workModel: 'hybrid',
+      seniority: 'manager',
+      preferencesNotes: 'Preferencia por gestion de equipos',
+    });
+
+    const parsed = parseObjetivosFormData(formData);
+
+    expect(parsed.targetRoles).toEqual([{ slug: 'jefe-de-logistica', label: 'Jefe de Logistica' }]);
+    expect(parsed.seniority).toBe('manager');
+    expect(parsed.workModel).toBe('hybrid');
+  });
+
+  it('keeps resumen defaults deterministic', () => {
+    expect(getResumenStepDefaults({})).toEqual({ confirmed: false });
+    expect(getResumenStepDefaults({ confirmed: true })).toEqual({ confirmed: true });
+  });
+});
