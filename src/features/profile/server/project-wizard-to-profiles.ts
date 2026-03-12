@@ -1,37 +1,41 @@
-import { onboardingDraftSchema } from '@/features/wizard/schemas/wizard.schema';
+import { onboardingDraftSchema } from '../../wizard/schemas/wizard.schema';
 import { createClient } from '@/lib/supabase/server';
 
 function buildSourceText(draft: ReturnType<typeof onboardingDraftSchema.parse>) {
   const { militar, experiencia, competencias, objetivos } = draft;
+  const primaryTargetRole = objetivos.targetRoles[0]?.label ?? null;
 
   return [
-    militar.army ? `Ejército: ${militar.army}` : null,
-    militar.cuerpo ? `Cuerpo / rama: ${militar.cuerpo}` : null,
-    militar.rank ? `Empleo / rango: ${militar.rank}` : null,
-    militar.specialty ? `Especialidad: ${militar.specialty}` : null,
-    militar.yearsOfService != null ? `Años de servicio: ${militar.yearsOfService}` : null,
-    militar.destinationType ? `Tipo de destino: ${militar.destinationType}` : null,
-    experiencia.responsibilities.length
-      ? `Responsabilidades: ${experiencia.responsibilities.join(', ')}`
+    militar.branch ? `Ejercito: ${militar.branch}` : null,
+    militar.corps ? `Cuerpo / rama: ${militar.corps}` : null,
+    militar.rank.label ? `Empleo / rango: ${militar.rank.label}` : null,
+    militar.specialty.label ? `Especialidad: ${militar.specialty.label}` : null,
+    militar.serviceYears != null ? `Anos de servicio: ${militar.serviceYears}` : null,
+    militar.destinationContext ? `Contexto de destino: ${militar.destinationContext}` : null,
+    experiencia.responsibilityAreas.length
+      ? `Areas de responsabilidad: ${experiencia.responsibilityAreas.join(', ')}`
       : null,
-    experiencia.missions.length ? `Misiones: ${experiencia.missions.join(', ')}` : null,
+    experiencia.missionTypes.length ? `Misiones: ${experiencia.missionTypes.join(', ')}` : null,
     experiencia.achievements.length ? `Logros: ${experiencia.achievements.join(', ')}` : null,
     experiencia.tools.length ? `Herramientas: ${experiencia.tools.join(', ')}` : null,
     competencias.technicalSkills.length
       ? `Skills técnicas: ${competencias.technicalSkills.join(', ')}`
       : null,
     competencias.softSkills.length ? `Soft skills: ${competencias.softSkills.join(', ')}` : null,
-    objetivos.targetRoles.length ? `Roles objetivo: ${objetivos.targetRoles.join(', ')}` : null,
+    objetivos.targetRoles.length
+      ? `Roles objetivo: ${objetivos.targetRoles.map((role) => role.label).join(', ')}`
+      : null,
     objetivos.targetSectors.length
       ? `Sectores objetivo: ${objetivos.targetSectors.join(', ')}`
       : null,
+    primaryTargetRole ? `Rol prioritario: ${primaryTargetRole}` : null,
   ]
     .filter(Boolean)
     .join('\n');
 }
 
 function buildCivilHeadline(draft: ReturnType<typeof onboardingDraftSchema.parse>) {
-  const role = draft.objetivos.targetRoles[0] ?? 'Profesional en transición';
+  const role = draft.objetivos.targetRoles[0]?.label ?? 'Profesional en transicion';
   const skills = [...draft.competencias.technicalSkills, ...draft.competencias.softSkills].slice(
     0,
     3,
@@ -41,13 +45,11 @@ function buildCivilHeadline(draft: ReturnType<typeof onboardingDraftSchema.parse
 }
 
 function buildCivilSummary(draft: ReturnType<typeof onboardingDraftSchema.parse>) {
-  const role = draft.objetivos.targetRoles[0] ?? 'un rol civil alineado con su experiencia';
+  const role = draft.objetivos.targetRoles[0]?.label ?? 'un rol civil alineado con su experiencia';
   const sector = draft.objetivos.targetSectors[0] ?? 'entornos corporativos';
   const years =
-    draft.militar.yearsOfService != null
-      ? `${draft.militar.yearsOfService} años de servicio`
-      : null;
-  const branch = draft.militar.cuerpo ?? draft.militar.army ?? 'entorno militar';
+    draft.militar.serviceYears != null ? `${draft.militar.serviceYears} anos de servicio` : null;
+  const branch = draft.militar.corps ?? draft.militar.branch ?? 'entorno militar';
   const strengths = [...draft.competencias.softSkills, ...draft.competencias.technicalSkills].slice(
     0,
     4,
@@ -97,13 +99,13 @@ export async function projectWizardToProfiles(userId: string) {
     const { error: updateMilitaryError } = await supabase
       .from('user_military_profiles')
       .update({
-        branch: draft.militar.cuerpo,
-        component: draft.militar.army,
-        rank_text: draft.militar.rank,
-        specialty_text: draft.militar.specialty,
-        service_years: draft.militar.yearsOfService,
-        latest_unit: draft.militar.destinationType,
-        latest_role_title: draft.militar.rank,
+        branch: draft.militar.branch,
+        component: draft.militar.corps,
+        rank_text: draft.militar.rank.label,
+        specialty_text: draft.militar.specialty.label,
+        service_years: draft.militar.serviceYears,
+        latest_unit: draft.militar.destinationContext,
+        latest_role_title: draft.militar.rank.label,
         source_text: sourceText || null,
         raw_profile_jsonb: draft,
       })
@@ -120,13 +122,13 @@ export async function projectWizardToProfiles(userId: string) {
       .insert({
         user_id: userId,
         is_current: true,
-        branch: draft.militar.cuerpo,
-        component: draft.militar.army,
-        rank_text: draft.militar.rank,
-        specialty_text: draft.militar.specialty,
-        service_years: draft.militar.yearsOfService,
-        latest_unit: draft.militar.destinationType,
-        latest_role_title: draft.militar.rank,
+        branch: draft.militar.branch,
+        component: draft.militar.corps,
+        rank_text: draft.militar.rank.label,
+        specialty_text: draft.militar.specialty.label,
+        service_years: draft.militar.serviceYears,
+        latest_unit: draft.militar.destinationContext,
+        latest_role_title: draft.militar.rank.label,
         source_text: sourceText || null,
         raw_profile_jsonb: draft,
       })
@@ -170,7 +172,7 @@ export async function projectWizardToProfiles(userId: string) {
       .from('user_civil_profiles')
       .update({
         military_profile_id: militaryProfileId,
-        target_role: draft.objetivos.targetRoles[0] ?? null,
+        target_role: draft.objetivos.targetRoles[0]?.label ?? null,
         target_sector: draft.objetivos.targetSectors[0] ?? null,
         headline: civilHeadline,
         summary: civilSummary,
@@ -208,7 +210,7 @@ export async function projectWizardToProfiles(userId: string) {
     version_no: nextVersion,
     is_current: true,
     status: 'draft',
-    target_role: draft.objetivos.targetRoles[0] ?? null,
+    target_role: draft.objetivos.targetRoles[0]?.label ?? null,
     target_sector: draft.objetivos.targetSectors[0] ?? null,
     headline: civilHeadline,
     summary: civilSummary,
