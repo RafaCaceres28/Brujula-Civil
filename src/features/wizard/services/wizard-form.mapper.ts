@@ -15,6 +15,8 @@ import type {
   ResumenStepPayload,
 } from '../types/wizard.types';
 
+import { RANK_OPTIONS, SPECIALTY_OPTIONS } from '../config/wizard-catalogs';
+
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === 'string' ? value.trim() : '';
@@ -44,6 +46,41 @@ function getTextareaList(formData: FormData, key: string) {
     .split('\n')
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function toSlug(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function getLanguageList(formData: FormData, key: string) {
+  return getTextareaList(formData, key).map((item) => {
+    const [namePart, levelPart] = item.split(':').map((value) => value.trim());
+
+    return {
+      name: namePart,
+      level: levelPart || 'intermediate',
+    };
+  });
+}
+
+function getTargetRoles(formData: FormData, key: string) {
+  return getTextareaList(formData, key).map((label) => ({
+    slug: toSlug(label),
+    label,
+  }));
+}
+
+function getOptionLabel(
+  options: Array<{ value: string; label: string }>,
+  value: string | null,
+): string | null {
+  if (!value) return null;
+  return options.find((option) => option.value === value)?.label ?? null;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -91,22 +128,40 @@ export function getResumenStepDefaults(value: unknown): { confirmed: boolean } {
 }
 
 export function parseMilitarFormData(formData: FormData): MilitarStepPayload {
+  const branch = getNullableString(formData, 'branch');
+  const corps = getNullableString(formData, 'corps');
+  const rankCode = getNullableString(formData, 'rankCode');
+  const specialtyCode = getNullableString(formData, 'specialtyCode');
+
   return militarStepSchema.parse({
-    army: getNullableString(formData, 'army'),
-    cuerpo: getNullableString(formData, 'cuerpo'),
-    rank: getNullableString(formData, 'rank'),
-    specialty: getNullableString(formData, 'specialty'),
-    yearsOfService: getNullableNumber(formData, 'yearsOfService'),
-    destinationType: getNullableString(formData, 'destinationType'),
+    branch,
+    corps,
+    rank: {
+      code: rankCode,
+      label: getOptionLabel(RANK_OPTIONS, rankCode),
+    },
+    specialty: {
+      code: specialtyCode,
+      label: getOptionLabel(SPECIALTY_OPTIONS, specialtyCode),
+    },
+    serviceYears: getNullableNumber(formData, 'serviceYears'),
+    destinationContext: getNullableString(formData, 'destinationContext'),
+    leadershipLevel: getNullableString(formData, 'leadershipLevel'),
+    teamSize: getNullableString(formData, 'teamSize'),
+    unitName: getNullableString(formData, 'unitName'),
+    notes: getNullableString(formData, 'notes'),
   });
 }
 
 export function parseExperienciaFormData(formData: FormData): ExperienciaStepPayload {
   return experienciaStepSchema.parse({
-    responsibilities: getTextareaList(formData, 'responsibilities'),
-    missions: getTextareaList(formData, 'missions'),
+    responsibilityAreas: getTextareaList(formData, 'responsibilityAreas'),
+    missionTypes: getTextareaList(formData, 'missionTypes'),
+    functionTypes: getTextareaList(formData, 'functionTypes'),
     achievements: getTextareaList(formData, 'achievements'),
     tools: getTextareaList(formData, 'tools'),
+    leadershipScopes: getTextareaList(formData, 'leadershipScopes'),
+    additionalContext: getNullableString(formData, 'additionalContext'),
   });
 }
 
@@ -115,23 +170,37 @@ export function parseCompetenciasFormData(formData: FormData): CompetenciasStepP
     technicalSkills: getTextareaList(formData, 'technicalSkills'),
     softSkills: getTextareaList(formData, 'softSkills'),
     certifications: getTextareaList(formData, 'certifications'),
-    languages: getTextareaList(formData, 'languages'),
+    drivingLicenses: getTextareaList(formData, 'drivingLicenses'),
+    languages: getLanguageList(formData, 'languages'),
+    officeTools: getTextareaList(formData, 'officeTools'),
+    extraTraining: getNullableString(formData, 'extraTraining'),
   });
 }
 
 export function parseObjetivosFormData(formData: FormData): ObjetivosStepPayload {
   const rawWorkModel = formData.get('workModel');
+  const rawSeniority = formData.get('seniority');
 
   const workModel =
     rawWorkModel === 'onsite' || rawWorkModel === 'hybrid' || rawWorkModel === 'remote'
       ? rawWorkModel
       : null;
 
+  const seniority =
+    rawSeniority === 'junior' ||
+    rawSeniority === 'mid' ||
+    rawSeniority === 'senior' ||
+    rawSeniority === 'manager'
+      ? rawSeniority
+      : null;
+
   return objetivosStepSchema.parse({
-    targetRoles: getTextareaList(formData, 'targetRoles'),
+    targetRoles: getTargetRoles(formData, 'targetRoles'),
     targetSectors: getTextareaList(formData, 'targetSectors'),
     preferredLocations: getTextareaList(formData, 'preferredLocations'),
     workModel,
+    seniority,
+    preferencesNotes: getNullableString(formData, 'preferencesNotes'),
   });
 }
 
