@@ -2,7 +2,7 @@
 
 'use client';
 
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/browser';
 import { useState } from 'react';
 
 export default function TestStoragePage() {
