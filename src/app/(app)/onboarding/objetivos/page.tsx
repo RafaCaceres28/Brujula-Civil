@@ -27,7 +27,7 @@ export default async function ObjetivosStepPage() {
               <Textarea
                 id="targetRoles"
                 name="targetRoles"
-                defaultValue={values.targetRoles.join('\n')}
+                defaultValue={values.targetRoles.map((role) => role.label).join('\n')}
               />
             </div>
 

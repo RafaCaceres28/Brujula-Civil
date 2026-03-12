@@ -21,21 +21,36 @@ export default async function ExperienciaStepPage() {
         <form action={saveExperienciaStepAction} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="responsibilities" className="text-sm font-medium text-slate-900">
-                Responsabilidades
+              <label htmlFor="responsibilityAreas" className="text-sm font-medium text-slate-900">
+                Areas de responsabilidad
               </label>
               <Textarea
-                id="responsibilities"
-                name="responsibilities"
-                defaultValue={values.responsibilities.join('\n')}
+                id="responsibilityAreas"
+                name="responsibilityAreas"
+                defaultValue={values.responsibilityAreas.join('\n')}
               />
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="missions" className="text-sm font-medium text-slate-900">
-                Misiones
+              <label htmlFor="missionTypes" className="text-sm font-medium text-slate-900">
+                Tipos de mision
               </label>
-              <Textarea id="missions" name="missions" defaultValue={values.missions.join('\n')} />
+              <Textarea
+                id="missionTypes"
+                name="missionTypes"
+                defaultValue={values.missionTypes.join('\n')}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="functionTypes" className="text-sm font-medium text-slate-900">
+                Tipos de funcion
+              </label>
+              <Textarea
+                id="functionTypes"
+                name="functionTypes"
+                defaultValue={values.functionTypes.join('\n')}
+              />
             </div>
 
             <div className="space-y-2">
@@ -54,6 +69,28 @@ export default async function ExperienciaStepPage() {
                 Herramientas
               </label>
               <Textarea id="tools" name="tools" defaultValue={values.tools.join('\n')} />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="leadershipScopes" className="text-sm font-medium text-slate-900">
+                Alcance de liderazgo
+              </label>
+              <Textarea
+                id="leadershipScopes"
+                name="leadershipScopes"
+                defaultValue={values.leadershipScopes.join('\n')}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="additionalContext" className="text-sm font-medium text-slate-900">
+                Contexto adicional
+              </label>
+              <Textarea
+                id="additionalContext"
+                name="additionalContext"
+                defaultValue={values.additionalContext ?? ''}
+              />
             </div>
           </div>
 

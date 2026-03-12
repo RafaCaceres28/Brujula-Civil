@@ -44,22 +44,22 @@ export default async function ResumenStepPage() {
             <CardHeader title="Perfil militar" />
             <CardContent className="space-y-2 text-sm text-slate-700">
               <p>
-                <strong>Ejército:</strong> {militar.army ?? '—'}
+                <strong>Ejercito:</strong> {militar.branch ?? '—'}
               </p>
               <p>
-                <strong>Cuerpo:</strong> {militar.cuerpo ?? '—'}
+                <strong>Cuerpo:</strong> {militar.corps ?? '—'}
               </p>
               <p>
-                <strong>Rango:</strong> {militar.rank ?? '—'}
+                <strong>Rango:</strong> {militar.rank.label ?? '—'}
               </p>
               <p>
-                <strong>Especialidad:</strong> {militar.specialty ?? '—'}
+                <strong>Especialidad:</strong> {militar.specialty.label ?? '—'}
               </p>
               <p>
-                <strong>Años de servicio:</strong> {militar.yearsOfService ?? '—'}
+                <strong>Anos de servicio:</strong> {militar.serviceYears ?? '—'}
               </p>
               <p>
-                <strong>Destino:</strong> {militar.destinationType ?? '—'}
+                <strong>Destino:</strong> {militar.destinationContext ?? '—'}
               </p>
             </CardContent>
           </Card>
@@ -68,7 +68,8 @@ export default async function ResumenStepPage() {
             <CardHeader title="Objetivos profesionales" />
             <CardContent className="space-y-2 text-sm text-slate-700">
               <p>
-                <strong>Roles objetivo:</strong> {objetivos.targetRoles.join(', ') || '—'}
+                <strong>Roles objetivo:</strong>{' '}
+                {objetivos.targetRoles.map((role) => role.label).join(', ') || '—'}
               </p>
               <p>
                 <strong>Sectores objetivo:</strong> {objetivos.targetSectors.join(', ') || '—'}
@@ -82,14 +83,19 @@ export default async function ResumenStepPage() {
             </CardContent>
           </Card>
 
-          <SectionList title="Responsabilidades" items={experiencia.responsibilities} />
-          <SectionList title="Misiones" items={experiencia.missions} />
+          <SectionList title="Areas de responsabilidad" items={experiencia.responsibilityAreas} />
+          <SectionList title="Misiones" items={experiencia.missionTypes} />
+          <SectionList title="Funciones" items={experiencia.functionTypes} />
           <SectionList title="Logros" items={experiencia.achievements} />
           <SectionList title="Herramientas" items={experiencia.tools} />
+          <SectionList title="Alcance de liderazgo" items={experiencia.leadershipScopes} />
           <SectionList title="Skills técnicas" items={competencias.technicalSkills} />
           <SectionList title="Soft skills" items={competencias.softSkills} />
           <SectionList title="Certificaciones" items={competencias.certifications} />
-          <SectionList title="Idiomas" items={competencias.languages} />
+          <SectionList
+            title="Idiomas"
+            items={competencias.languages.map((language) => `${language.name} (${language.level})`)}
+          />
         </div>
 
         <form action={saveResumenStepAction} className="space-y-6">

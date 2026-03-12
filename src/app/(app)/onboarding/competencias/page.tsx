@@ -60,7 +60,9 @@ export default async function CompetenciasStepPage() {
               <Textarea
                 id="languages"
                 name="languages"
-                defaultValue={values.languages.join('\n')}
+                defaultValue={values.languages
+                  .map((language) => `${language.name}:${language.level}`)
+                  .join('\n')}
               />
             </div>
           </div>

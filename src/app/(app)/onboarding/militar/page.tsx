@@ -21,55 +21,91 @@ export default async function MilitarStepPage() {
         <form action={saveMilitarStepAction} className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <label htmlFor="army" className="text-sm font-medium text-slate-900">
+              <label htmlFor="branch" className="text-sm font-medium text-slate-900">
                 Ejército
               </label>
-              <Input id="army" name="army" defaultValue={values.army ?? ''} />
+              <Input id="branch" name="branch" defaultValue={values.branch ?? ''} />
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="cuerpo" className="text-sm font-medium text-slate-900">
+              <label htmlFor="corps" className="text-sm font-medium text-slate-900">
                 Cuerpo / rama
               </label>
-              <Input id="cuerpo" name="cuerpo" defaultValue={values.cuerpo ?? ''} />
+              <Input id="corps" name="corps" defaultValue={values.corps ?? ''} />
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="rank" className="text-sm font-medium text-slate-900">
+              <label htmlFor="rankCode" className="text-sm font-medium text-slate-900">
                 Empleo / rango
               </label>
-              <Input id="rank" name="rank" defaultValue={values.rank ?? ''} />
+              <Input id="rankCode" name="rankCode" defaultValue={values.rank.code ?? ''} />
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="specialty" className="text-sm font-medium text-slate-900">
+              <label htmlFor="specialtyCode" className="text-sm font-medium text-slate-900">
                 Especialidad
               </label>
-              <Input id="specialty" name="specialty" defaultValue={values.specialty ?? ''} />
+              <Input
+                id="specialtyCode"
+                name="specialtyCode"
+                defaultValue={values.specialty.code ?? ''}
+              />
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="yearsOfService" className="text-sm font-medium text-slate-900">
+              <label htmlFor="serviceYears" className="text-sm font-medium text-slate-900">
                 Años de servicio
               </label>
               <Input
-                id="yearsOfService"
-                name="yearsOfService"
+                id="serviceYears"
+                name="serviceYears"
                 type="number"
                 min={0}
-                defaultValue={values.yearsOfService ?? ''}
+                defaultValue={values.serviceYears ?? ''}
               />
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="destinationType" className="text-sm font-medium text-slate-900">
-                Tipo de destino
+              <label htmlFor="destinationContext" className="text-sm font-medium text-slate-900">
+                Contexto de destino
               </label>
               <Input
-                id="destinationType"
-                name="destinationType"
-                defaultValue={values.destinationType ?? ''}
+                id="destinationContext"
+                name="destinationContext"
+                defaultValue={values.destinationContext ?? ''}
               />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="leadershipLevel" className="text-sm font-medium text-slate-900">
+                Nivel de liderazgo
+              </label>
+              <Input
+                id="leadershipLevel"
+                name="leadershipLevel"
+                defaultValue={values.leadershipLevel ?? ''}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="teamSize" className="text-sm font-medium text-slate-900">
+                Tamaño de equipo
+              </label>
+              <Input id="teamSize" name="teamSize" defaultValue={values.teamSize ?? ''} />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="unitName" className="text-sm font-medium text-slate-900">
+                Unidad
+              </label>
+              <Input id="unitName" name="unitName" defaultValue={values.unitName ?? ''} />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="notes" className="text-sm font-medium text-slate-900">
+                Notas
+              </label>
+              <Input id="notes" name="notes" defaultValue={values.notes ?? ''} />
             </div>
           </div>
 
