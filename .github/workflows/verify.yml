@@ -5,10 +5,17 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     name: verify (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      artifact-metadata: write
     strategy:
       fail-fast: false
       matrix:

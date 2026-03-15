@@ -1,0 +1,14 @@
+# Optional CODEOWNERS baseline for governance paths.
+# Keep this file as documentation/automation input even when code-owner enforcement is disabled.
+
+* @rcaceresm28
+
+/.github/workflows/ @rcaceresm28
+/.github/CODEOWNERS @rcaceresm28
+/docs/security/ @rcaceresm28
+/docs/security/branch-protection.md @rcaceresm28
+/scripts/governance/ @rcaceresm28
+/.github/policies/ @rcaceresm28
+/package.json @rcaceresm28
+/pnpm-lock.yaml @rcaceresm28
+/vitest.config.ts @rcaceresm28

@@ -13,6 +13,8 @@
     "test:coverage": "vitest run --coverage",
     "test:coverage:negative": "node coverage-negative-check.mjs",
     "verify": "pnpm lint && pnpm typecheck && pnpm test:run",
+    "governance:check": "node scripts/governance/check-main-branch-protection.mjs",
+    "governance:apply": "node scripts/governance/apply-main-branch-protection.mjs",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "prepare": "husky"
