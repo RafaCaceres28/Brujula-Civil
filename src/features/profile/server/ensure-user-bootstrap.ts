@@ -1,4 +1,5 @@
 import { FIRST_WIZARD_DB_STEP } from '@/features/wizard/config/wizard-steps';
+import type { AppUserProfileInsert } from '@/features/profile/types/profile.types';
 import { createClient } from '@/lib/supabase/server';
 
 export async function ensureUserBootstrap(userId: string) {
@@ -24,11 +25,15 @@ export async function ensureUserBootstrap(userId: string) {
       throw new Error(`Error loading auth user during bootstrap: ${authUserError.message}`);
     }
 
-    const { error: insertProfileError } = await supabase.from('app_user_profiles').insert({
+    const insertProfilePayload: AppUserProfileInsert = {
       user_id: userId,
       email: user?.email ?? null,
       display_name: user?.user_metadata?.display_name ?? null,
-    });
+    };
+
+    const { error: insertProfileError } = await supabase
+      .from('app_user_profiles')
+      .insert(insertProfilePayload);
 
     if (insertProfileError) {
       throw new Error(`Error creating app_user_profiles row: ${insertProfileError.message}`);

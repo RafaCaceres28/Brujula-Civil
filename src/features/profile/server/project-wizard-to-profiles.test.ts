@@ -1,4 +1,10 @@
 import { onboardingDraftSchema } from '../../wizard/schemas/wizard.schema';
+import type {
+  CivilProfileInsert,
+  CivilProfileUpdate,
+  MilitaryProfileInsert,
+  MilitaryProfileUpdate,
+} from '@/features/profile/types/profile.types';
 import { createClient } from '@/lib/supabase/server';
 import { describe, expect, it, vi } from 'vitest';
 import { projectWizardToProfiles } from './project-wizard-to-profiles';
@@ -54,10 +60,10 @@ function createSupabaseMock(options: {
   latestVersions?: Array<{ version_no: number }>;
 }) {
   const records: {
-    militaryUpdate?: Record<string, unknown>;
-    militaryInsert?: Record<string, unknown>;
-    civilUpdate?: Record<string, unknown>;
-    civilInsert?: Record<string, unknown>;
+    militaryUpdate?: MilitaryProfileUpdate;
+    militaryInsert?: MilitaryProfileInsert;
+    civilUpdate?: CivilProfileUpdate;
+    civilInsert?: CivilProfileInsert;
   } = {};
 
   const client = {
@@ -97,13 +103,13 @@ function createSupabaseMock(options: {
               },
             };
           },
-          update(payload: Record<string, unknown>) {
+          update(payload: MilitaryProfileUpdate) {
             records.militaryUpdate = payload;
             return {
               eq: async () => ({ error: null }),
             };
           },
-          insert(payload: Record<string, unknown>) {
+          insert(payload: MilitaryProfileInsert) {
             records.militaryInsert = payload;
             return {
               select() {
@@ -152,13 +158,13 @@ function createSupabaseMock(options: {
 
             throw new Error(`Unexpected column selection ${columns}`);
           },
-          update(payload: Record<string, unknown>) {
+          update(payload: CivilProfileUpdate) {
             records.civilUpdate = payload;
             return {
               eq: async () => ({ error: null }),
             };
           },
-          insert: async (payload: Record<string, unknown>) => {
+          insert: async (payload: CivilProfileInsert) => {
             records.civilInsert = payload;
             return { error: null };
           },

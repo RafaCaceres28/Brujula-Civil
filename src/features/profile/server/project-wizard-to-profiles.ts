@@ -1,4 +1,10 @@
 import { onboardingDraftSchema } from '../../wizard/schemas/wizard.schema';
+import type {
+  CivilProfileInsert,
+  CivilProfileUpdate,
+  MilitaryProfileInsert,
+  MilitaryProfileUpdate,
+} from '@/features/profile/types/profile.types';
 import { createClient } from '@/lib/supabase/server';
 
 function buildSourceText(draft: ReturnType<typeof onboardingDraftSchema.parse>) {
@@ -96,19 +102,21 @@ export async function projectWizardToProfiles(userId: string) {
   let militaryProfileId: string;
 
   if (currentMilitaryProfile) {
+    const militaryUpdatePayload: MilitaryProfileUpdate = {
+      branch: draft.militar.branch,
+      component: draft.militar.corps,
+      rank_text: draft.militar.rank.label,
+      specialty_text: draft.militar.specialty.label,
+      service_years: draft.militar.serviceYears,
+      latest_unit: draft.militar.destinationContext,
+      latest_role_title: draft.militar.rank.label,
+      source_text: sourceText || null,
+      raw_profile_jsonb: draft,
+    };
+
     const { error: updateMilitaryError } = await supabase
       .from('user_military_profiles')
-      .update({
-        branch: draft.militar.branch,
-        component: draft.militar.corps,
-        rank_text: draft.militar.rank.label,
-        specialty_text: draft.militar.specialty.label,
-        service_years: draft.militar.serviceYears,
-        latest_unit: draft.militar.destinationContext,
-        latest_role_title: draft.militar.rank.label,
-        source_text: sourceText || null,
-        raw_profile_jsonb: draft,
-      })
+      .update(militaryUpdatePayload)
       .eq('id', currentMilitaryProfile.id);
 
     if (updateMilitaryError) {
@@ -117,21 +125,23 @@ export async function projectWizardToProfiles(userId: string) {
 
     militaryProfileId = currentMilitaryProfile.id;
   } else {
+    const militaryInsertPayload: MilitaryProfileInsert = {
+      user_id: userId,
+      is_current: true,
+      branch: draft.militar.branch,
+      component: draft.militar.corps,
+      rank_text: draft.militar.rank.label,
+      specialty_text: draft.militar.specialty.label,
+      service_years: draft.militar.serviceYears,
+      latest_unit: draft.militar.destinationContext,
+      latest_role_title: draft.militar.rank.label,
+      source_text: sourceText || null,
+      raw_profile_jsonb: draft,
+    };
+
     const { data: insertedMilitaryProfile, error: insertMilitaryError } = await supabase
       .from('user_military_profiles')
-      .insert({
-        user_id: userId,
-        is_current: true,
-        branch: draft.militar.branch,
-        component: draft.militar.corps,
-        rank_text: draft.militar.rank.label,
-        specialty_text: draft.militar.specialty.label,
-        service_years: draft.militar.serviceYears,
-        latest_unit: draft.militar.destinationContext,
-        latest_role_title: draft.militar.rank.label,
-        source_text: sourceText || null,
-        raw_profile_jsonb: draft,
-      })
+      .insert(militaryInsertPayload)
       .select('id')
       .single();
 
@@ -168,20 +178,22 @@ export async function projectWizardToProfiles(userId: string) {
   }
 
   if (currentCivilProfile) {
+    const civilUpdatePayload: CivilProfileUpdate = {
+      military_profile_id: militaryProfileId,
+      target_role: draft.objetivos.targetRoles[0]?.label ?? null,
+      target_sector: draft.objetivos.targetSectors[0] ?? null,
+      headline: civilHeadline,
+      summary: civilSummary,
+      structured_profile_jsonb: structuredCivilProfile,
+      status: 'draft',
+      generator_name: 'wizard',
+      generator_version: '1.0.0',
+      prompt_version: 'wizard-source',
+    };
+
     const { error: updateCivilError } = await supabase
       .from('user_civil_profiles')
-      .update({
-        military_profile_id: militaryProfileId,
-        target_role: draft.objetivos.targetRoles[0]?.label ?? null,
-        target_sector: draft.objetivos.targetSectors[0] ?? null,
-        headline: civilHeadline,
-        summary: civilSummary,
-        structured_profile_jsonb: structuredCivilProfile,
-        status: 'draft',
-        generator_name: 'wizard',
-        generator_version: '1.0.0',
-        prompt_version: 'wizard-source',
-      })
+      .update(civilUpdatePayload)
       .eq('id', currentCivilProfile.id);
 
     if (updateCivilError) {
@@ -204,7 +216,7 @@ export async function projectWizardToProfiles(userId: string) {
 
   const nextVersion = (latestVersions?.[0]?.version_no ?? 0) + 1;
 
-  const { error: insertCivilError } = await supabase.from('user_civil_profiles').insert({
+  const civilInsertPayload: CivilProfileInsert = {
     user_id: userId,
     military_profile_id: militaryProfileId,
     version_no: nextVersion,
@@ -218,7 +230,11 @@ export async function projectWizardToProfiles(userId: string) {
     generator_name: 'wizard',
     generator_version: '1.0.0',
     prompt_version: 'wizard-source',
-  });
+  };
+
+  const { error: insertCivilError } = await supabase
+    .from('user_civil_profiles')
+    .insert(civilInsertPayload);
 
   if (insertCivilError) {
     throw new Error(`Error creating user_civil_profiles row: ${insertCivilError.message}`);
