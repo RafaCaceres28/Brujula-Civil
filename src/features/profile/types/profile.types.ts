@@ -26,6 +26,8 @@ export type ProfileSupabaseShape = {
   civil: UserCivilProfileRow | null;
 };
 
+export type ProfileDomainModel = ProfileReadOutputSchemaInput;
+
 export type AppUserProfileInsert = Omit<
   AppUserProfileRow,
   DbGeneratedColumns | AppUserProfileOptionalDefaults
@@ -44,7 +46,7 @@ export type CivilProfileUpdate = Partial<
   Omit<UserCivilProfileRow, DbGeneratedColumns | 'user_id' | 'version_no' | 'is_current'>
 >;
 
-export type ProfileRow = ProfileReadOutputSchemaInput;
+export type ProfileRow = ProfileDomainModel;
 
 export type MilitaryBackground = MilitaryBackgroundSchemaInput;
 
@@ -67,6 +69,25 @@ export type SaveDraftInput = SaveDraftInputSchemaInput;
 export type SubmitProfileInput = SubmitProfileInputSchemaInput;
 
 export type SaveProfileInput = SaveProfileInputSchemaInput;
+
+export type ProfileDbToDomainInput = {
+  userId: string;
+  shape: ProfileSupabaseShape;
+};
+
+export type ProfileDomainToFormInput = {
+  domain: ProfileDomainModel;
+};
+
+export type ProfileWritePayload = {
+  app: AppUserProfileInsert;
+  military: Omit<MilitaryProfileInsert, 'user_id' | 'is_current'>;
+  civil: Omit<CivilProfileInsert, 'user_id' | 'military_profile_id' | 'version_no' | 'is_current'>;
+};
+
+export type ProfileDomainToSummaryInput = {
+  domain: ProfileDomainModel;
+};
 
 export type ProfileLifecycleStatus = 'draft' | 'submitted';
 

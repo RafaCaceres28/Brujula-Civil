@@ -1,31 +1,59 @@
 import type {
-  AppUserProfileInsert,
-  CivilProfileInsert,
-  MilitaryProfileInsert,
-  ProfileRow,
+  ProfileDomainModel,
+  ProfileFormValues,
+  ProfileSummaryViewModel,
   ProfileSupabaseShape,
+  ProfileWritePayload,
 } from '@/features/profile/types/profile.types';
+import { profileFormValuesSchema, profileReadOutputSchema } from '../schemas/profile.schema';
 
-export function mapSupabaseShapeToProfileRow(
-  userId: string,
-  shape: ProfileSupabaseShape,
-): ProfileRow {
-  const preferredLocations =
-    typeof shape.civil?.structured_profile_jsonb?.target === 'object' &&
-    shape.civil?.structured_profile_jsonb?.target !== null &&
-    Array.isArray(
-      (shape.civil.structured_profile_jsonb.target as { preferredLocations?: unknown })
-        .preferredLocations,
-    )
-      ? ((shape.civil.structured_profile_jsonb.target as { preferredLocations: unknown[] })
-          .preferredLocations[0] as string | undefined)
-      : null;
+const DEFAULT_PROFILE_FULL_NAME = 'Unknown user';
+const DEFAULT_PROFILE_EMAIL = 'unknown@example.com';
+const SUMMARY_PRIMARY_GOAL_FALLBACK = 'Goal pending';
+const SUMMARY_LOCATION_FALLBACK = 'Location pending';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function getFirstPreferredLocation(value: unknown): string | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const target = value.target;
+  if (!isRecord(target)) {
+    return null;
+  }
+
+  const preferredLocations = target.preferredLocations;
+  if (!Array.isArray(preferredLocations)) {
+    return null;
+  }
+
+  const firstLocation = preferredLocations[0];
+  return typeof firstLocation === 'string' ? firstLocation : null;
+}
+
+function toPreferredLocationsJson(locationPreference: string | null): Record<string, unknown> {
+  const preferredLocations = locationPreference ? [locationPreference] : [];
 
   return {
+    target: {
+      preferredLocations,
+    },
+  };
+}
+
+export function mapDbToDomainProfile(
+  userId: string,
+  shape: ProfileSupabaseShape,
+): ProfileDomainModel {
+  return profileReadOutputSchema.parse({
     userId,
     profile: {
-      fullName: shape.app?.display_name ?? '',
-      email: shape.app?.email ?? '',
+      fullName: shape.app?.display_name ?? DEFAULT_PROFILE_FULL_NAME,
+      email: shape.app?.email ?? DEFAULT_PROFILE_EMAIL,
       phone: null,
       city: null,
     },
@@ -38,43 +66,58 @@ export function mapSupabaseShapeToProfileRow(
     civilianTarget: {
       targetRole: shape.civil?.target_role ?? null,
       targetSector: shape.civil?.target_sector ?? null,
-      locationPreference: preferredLocations ?? null,
+      locationPreference: getFirstPreferredLocation(shape.civil?.structured_profile_jsonb) ?? null,
     },
-  };
+  });
 }
 
-export function mapProfileRowToSupabaseShape(profile: ProfileRow): {
-  app: AppUserProfileInsert;
-  military: Omit<MilitaryProfileInsert, 'user_id' | 'is_current'>;
-  civil: Omit<CivilProfileInsert, 'user_id' | 'military_profile_id' | 'version_no' | 'is_current'>;
-} {
+export function mapDomainToProfileFormValues(domain: ProfileDomainModel): ProfileFormValues {
+  return profileFormValuesSchema.parse(domain.profile);
+}
+
+export function mapProfileWriteToDb(profile: ProfileDomainModel): ProfileWritePayload {
+  const parsed = profileReadOutputSchema.parse(profile);
+
   return {
     app: {
-      user_id: profile.userId,
-      email: profile.profile.email,
-      display_name: profile.profile.fullName,
+      user_id: parsed.userId,
+      email: parsed.profile.email,
+      display_name: parsed.profile.fullName,
     },
     military: {
       branch: null,
-      component: profile.militaryBackground.area,
-      rank_text: profile.militaryBackground.rank,
+      component: parsed.militaryBackground.area,
+      rank_text: parsed.militaryBackground.rank,
       specialty_text: null,
-      service_years: profile.militaryBackground.yearsOfService,
+      service_years: parsed.militaryBackground.yearsOfService,
       latest_unit: null,
-      latest_role_title: profile.militaryBackground.rank,
-      source_text: profile.militaryBackground.summary,
+      latest_role_title: parsed.militaryBackground.rank,
+      source_text: parsed.militaryBackground.summary,
       raw_profile_jsonb: {},
     },
     civil: {
       status: 'draft',
-      target_role: profile.civilianTarget.targetRole,
-      target_sector: profile.civilianTarget.targetSector,
+      target_role: parsed.civilianTarget.targetRole,
+      target_sector: parsed.civilianTarget.targetSector,
       headline: null,
       summary: null,
-      structured_profile_jsonb: {},
+      structured_profile_jsonb: toPreferredLocationsJson(parsed.civilianTarget.locationPreference),
       generator_name: null,
       generator_version: null,
       prompt_version: null,
     },
   };
 }
+
+export function mapDomainToProfileSummary(domain: ProfileDomainModel): ProfileSummaryViewModel {
+  const parsed = profileReadOutputSchema.parse(domain);
+
+  return {
+    fullName: parsed.profile.fullName,
+    primaryGoal: parsed.civilianTarget.targetRole ?? SUMMARY_PRIMARY_GOAL_FALLBACK,
+    location: parsed.civilianTarget.locationPreference ?? SUMMARY_LOCATION_FALLBACK,
+  };
+}
+
+export const mapSupabaseShapeToProfileRow = mapDbToDomainProfile;
+export const mapProfileRowToSupabaseShape = mapProfileWriteToDb;
