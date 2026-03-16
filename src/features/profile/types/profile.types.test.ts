@@ -4,10 +4,14 @@ import type {
   CivilProfileUpdate,
   MilitaryProfileInsert,
   MilitaryProfileUpdate,
+  ProfileReadOutput,
   ProfileFormValues,
+  ProfileLifecycleStatus,
   ProfileRow,
   ProfileSupabaseShape,
+  SaveDraftInput,
   SaveProfileInput,
+  SubmitProfileInput,
 } from './profile.types';
 import type {
   AppUserProfileRow,
@@ -31,12 +35,20 @@ describe('profile.types contracts', () => {
     const profileRowCannotBeUnknown: IsUnknown<ProfileRow> = false;
 
     expectTypeOf(profileRowCannotBeUnknown).toEqualTypeOf<false>();
-    expectTypeOf<ProfileRow>().toMatchTypeOf<{ userId: string }>();
+    expectTypeOf<ProfileRow>().toMatchTypeOf<{ userId: string; profile: ProfileFormValues }>();
+    expectTypeOf<ProfileRow>().toEqualTypeOf<ProfileReadOutput>();
   });
 
   it('keeps form and use-case boundaries aligned', () => {
     expectTypeOf<SaveProfileInput['profile']>().toEqualTypeOf<ProfileFormValues>();
+    expectTypeOf<SaveDraftInput>().toEqualTypeOf<SaveProfileInput>();
+    expectTypeOf<SubmitProfileInput['profile']>().toEqualTypeOf<ProfileFormValues>();
+    expectTypeOf<SaveProfileInput>().toMatchTypeOf<{ militaryBackground: object }>();
     expectTypeOf<ProfileSupabaseShape>().not.toEqualTypeOf<SaveProfileInput>();
+  });
+
+  it('exposes lifecycle status union for explicit transitions', () => {
+    expectTypeOf<ProfileLifecycleStatus>().toEqualTypeOf<'draft' | 'submitted'>();
   });
 
   it('detects schema drift by enforcing DB-derived persistence aliases', () => {
@@ -92,28 +104,37 @@ describe('profile.types contracts', () => {
         phone: '+34123456789',
         city: 'Madrid',
       },
-    };
-
-    const row: ProfileRow = {
-      userId: 'user-1',
-      email: 'ada@example.com',
-      fullName: 'Ada Lovelace',
-      phone: '+34123456789',
-      city: 'Madrid',
-      locale: 'es-ES',
-      timezone: 'Europe/Madrid',
-      military: {
+      militaryBackground: {
         rank: null,
         area: null,
         yearsOfService: null,
         summary: null,
       },
-      civil: {
+      civilianTarget: {
         targetRole: null,
         targetSector: null,
-        headline: null,
+        locationPreference: null,
+      },
+    };
+
+    const row: ProfileRow = {
+      userId: 'user-1',
+      profile: {
+        fullName: 'Ada Lovelace',
+        email: 'ada@example.com',
+        phone: '+34123456789',
+        city: 'Madrid',
+      },
+      militaryBackground: {
+        rank: null,
+        area: null,
+        yearsOfService: null,
         summary: null,
-        status: null,
+      },
+      civilianTarget: {
+        targetRole: null,
+        targetSector: null,
+        locationPreference: null,
       },
     };
 
@@ -124,7 +145,7 @@ describe('profile.types contracts', () => {
     };
 
     expectTypeOf(input.userId).toEqualTypeOf<string>();
-    expectTypeOf(row.civil.status).toEqualTypeOf<UserCivilProfileRow['status'] | null>();
+    expectTypeOf(row.profile.email).toEqualTypeOf<string>();
     expectTypeOf(persistenceShape).toMatchTypeOf<ProfileSupabaseShape>();
   });
 
