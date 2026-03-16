@@ -25,6 +25,6 @@ child.on('close', (code, signal) => {
     process.exit(1);
   }
 
-  console.log(`Coverage gate failed as expected with exit code ${code}.`);
+  console.warn(`Coverage gate failed as expected with exit code ${code}.`);
   process.exit(0);
 });

@@ -1,8 +1,8 @@
 'use server';
 
-import { registerSchema } from '../schemas/auth.schema';
-import type { AuthActionResult, AuthFieldErrors } from '../types/auth.types';
+import { confirmPasswordResetSchema } from '../schemas/auth.schema';
 import { mapSupabaseAuthError } from '../server/auth-error-mapper';
+import type { AuthFieldErrors, RecoveryActionResult } from '../types/auth.types';
 import { createClient } from '@/lib/supabase/server';
 import type { ZodError } from 'zod';
 
@@ -14,10 +14,12 @@ function extractFieldErrors(error: ZodError | undefined): AuthFieldErrors | unde
   return error.flatten().fieldErrors as AuthFieldErrors;
 }
 
-export async function registerAction(formData: FormData): Promise<AuthActionResult> {
-  const parsed = registerSchema.safeParse({
-    email: formData.get('email'),
+export async function confirmPasswordResetAction(
+  formData: FormData,
+): Promise<RecoveryActionResult> {
+  const parsed = confirmPasswordResetSchema.safeParse({
     password: formData.get('password'),
+    confirmPassword: formData.get('confirmPassword'),
   });
 
   if (!parsed.success) {
@@ -31,10 +33,12 @@ export async function registerAction(formData: FormData): Promise<AuthActionResu
 
   try {
     const supabase = await createClient();
-    const { error } = await supabase.auth.signUp(parsed.data);
+    const { error } = await supabase.auth.updateUser({
+      password: parsed.data.password,
+    });
 
     if (error) {
-      const mappedError = mapSupabaseAuthError('register', error.message);
+      const mappedError = mapSupabaseAuthError('confirm-reset', error.message);
       return {
         ok: false,
         code: mappedError.code,
@@ -44,10 +48,10 @@ export async function registerAction(formData: FormData): Promise<AuthActionResu
 
     return {
       ok: true,
-      message: 'Cuenta creada. Revisa tu email si se requiere confirmacion.',
+      message: 'Contrasena actualizada. Ya puedes iniciar sesion.',
     };
   } catch {
-    const mappedError = mapSupabaseAuthError('register', undefined);
+    const mappedError = mapSupabaseAuthError('confirm-reset', undefined);
     return {
       ok: false,
       code: mappedError.code,

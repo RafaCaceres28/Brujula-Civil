@@ -14,3 +14,21 @@ SaaS focused on helping military professionals transition into civilian careers 
 - Automated checks (`lint`, `typecheck`, and tests) are the source of truth for merge readiness.
 - Coverage minimums are enforced by `pnpm test:coverage` (used in the PR verify workflow).
 - Manual pages such as `src/app/test-db/page.tsx` are supplemental diagnostics only.
+
+## Auth Hardening Requirements
+
+- Required env vars: `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- Optional app origin vars for recovery email redirects: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_APP_URL`, `SITE_URL`, or `VERCEL_URL`.
+- If optional origin vars are missing, recovery redirect falls back to `http://localhost:3000`.
+
+## Password Recovery Redirect Contract
+
+- Supabase reset emails must redirect to `/callback` with `next=/recuperar-password?mode=confirm`.
+- The callback route sanitizes `next` and only allows internal canonical paths.
+- Invalid or external `next` values are forced to safe fallback `/dashboard`.
+
+## Auth UI Error Copy Policy
+
+- The UI shows safe domain messages returned by server actions.
+- Provider raw messages are NEVER exposed directly to users.
+- Current copy strategy is differentiated by domain error code (`INVALID_CREDENTIALS`, `EMAIL_ALREADY_REGISTERED`, `RATE_LIMITED`).

@@ -1,19 +1,38 @@
 import { createServerClient } from '@supabase/ssr';
+import { getSupabasePublicEnv } from './lib/supabase/env';
+import { sanitizeNext } from './lib/supabase/auth';
+import { routes } from './lib/constants/routes';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_ROUTES = ['/', '/como-funciona', '/precios', '/contacto'];
-
-const AUTH_ROUTES = ['/login', '/registro', '/recuperar-password', '/callback'];
-
-const PRIVATE_ROUTE_PREFIXES = [
-  '/dashboard',
-  '/perfil',
-  '/ajustes',
-  '/onboarding',
-  '/cv',
-  '/linkedin',
-  '/traduccion',
+const PUBLIC_ROUTES: readonly string[] = [
+  routes.marketing.home,
+  routes.marketing.howItWorks,
+  routes.marketing.pricing,
+  routes.marketing.contact,
 ];
+
+const AUTH_ROUTES: readonly string[] = [
+  routes.auth.login,
+  routes.auth.register,
+  routes.auth.forgotPassword,
+  routes.auth.callback,
+];
+
+const PRIVATE_ROUTE_PREFIXES: readonly string[] = [
+  routes.app.dashboard,
+  routes.app.profile,
+  routes.app.settings,
+  routes.app.onboarding,
+  routes.app.cv,
+  routes.app.linkedin,
+  routes.app.translation,
+];
+
+export type ProxyDecision = 'allow' | 'redirect-login' | 'redirect-dashboard';
+
+export function getSafeRedirectedFrom(pathname: string, search: string): string {
+  return sanitizeNext(`${pathname}${search}`, routes.app.dashboard);
+}
 
 function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.includes(pathname);
@@ -27,33 +46,46 @@ function isPrivateRoute(pathname: string) {
   return PRIVATE_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
+export function resolveProxyDecision(pathname: string, isAuthenticated: boolean): ProxyDecision {
+  if (isPublicRoute(pathname)) {
+    return 'allow';
+  }
+
+  if (isPrivateRoute(pathname) && !isAuthenticated) {
+    return 'redirect-login';
+  }
+
+  if (isAuthRoute(pathname) && isAuthenticated) {
+    return 'redirect-dashboard';
+  }
+
+  return 'allow';
+}
+
 export async function proxy(request: NextRequest) {
+  const { url, anonKey } = getSupabasePublicEnv();
   let response = NextResponse.next({
     request,
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
 
-          response = NextResponse.next({
-            request,
-          });
+        response = NextResponse.next({
+          request,
+        });
 
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
-        },
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options),
+        );
       },
     },
-  );
+  });
 
   // No metas lógica entre createServerClient y getUser().
   const {
@@ -62,22 +94,23 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (isPrivateRoute(pathname) && !user) {
+  const decision = resolveProxyDecision(pathname, Boolean(user));
+
+  if (decision === 'redirect-login') {
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('redirectedFrom', pathname);
+    url.pathname = routes.auth.login;
+    const redirectedFrom = getSafeRedirectedFrom(pathname, request.nextUrl.search);
+    if (redirectedFrom !== routes.app.dashboard) {
+      url.searchParams.set('redirectedFrom', redirectedFrom);
+    }
     return NextResponse.redirect(url);
   }
 
-  if (isAuthRoute(pathname) && user) {
+  if (decision === 'redirect-dashboard') {
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = routes.app.dashboard;
     url.search = '';
     return NextResponse.redirect(url);
-  }
-
-  if (isPublicRoute(pathname)) {
-    return response;
   }
 
   return response;
