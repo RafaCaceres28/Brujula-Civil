@@ -1,7 +1,9 @@
-import { saveProfileInputSchema } from '@/features/profile/schemas/profile.schema';
-import { updateProfile } from '@/features/profile/server/update-profile';
+import { saveDraftInputSchema } from '../schemas/profile.schema';
+import { saveProfile } from '@/features/profile/server/save-profile';
 
-export async function saveProfileAction(rawInput: unknown) {
-  const input = saveProfileInputSchema.parse(rawInput);
-  await updateProfile(input);
+export async function saveDraftAction(rawInput: unknown) {
+  const input = saveDraftInputSchema.parse(rawInput);
+  await saveProfile(input);
 }
+
+export const saveProfileAction = saveDraftAction;

@@ -3,6 +3,15 @@ import type {
   UserCivilProfileRow,
   UserMilitaryProfileRow,
 } from '@/types/database.types';
+import type {
+  CivilianTargetSchemaInput,
+  MilitaryBackgroundSchemaInput,
+  ProfileFormValuesSchemaInput,
+  ProfileReadOutputSchemaInput,
+  SaveDraftInputSchemaInput,
+  SaveProfileInputSchemaInput,
+  SubmitProfileInputSchemaInput,
+} from '../schemas/profile.schema';
 
 type DbGeneratedColumns = 'id' | 'created_at' | 'updated_at';
 type AppUserProfileOptionalDefaults =
@@ -35,41 +44,11 @@ export type CivilProfileUpdate = Partial<
   Omit<UserCivilProfileRow, DbGeneratedColumns | 'user_id' | 'version_no' | 'is_current'>
 >;
 
-export type ProfileRow = {
-  userId: string;
-  email: string | null;
-  fullName: string | null;
-  phone: string | null;
-  city: string | null;
-  locale: string;
-  timezone: string;
-  military: {
-    rank: string | null;
-    area: string | null;
-    yearsOfService: number | null;
-    summary: string | null;
-  };
-  civil: {
-    targetRole: string | null;
-    targetSector: string | null;
-    headline: string | null;
-    summary: string | null;
-    status: UserCivilProfileRow['status'] | null;
-  };
-};
+export type ProfileRow = ProfileReadOutputSchemaInput;
 
-export type MilitaryBackground = {
-  rank: string | null;
-  area: string | null;
-  yearsOfService: number | null;
-  summary: string | null;
-};
+export type MilitaryBackground = MilitaryBackgroundSchemaInput;
 
-export type CivilianTarget = {
-  targetRole: string | null;
-  targetSector: string | null;
-  locationPreference: string | null;
-};
+export type CivilianTarget = CivilianTargetSchemaInput;
 
 export type UserProfile = {
   id: string;
@@ -81,17 +60,17 @@ export type UserProfile = {
   civilianTarget: CivilianTarget;
 };
 
-export type ProfileFormValues = {
-  fullName: string;
-  email: string;
-  phone: string;
-  city: string;
-};
+export type ProfileFormValues = ProfileFormValuesSchemaInput;
 
-export type SaveProfileInput = {
-  userId: string;
-  profile: ProfileFormValues;
-};
+export type SaveDraftInput = SaveDraftInputSchemaInput;
+
+export type SubmitProfileInput = SubmitProfileInputSchemaInput;
+
+export type SaveProfileInput = SaveProfileInputSchemaInput;
+
+export type ProfileLifecycleStatus = 'draft' | 'submitted';
+
+export type ProfileReadOutput = ProfileReadOutputSchemaInput;
 
 export type ProfileSummaryViewModel = {
   fullName: string;
