@@ -18,6 +18,11 @@ vi.mock('@/components/layout/section-header', () => ({
     createElement('header', null, `${props.title}:${props.description ?? ''}`),
 }));
 
+vi.mock('next/link', () => ({
+  default: (props: { href: string; children: ReactNode; className?: string }) =>
+    createElement('a', { href: props.href, className: props.className }, props.children),
+}));
+
 vi.mock('@/features/auth/server/get-current-user', () => ({
   getCurrentUser: vi.fn(),
 }));
@@ -141,7 +146,7 @@ describe('perfil/page SSR composition', () => {
     vi.mocked(getProfile).mockResolvedValue(FULL_PROFILE);
 
     const element = await ProfilePage();
-    renderToStaticMarkup(element);
+    const html = renderToStaticMarkup(element);
 
     expect(getProfile).toHaveBeenCalledWith('user-1');
 
@@ -176,6 +181,9 @@ describe('perfil/page SSR composition', () => {
         },
       },
     });
+
+    expect(html).toContain('Ir a editar perfil');
+    expect(html).toContain('href="/perfil/editar"');
   });
 
   it('renders empty-safe composition when there is no persisted profile', async () => {
