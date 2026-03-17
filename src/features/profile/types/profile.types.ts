@@ -85,6 +85,15 @@ export type ProfileWritePayload = {
   civil: Omit<CivilProfileInsert, 'user_id' | 'military_profile_id' | 'version_no' | 'is_current'>;
 };
 
+export type SaveProfileOperationMode = 'created' | 'updated' | 'mixed';
+
+export type SaveProfileResult = {
+  status: 'draft';
+  militaryProfileId: string;
+  civilProfileId: string;
+  operationMode: SaveProfileOperationMode;
+};
+
 export type ProfileDomainToSummaryInput = {
   domain: ProfileDomainModel;
 };
