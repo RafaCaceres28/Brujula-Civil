@@ -8,7 +8,12 @@ import {
   type SaveDraftInputSchemaInput,
 } from '../schemas/profile.schema';
 import { ProfileActionError } from '../types/profile.types';
-import { CivilianTargetForm, type CivilianTargetFormValues } from './civilian-target-form';
+import {
+  CivilianTargetForm,
+  type CivilianTargetChangeEvent,
+  type CivilianTargetFormErrors,
+  type CivilianTargetFormValues,
+} from './civilian-target-form';
 import {
   MilitaryBackgroundForm,
   type MilitaryBackgroundChangeEvent,
@@ -199,7 +204,7 @@ export function ProfileForm({
     [fieldErrors],
   );
 
-  const civilianErrors = useMemo(
+  const civilianErrors = useMemo<CivilianTargetFormErrors>(
     () => ({
       targetRole: fieldErrors['civilianTarget.targetRole'],
       targetSector: fieldErrors['civilianTarget.targetSector'],
@@ -229,6 +234,10 @@ export function ProfileForm({
 
   const handleProfileChange =
     (field: keyof ProfileFormValues['profile']) => (event: ChangeEvent<HTMLInputElement>) => {
+      if (pendingRef.current || isPending) {
+        return;
+      }
+
       const nextValue = event.target.value;
       setValues((previous) => ({
         ...previous,
@@ -242,6 +251,10 @@ export function ProfileForm({
   const handleMilitaryChange = <K extends keyof MilitaryBackgroundFormValues>(
     event: MilitaryBackgroundChangeEvent<K>,
   ) => {
+    if (pendingRef.current || isPending) {
+      return;
+    }
+
     setValues((previous) => ({
       ...previous,
       militaryBackground: {
@@ -252,14 +265,17 @@ export function ProfileForm({
   };
 
   const handleCivilianChange = <K extends keyof CivilianTargetFormValues>(
-    field: K,
-    value: CivilianTargetFormValues[K],
+    event: CivilianTargetChangeEvent<K>,
   ) => {
+    if (pendingRef.current || isPending) {
+      return;
+    }
+
     setValues((previous) => ({
       ...previous,
       civilianTarget: {
         ...previous.civilianTarget,
-        [field]: value,
+        [event.field]: event.value,
       },
     }));
   };
