@@ -127,3 +127,10 @@ export type ProfileSummaryViewModel = {
   primaryGoal: string;
   location: string;
 };
+
+export type ProfileSummaryVisualState = 'completo' | 'parcial' | 'vacio';
+
+export type ProfileSummaryCardProps = {
+  summary: ProfileSummaryViewModel;
+  state?: ProfileSummaryVisualState;
+};

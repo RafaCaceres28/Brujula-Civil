@@ -12,6 +12,12 @@ const DEFAULT_PROFILE_EMAIL = 'unknown@example.com';
 const SUMMARY_PRIMARY_GOAL_FALLBACK = 'Goal pending';
 const SUMMARY_LOCATION_FALLBACK = 'Location pending';
 
+export const PROFILE_SUMMARY_FALLBACKS = {
+  fullName: DEFAULT_PROFILE_FULL_NAME,
+  primaryGoal: SUMMARY_PRIMARY_GOAL_FALLBACK,
+  location: SUMMARY_LOCATION_FALLBACK,
+} as const;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -114,8 +120,8 @@ export function mapDomainToProfileSummary(domain: ProfileDomainModel): ProfileSu
 
   return {
     fullName: parsed.profile.fullName,
-    primaryGoal: parsed.civilianTarget.targetRole ?? SUMMARY_PRIMARY_GOAL_FALLBACK,
-    location: parsed.civilianTarget.locationPreference ?? SUMMARY_LOCATION_FALLBACK,
+    primaryGoal: parsed.civilianTarget.targetRole ?? PROFILE_SUMMARY_FALLBACKS.primaryGoal,
+    location: parsed.civilianTarget.locationPreference ?? PROFILE_SUMMARY_FALLBACKS.location,
   };
 }
 
