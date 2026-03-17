@@ -31,6 +31,14 @@ vi.mock('@/features/profile/server/get-profile', () => ({
   getProfile: vi.fn(),
 }));
 
+vi.mock('../../../features/profile/actions/save-profile-action', () => ({
+  saveDraftAction: vi.fn(),
+}));
+
+vi.mock('../../../features/profile/actions/submit-profile-action', () => ({
+  submitProfileAction: vi.fn(),
+}));
+
 vi.mock('@/features/profile/services/profile.mapper', () => ({
   PROFILE_SUMMARY_FALLBACKS: {
     fullName: 'Unknown user',
@@ -180,6 +188,8 @@ describe('perfil/page SSR composition', () => {
           locationPreference: 'Remote',
         },
       },
+      saveDraft: expect.any(Function),
+      submitProfile: expect.any(Function),
     });
 
     expect(html).toContain('Ir a editar perfil');
@@ -204,6 +214,8 @@ describe('perfil/page SSR composition', () => {
     expect(profileFormSpy).toHaveBeenCalledWith({
       userId: 'user-1',
       initialValues: undefined,
+      saveDraft: expect.any(Function),
+      submitProfile: expect.any(Function),
     });
   });
 

@@ -5,6 +5,8 @@ import { getCurrentUser } from '@/features/auth/server/get-current-user';
 import { ProfileForm } from '@/features/profile/components/profile-form';
 import { mapDomainToProfileFormInitialValues } from '@/features/profile/services/profile.mapper';
 import { getProfile } from '@/features/profile/server/get-profile';
+import { saveDraftAction } from '../../../../features/profile/actions/save-profile-action';
+import { submitProfileAction } from '../../../../features/profile/actions/submit-profile-action';
 import { routes } from '../../../../lib/constants/routes';
 
 export default async function PerfilEditarPage() {
@@ -42,7 +44,12 @@ export default async function PerfilEditarPage() {
         </div>
       ) : null}
 
-      <ProfileForm userId={user.id} initialValues={initialValues} />
+      <ProfileForm
+        userId={user.id}
+        initialValues={initialValues}
+        saveDraft={saveDraftAction}
+        submitProfile={submitProfileAction}
+      />
     </PageShell>
   );
 }

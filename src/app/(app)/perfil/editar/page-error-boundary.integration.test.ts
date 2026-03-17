@@ -19,6 +19,14 @@ vi.mock('@/features/profile/server/get-profile', () => ({
   getProfile: getProfileMock,
 }));
 
+vi.mock('../../../../features/profile/actions/save-profile-action', () => ({
+  saveDraftAction: vi.fn(),
+}));
+
+vi.mock('../../../../features/profile/actions/submit-profile-action', () => ({
+  submitProfileAction: vi.fn(),
+}));
+
 vi.mock('@/components/layout/page-shell', () => ({
   PageShell: (props: { children: ReactNode }) => createElement('div', null, props.children),
 }));

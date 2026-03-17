@@ -1,3 +1,5 @@
+'use server';
+
 import { submitProfileInputSchema } from '../schemas/profile.schema';
 import { ProfileActionError, type SubmitProfileActionResult } from '../types/profile.types';
 import { submitProfile } from '../server/submit-profile';

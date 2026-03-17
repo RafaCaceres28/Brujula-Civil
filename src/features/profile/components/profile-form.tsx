@@ -39,14 +39,12 @@ export type ProfileFormProps = {
 
 export type ProfileFormPayload = SaveDraftInputSchemaInput;
 
-async function defaultSaveDraft(input: SaveDraftInputSchemaInput) {
-  const actionModule = await import('../actions/save-profile-action');
-  return actionModule.saveDraftAction(input);
+async function missingSaveDraftAction(): Promise<{ status: 'draft' }> {
+  throw new Error('ProfileForm requires saveDraft action from a Server Component boundary.');
 }
 
-async function defaultSubmitProfile(input: SaveDraftInputSchemaInput) {
-  const actionModule = await import('../actions/submit-profile-action');
-  return actionModule.submitProfileAction(input);
+async function missingSubmitProfileAction(): Promise<{ status: 'draft' | 'submitted' }> {
+  throw new Error('ProfileForm requires submitProfile action from a Server Component boundary.');
 }
 
 const EMPTY_VALUES: ProfileFormValues = {
@@ -171,8 +169,8 @@ function mapActionError(error: unknown): { fieldErrors: FieldErrors; globalError
 export function ProfileForm({
   userId,
   initialValues,
-  saveDraft = defaultSaveDraft,
-  submitProfile = defaultSubmitProfile,
+  saveDraft = missingSaveDraftAction,
+  submitProfile = missingSubmitProfileAction,
 }: ProfileFormProps) {
   const [values, setValues] = useState<ProfileFormValues>(() => mergeValues(initialValues));
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});

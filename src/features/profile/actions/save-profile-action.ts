@@ -1,3 +1,5 @@
+'use server';
+
 import { saveDraftInputSchema } from '../schemas/profile.schema';
 import { ProfileActionError, type SaveDraftActionResult } from '../types/profile.types';
 import { saveProfile } from '../server/save-profile';
