@@ -69,6 +69,7 @@ function setupForm(options?: {
   return {
     fullName: queryInput('profile.fullName'),
     rank: queryInput('militaryBackground.rank'),
+    targetRole: queryInput('civilianTarget.targetRole'),
     saveDraftButton: queryButton('save-draft'),
     submitButton: queryButton('submit-profile'),
   };
@@ -344,14 +345,54 @@ describe('ProfileForm', () => {
     const summary = container?.querySelector<HTMLElement>('#profile-form-error-summary');
     const rankInput = queryInput('militaryBackground.rank');
     const areaInput = queryInput('militaryBackground.area');
+    const targetRoleInput = queryInput('civilianTarget.targetRole');
+    const targetSectorInput = queryInput('civilianTarget.targetSector');
 
     expect(submitProfile).not.toHaveBeenCalled();
     expect(summary?.getAttribute('role')).toBe('alert');
     expect(document.activeElement).toBe(summary);
     expect(rankInput.getAttribute('aria-invalid')).toBe('true');
     expect(areaInput.getAttribute('aria-invalid')).toBe('true');
+    expect(targetRoleInput.getAttribute('aria-invalid')).toBe('true');
+    expect(targetSectorInput.getAttribute('aria-invalid')).toBe('true');
     expect(container?.textContent).toContain('militaryBackground.rank is required for submit');
     expect(container?.textContent).toContain('militaryBackground.area is required for submit');
+    expect(container?.textContent).toContain('civilianTarget.targetRole is required for submit');
+    expect(container?.textContent).toContain('civilianTarget.targetSector is required for submit');
+  });
+
+  it('submits after correcting civilian required fields from invalid state', async () => {
+    const submitProfile = vi.fn().mockResolvedValue({ status: 'submitted' as const });
+    setupForm({
+      submitProfile,
+      initialValues: {
+        ...VALID_INITIAL_VALUES,
+        civilianTarget: {
+          targetRole: '',
+          targetSector: '',
+          locationPreference: '',
+        },
+      },
+    });
+
+    await click(queryButton('submit-profile'));
+    expect(submitProfile).not.toHaveBeenCalled();
+
+    await changeInput(queryInput('civilianTarget.targetRole'), 'Analista');
+    await changeInput(queryInput('civilianTarget.targetSector'), 'Tecnologia');
+    await click(queryButton('submit-profile'));
+
+    expect(submitProfile).toHaveBeenCalledTimes(1);
+    expect(submitProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        civilianTarget: {
+          targetRole: 'Analista',
+          targetSector: 'Tecnologia',
+          locationPreference: null,
+        },
+      }),
+    );
+    expect(container?.textContent).toContain('Perfil enviado correctamente.');
   });
 
   it('maps domain errors to global banner and preserves user input', async () => {
@@ -447,6 +488,49 @@ describe('ProfileForm', () => {
       2,
       expect.objectContaining({
         militaryBackground: expect.objectContaining({ area: 'Comunicaciones' }),
+      }),
+    );
+  });
+
+  it('keeps civilian fields stable when edit is attempted during pending', async () => {
+    let resolver: (() => void) | null = null;
+    const saveDraft = vi
+      .fn<() => Promise<{ status: 'draft' }>>()
+      .mockImplementationOnce(
+        () =>
+          new Promise<{ status: 'draft' }>((resolve) => {
+            resolver = () => resolve({ status: 'draft' });
+          }),
+      )
+      .mockResolvedValue({ status: 'draft' as const });
+
+    const form = setupForm({ saveDraft });
+    const targetRoleInput = queryInput('civilianTarget.targetRole');
+
+    await click(form.saveDraftButton);
+
+    expect(form.saveDraftButton.disabled).toBe(true);
+    expect(targetRoleInput.closest('fieldset')?.disabled).toBe(true);
+
+    const previousTargetRole = targetRoleInput.value;
+    await act(async () => {
+      targetRoleInput.dispatchEvent(new InputEvent('input', { bubbles: true, data: 'X' }));
+      targetRoleInput.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(targetRoleInput.value).toBe(previousTargetRole);
+
+    await act(async () => {
+      resolver?.();
+      await Promise.resolve();
+    });
+
+    await click(form.saveDraftButton);
+
+    expect(saveDraft).toHaveBeenCalledTimes(2);
+    expect(saveDraft).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        civilianTarget: expect.objectContaining({ targetRole: 'Gestora' }),
       }),
     );
   });
