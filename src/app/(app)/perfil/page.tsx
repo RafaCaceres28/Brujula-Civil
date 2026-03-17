@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { PageShell } from '@/components/layout/page-shell';
 import { SectionHeader } from '@/components/layout/section-header';
 import { getCurrentUser } from '@/features/auth/server/get-current-user';
@@ -12,6 +13,7 @@ import {
   mapDomainToProfileSummary,
 } from '@/features/profile/services/profile.mapper';
 import { getProfile } from '@/features/profile/server/get-profile';
+import { routes } from '../../../lib/constants/routes';
 
 function getEmptySummary() {
   return {
@@ -39,6 +41,12 @@ export default async function ProfilePage() {
         title="Perfil"
         description="Gestión de datos personales, experiencia militar y objetivo profesional."
       />
+      <Link
+        href={routes.app.profileEdit}
+        className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+      >
+        Ir a editar perfil
+      </Link>
       <ProfileSummaryCard summary={summary} state={summaryState} />
       <ProfileForm userId={user.id} initialValues={initialValues} />
     </PageShell>

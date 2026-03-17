@@ -15,6 +15,7 @@ export const routes = {
     dashboard: '/dashboard',
     onboarding: '/onboarding',
     profile: '/perfil',
+    profileEdit: '/perfil/editar',
     translation: '/traduccion',
     cv: '/cv',
     linkedin: '/linkedin',
