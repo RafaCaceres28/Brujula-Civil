@@ -9,15 +9,33 @@ export type MilitaryBackgroundFormValues = {
 
 export type MilitaryBackgroundField = keyof MilitaryBackgroundFormValues;
 
+export type MilitaryBackgroundFormErrors = Partial<Record<MilitaryBackgroundField, string>>;
+
+export type MilitaryBackgroundChangeEvent<
+  K extends MilitaryBackgroundField = MilitaryBackgroundField,
+> = {
+  field: K;
+  value: MilitaryBackgroundFormValues[K];
+};
+
 export type MilitaryBackgroundFormProps = {
   values: MilitaryBackgroundFormValues;
-  errors: Partial<Record<MilitaryBackgroundField, string>>;
+  errors: MilitaryBackgroundFormErrors;
   disabled?: boolean;
-  onChange: <K extends MilitaryBackgroundField>(
-    field: K,
-    value: MilitaryBackgroundFormValues[K],
-  ) => void;
+  onChange: <K extends MilitaryBackgroundField>(event: MilitaryBackgroundChangeEvent<K>) => void;
 };
+
+function getFieldErrorId(field: MilitaryBackgroundField) {
+  return `militaryBackground.${field}-error`;
+}
+
+function getFieldErrorProps(field: MilitaryBackgroundField, errors: MilitaryBackgroundFormErrors) {
+  const hasError = Boolean(errors[field]);
+  return {
+    'aria-invalid': hasError,
+    'aria-describedby': hasError ? getFieldErrorId(field) : undefined,
+  };
+}
 
 export function MilitaryBackgroundForm({
   values,
@@ -34,22 +52,20 @@ export function MilitaryBackgroundForm({
         id="militaryBackground.rank"
         name="militaryBackground.rank"
         value={values.rank}
-        onChange={(event) => onChange('rank', event.target.value)}
-        aria-invalid={Boolean(errors.rank)}
-        aria-describedby={errors.rank ? 'militaryBackground.rank-error' : undefined}
+        onChange={(event) => onChange({ field: 'rank', value: event.target.value })}
+        {...getFieldErrorProps('rank', errors)}
       />
-      {errors.rank ? <p id="militaryBackground.rank-error">{errors.rank}</p> : null}
+      {errors.rank ? <p id={getFieldErrorId('rank')}>{errors.rank}</p> : null}
 
       <label htmlFor="militaryBackground.area">Area</label>
       <input
         id="militaryBackground.area"
         name="militaryBackground.area"
         value={values.area}
-        onChange={(event) => onChange('area', event.target.value)}
-        aria-invalid={Boolean(errors.area)}
-        aria-describedby={errors.area ? 'militaryBackground.area-error' : undefined}
+        onChange={(event) => onChange({ field: 'area', value: event.target.value })}
+        {...getFieldErrorProps('area', errors)}
       />
-      {errors.area ? <p id="militaryBackground.area-error">{errors.area}</p> : null}
+      {errors.area ? <p id={getFieldErrorId('area')}>{errors.area}</p> : null}
 
       <label htmlFor="militaryBackground.yearsOfService">Anos de servicio</label>
       <input
@@ -59,14 +75,11 @@ export function MilitaryBackgroundForm({
         min={0}
         max={60}
         value={values.yearsOfService}
-        onChange={(event) => onChange('yearsOfService', event.target.value)}
-        aria-invalid={Boolean(errors.yearsOfService)}
-        aria-describedby={
-          errors.yearsOfService ? 'militaryBackground.yearsOfService-error' : undefined
-        }
+        onChange={(event) => onChange({ field: 'yearsOfService', value: event.target.value })}
+        {...getFieldErrorProps('yearsOfService', errors)}
       />
       {errors.yearsOfService ? (
-        <p id="militaryBackground.yearsOfService-error">{errors.yearsOfService}</p>
+        <p id={getFieldErrorId('yearsOfService')}>{errors.yearsOfService}</p>
       ) : null}
 
       <label htmlFor="militaryBackground.summary">Resumen</label>
@@ -74,11 +87,10 @@ export function MilitaryBackgroundForm({
         id="militaryBackground.summary"
         name="militaryBackground.summary"
         value={values.summary}
-        onChange={(event) => onChange('summary', event.target.value)}
-        aria-invalid={Boolean(errors.summary)}
-        aria-describedby={errors.summary ? 'militaryBackground.summary-error' : undefined}
+        onChange={(event) => onChange({ field: 'summary', value: event.target.value })}
+        {...getFieldErrorProps('summary', errors)}
       />
-      {errors.summary ? <p id="militaryBackground.summary-error">{errors.summary}</p> : null}
+      {errors.summary ? <p id={getFieldErrorId('summary')}>{errors.summary}</p> : null}
     </fieldset>
   );
 }

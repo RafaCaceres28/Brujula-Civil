@@ -11,6 +11,8 @@ import { ProfileActionError } from '../types/profile.types';
 import { CivilianTargetForm, type CivilianTargetFormValues } from './civilian-target-form';
 import {
   MilitaryBackgroundForm,
+  type MilitaryBackgroundChangeEvent,
+  type MilitaryBackgroundFormErrors,
   type MilitaryBackgroundFormValues,
 } from './military-background-form';
 
@@ -187,7 +189,7 @@ export function ProfileForm({
   const isPending = submitState === 'savingDraft' || submitState === 'submitting';
   const hasErrors = Object.keys(fieldErrors).length > 0 || Boolean(globalError);
 
-  const militaryErrors = useMemo(
+  const militaryErrors = useMemo<MilitaryBackgroundFormErrors>(
     () => ({
       rank: fieldErrors['militaryBackground.rank'],
       area: fieldErrors['militaryBackground.area'],
@@ -238,14 +240,13 @@ export function ProfileForm({
     };
 
   const handleMilitaryChange = <K extends keyof MilitaryBackgroundFormValues>(
-    field: K,
-    value: MilitaryBackgroundFormValues[K],
+    event: MilitaryBackgroundChangeEvent<K>,
   ) => {
     setValues((previous) => ({
       ...previous,
       militaryBackground: {
         ...previous.militaryBackground,
-        [field]: value,
+        [event.field]: event.value,
       },
     }));
   };
