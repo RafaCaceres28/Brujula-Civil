@@ -8,6 +8,7 @@ import type {
   MilitaryProfileUpdate,
   ProfileReadOutput,
   ProfileFormValues,
+  ProfileFormInitialValues,
   ProfileLifecycleStatus,
   ProfileSummaryCardProps,
   ProfileSummaryViewModel,
@@ -51,6 +52,25 @@ describe('profile.types contracts', () => {
     expectTypeOf<SubmitProfileInput['profile']>().toEqualTypeOf<ProfileFormValues>();
     expectTypeOf<SaveProfileInput>().toMatchTypeOf<{ militaryBackground: object }>();
     expectTypeOf<ProfileSupabaseShape>().not.toEqualTypeOf<SaveProfileInput>();
+    expectTypeOf<ProfileFormInitialValues>().toEqualTypeOf<{
+      profile: {
+        fullName: string;
+        email: string;
+        phone: string;
+        city: string;
+      };
+      militaryBackground: {
+        rank: string;
+        area: string;
+        yearsOfService: string;
+        summary: string;
+      };
+      civilianTarget: {
+        targetRole: string;
+        targetSector: string;
+        locationPreference: string;
+      };
+    }>();
   });
 
   it('exposes lifecycle status union for explicit transitions', () => {
