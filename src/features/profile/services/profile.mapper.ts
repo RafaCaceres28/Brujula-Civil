@@ -1,11 +1,11 @@
 import type {
   ProfileDomainModel,
-  ProfileFormValues,
+  ProfileFormInitialValues,
   ProfileSummaryViewModel,
   ProfileSupabaseShape,
   ProfileWritePayload,
 } from '@/features/profile/types/profile.types';
-import { profileFormValuesSchema, profileReadOutputSchema } from '../schemas/profile.schema';
+import { profileReadOutputSchema } from '../schemas/profile.schema';
 
 const DEFAULT_PROFILE_FULL_NAME = 'Unknown user';
 const DEFAULT_PROFILE_EMAIL = 'unknown@example.com';
@@ -77,9 +77,40 @@ export function mapDbToDomainProfile(
   });
 }
 
-export function mapDomainToProfileFormValues(domain: ProfileDomainModel): ProfileFormValues {
-  return profileFormValuesSchema.parse(domain.profile);
+function toInputValue(value: string | null | undefined): string {
+  return value ?? '';
 }
+
+export function mapDomainToProfileFormInitialValues(
+  domain: ProfileDomainModel,
+): ProfileFormInitialValues {
+  const parsed = profileReadOutputSchema.parse(domain);
+
+  return {
+    profile: {
+      fullName: parsed.profile.fullName,
+      email: parsed.profile.email,
+      phone: toInputValue(parsed.profile.phone),
+      city: toInputValue(parsed.profile.city),
+    },
+    militaryBackground: {
+      rank: toInputValue(parsed.militaryBackground.rank),
+      area: toInputValue(parsed.militaryBackground.area),
+      yearsOfService:
+        parsed.militaryBackground.yearsOfService === null
+          ? ''
+          : String(parsed.militaryBackground.yearsOfService),
+      summary: toInputValue(parsed.militaryBackground.summary),
+    },
+    civilianTarget: {
+      targetRole: toInputValue(parsed.civilianTarget.targetRole),
+      targetSector: toInputValue(parsed.civilianTarget.targetSector),
+      locationPreference: toInputValue(parsed.civilianTarget.locationPreference),
+    },
+  };
+}
+
+export const mapDomainToProfileFormValues = mapDomainToProfileFormInitialValues;
 
 export function mapProfileWriteToDb(profile: ProfileDomainModel): ProfileWritePayload {
   const parsed = profileReadOutputSchema.parse(profile);

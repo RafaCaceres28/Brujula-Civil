@@ -64,6 +64,26 @@ export type UserProfile = {
 
 export type ProfileFormValues = ProfileFormValuesSchemaInput;
 
+export type ProfileFormInitialValues = {
+  profile: {
+    fullName: string;
+    email: string;
+    phone: string;
+    city: string;
+  };
+  militaryBackground: {
+    rank: string;
+    area: string;
+    yearsOfService: string;
+    summary: string;
+  };
+  civilianTarget: {
+    targetRole: string;
+    targetSector: string;
+    locationPreference: string;
+  };
+};
+
 export type SaveDraftInput = SaveDraftInputSchemaInput;
 
 export type SubmitProfileInput = SubmitProfileInputSchemaInput;
