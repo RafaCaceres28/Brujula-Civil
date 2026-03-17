@@ -94,6 +94,26 @@ export type SaveProfileResult = {
   operationMode: SaveProfileOperationMode;
 };
 
+export type SubmitProfileResult = {
+  status: ProfileLifecycleStatus;
+};
+
+export type ProfileActionErrorKind = 'validation' | 'domain';
+
+export class ProfileActionError extends Error {
+  readonly kind: ProfileActionErrorKind;
+
+  constructor(kind: ProfileActionErrorKind, message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'ProfileActionError';
+    this.kind = kind;
+  }
+}
+
+export type SaveDraftActionResult = SaveProfileResult;
+
+export type SubmitProfileActionResult = SubmitProfileResult;
+
 export type ProfileDomainToSummaryInput = {
   domain: ProfileDomainModel;
 };

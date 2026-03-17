@@ -1,4 +1,5 @@
 import { mapProfileWriteToDb } from '../services/profile.mapper';
+import { saveDraftInputSchema } from '../schemas/profile.schema';
 import type {
   ProfileWritePayload,
   SaveDraftInput,
@@ -245,13 +246,14 @@ export function buildProfileWritePayload(input: SaveDraftInput): ProfileWritePay
 }
 
 export async function saveProfile(input: SaveDraftInput): Promise<SaveProfileResult> {
+  const parsedInput = saveDraftInputSchema.parse(input);
   const supabase = await createClient();
-  const payload = buildProfileWritePayload(input);
+  const payload = buildProfileWritePayload(parsedInput);
 
   await saveBaseProfile(supabase, payload);
 
-  const military = await saveMilitaryProfile(supabase, input.userId, payload);
-  const civil = await saveCivilProfile(supabase, input.userId, military.id, payload);
+  const military = await saveMilitaryProfile(supabase, parsedInput.userId, payload);
+  const civil = await saveCivilProfile(supabase, parsedInput.userId, military.id, payload);
 
   return {
     status: 'draft',
