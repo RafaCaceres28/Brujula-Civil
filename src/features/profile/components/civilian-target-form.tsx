@@ -8,12 +8,31 @@ export type CivilianTargetFormValues = {
 
 export type CivilianTargetField = keyof CivilianTargetFormValues;
 
+export type CivilianTargetFormErrors = Partial<Record<CivilianTargetField, string>>;
+
+export type CivilianTargetChangeEvent<K extends CivilianTargetField = CivilianTargetField> = {
+  field: K;
+  value: CivilianTargetFormValues[K];
+};
+
 export type CivilianTargetFormProps = {
   values: CivilianTargetFormValues;
-  errors: Partial<Record<CivilianTargetField, string>>;
+  errors: CivilianTargetFormErrors;
   disabled?: boolean;
-  onChange: <K extends CivilianTargetField>(field: K, value: CivilianTargetFormValues[K]) => void;
+  onChange: <K extends CivilianTargetField>(event: CivilianTargetChangeEvent<K>) => void;
 };
+
+function getFieldErrorId(field: CivilianTargetField) {
+  return `civilianTarget.${field}-error`;
+}
+
+function getFieldErrorProps(field: CivilianTargetField, errors: CivilianTargetFormErrors) {
+  const hasError = Boolean(errors[field]);
+  return {
+    'aria-invalid': hasError,
+    'aria-describedby': hasError ? getFieldErrorId(field) : undefined,
+  };
+}
 
 export function CivilianTargetForm({
   values,
@@ -30,23 +49,21 @@ export function CivilianTargetForm({
         id="civilianTarget.targetRole"
         name="civilianTarget.targetRole"
         value={values.targetRole}
-        onChange={(event) => onChange('targetRole', event.target.value)}
-        aria-invalid={Boolean(errors.targetRole)}
-        aria-describedby={errors.targetRole ? 'civilianTarget.targetRole-error' : undefined}
+        onChange={(event) => onChange({ field: 'targetRole', value: event.target.value })}
+        {...getFieldErrorProps('targetRole', errors)}
       />
-      {errors.targetRole ? <p id="civilianTarget.targetRole-error">{errors.targetRole}</p> : null}
+      {errors.targetRole ? <p id={getFieldErrorId('targetRole')}>{errors.targetRole}</p> : null}
 
       <label htmlFor="civilianTarget.targetSector">Sector objetivo</label>
       <input
         id="civilianTarget.targetSector"
         name="civilianTarget.targetSector"
         value={values.targetSector}
-        onChange={(event) => onChange('targetSector', event.target.value)}
-        aria-invalid={Boolean(errors.targetSector)}
-        aria-describedby={errors.targetSector ? 'civilianTarget.targetSector-error' : undefined}
+        onChange={(event) => onChange({ field: 'targetSector', value: event.target.value })}
+        {...getFieldErrorProps('targetSector', errors)}
       />
       {errors.targetSector ? (
-        <p id="civilianTarget.targetSector-error">{errors.targetSector}</p>
+        <p id={getFieldErrorId('targetSector')}>{errors.targetSector}</p>
       ) : null}
 
       <label htmlFor="civilianTarget.locationPreference">Preferencia de ubicacion</label>
@@ -54,14 +71,11 @@ export function CivilianTargetForm({
         id="civilianTarget.locationPreference"
         name="civilianTarget.locationPreference"
         value={values.locationPreference}
-        onChange={(event) => onChange('locationPreference', event.target.value)}
-        aria-invalid={Boolean(errors.locationPreference)}
-        aria-describedby={
-          errors.locationPreference ? 'civilianTarget.locationPreference-error' : undefined
-        }
+        onChange={(event) => onChange({ field: 'locationPreference', value: event.target.value })}
+        {...getFieldErrorProps('locationPreference', errors)}
       />
       {errors.locationPreference ? (
-        <p id="civilianTarget.locationPreference-error">{errors.locationPreference}</p>
+        <p id={getFieldErrorId('locationPreference')}>{errors.locationPreference}</p>
       ) : null}
     </fieldset>
   );
