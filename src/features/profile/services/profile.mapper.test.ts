@@ -7,7 +7,7 @@ import { profileFormValuesSchema, profileReadOutputSchema } from '../schemas/pro
 import {
   PROFILE_SUMMARY_FALLBACKS,
   mapDbToDomainProfile,
-  mapDomainToProfileFormValues,
+  mapDomainToProfileFormInitialValues,
   mapDomainToProfileSummary,
   mapProfileWriteToDb,
 } from './profile.mapper';
@@ -122,18 +122,64 @@ describe('profile.mapper db -> domain', () => {
 });
 
 describe('profile.mapper domain -> form', () => {
-  it('projects domain profile fields into form values', () => {
+  it('projects domain fields into nested form initial values', () => {
     const domain = mapDbToDomainProfile('user-1', FULL_SHAPE);
-    const formValues = mapDomainToProfileFormValues(domain);
+    const formValues = mapDomainToProfileFormInitialValues(domain);
 
-    expect(profileFormValuesSchema.parse(formValues)).toEqual({
+    expect(profileFormValuesSchema.parse(formValues.profile)).toEqual({
       fullName: 'Ada Lovelace',
       email: 'ada@example.com',
       phone: null,
       city: null,
     });
-    expect(formValues).not.toHaveProperty('userId');
-    expect(formValues).not.toHaveProperty('civilianTarget');
+
+    expect(formValues).toEqual({
+      profile: {
+        fullName: 'Ada Lovelace',
+        email: 'ada@example.com',
+        phone: '',
+        city: '',
+      },
+      militaryBackground: {
+        rank: 'Captain',
+        area: 'Signals',
+        yearsOfService: '12',
+        summary: 'Operations background',
+      },
+      civilianTarget: {
+        targetRole: 'Operations Manager',
+        targetSector: 'Logistics',
+        locationPreference: 'remote',
+      },
+    });
+  });
+
+  it('converts nullable domain values to safe string defaults for client inputs', () => {
+    const domain = mapDbToDomainProfile('user-2', {
+      app: null,
+      military: null,
+      civil: null,
+    });
+
+    expect(mapDomainToProfileFormInitialValues(domain)).toEqual({
+      profile: {
+        fullName: 'Unknown user',
+        email: 'unknown@example.com',
+        phone: '',
+        city: '',
+      },
+      militaryBackground: {
+        rank: '',
+        area: '',
+        yearsOfService: '',
+        summary: '',
+      },
+      civilianTarget: {
+        targetRole: '',
+        targetSector: '',
+        locationPreference: '',
+      },
+    });
   });
 });
 

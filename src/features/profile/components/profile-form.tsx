@@ -7,7 +7,7 @@ import {
   submitProfileInputSchema,
   type SaveDraftInputSchemaInput,
 } from '../schemas/profile.schema';
-import { ProfileActionError } from '../types/profile.types';
+import { ProfileActionError, type ProfileFormInitialValues } from '../types/profile.types';
 import {
   CivilianTargetForm,
   type CivilianTargetChangeEvent,
@@ -23,13 +23,7 @@ import {
 
 type FieldErrors = Record<string, string>;
 
-type ProfileFormValues = {
-  profile: {
-    fullName: string;
-    email: string;
-    phone: string;
-    city: string;
-  };
+type ProfileFormValues = ProfileFormInitialValues & {
   militaryBackground: MilitaryBackgroundFormValues;
   civilianTarget: CivilianTargetFormValues;
 };
@@ -38,7 +32,7 @@ type SubmitState = 'idle' | 'savingDraft' | 'submitting' | 'success' | 'error';
 
 export type ProfileFormProps = {
   userId: string;
-  initialValues?: Partial<ProfileFormValues>;
+  initialValues?: Partial<ProfileFormInitialValues>;
   saveDraft?: (input: SaveDraftInputSchemaInput) => Promise<{ status: 'draft' }>;
   submitProfile?: (input: SaveDraftInputSchemaInput) => Promise<{ status: 'draft' | 'submitted' }>;
 };
@@ -75,7 +69,7 @@ const EMPTY_VALUES: ProfileFormValues = {
   },
 };
 
-function mergeValues(initialValues?: Partial<ProfileFormValues>): ProfileFormValues {
+function mergeValues(initialValues?: Partial<ProfileFormInitialValues>): ProfileFormValues {
   return {
     profile: {
       ...EMPTY_VALUES.profile,
