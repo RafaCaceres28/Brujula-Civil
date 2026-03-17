@@ -23,6 +23,34 @@ const validSubmitInput = {
 };
 
 describe('submitProfile transition', () => {
+  it('rejects tampered payload before evaluating transition rules', async () => {
+    await expect(
+      submitProfile(
+        {
+          userId: 'user-1',
+          profile: {
+            fullName: 'Ada Lovelace',
+            email: 'ada@example.com',
+            phone: '+34123456789',
+            city: 'Madrid',
+          },
+          militaryBackground: {
+            rank: null,
+            area: 'Signals',
+            yearsOfService: 7,
+            summary: 'Led teams',
+          },
+          civilianTarget: {
+            targetRole: null,
+            targetSector: 'Logistics',
+            locationPreference: 'Remote',
+          },
+        } as unknown as typeof validSubmitInput,
+        'submitted',
+      ),
+    ).rejects.toThrow('militaryBackground.rank is required for submit');
+  });
+
   it('allows explicit draft to submitted transition', async () => {
     await expect(submitProfile(validSubmitInput, 'draft')).resolves.toEqual({
       status: 'submitted',
