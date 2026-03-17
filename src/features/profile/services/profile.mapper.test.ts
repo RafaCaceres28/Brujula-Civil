@@ -5,6 +5,7 @@ import type {
 } from '@/features/profile/types/profile.types';
 import { profileFormValuesSchema, profileReadOutputSchema } from '../schemas/profile.schema';
 import {
+  PROFILE_SUMMARY_FALLBACKS,
   mapDbToDomainProfile,
   mapDomainToProfileFormValues,
   mapDomainToProfileSummary,
@@ -226,8 +227,36 @@ describe('profile.mapper domain -> summary', () => {
 
     expect(mapDomainToProfileSummary(domain)).toEqual({
       fullName: 'Ada Lovelace',
-      primaryGoal: 'Goal pending',
-      location: 'Location pending',
+      primaryGoal: PROFILE_SUMMARY_FALLBACKS.primaryGoal,
+      location: PROFILE_SUMMARY_FALLBACKS.location,
+    });
+  });
+
+  it('normalizes whitespace-only target values to fallback values', () => {
+    const civilRow = FULL_SHAPE.civil;
+
+    if (!civilRow) {
+      throw new Error('Test fixture invalid: civil row is required');
+    }
+
+    const domain = mapDbToDomainProfile('user-5', {
+      app: FULL_SHAPE.app,
+      military: FULL_SHAPE.military,
+      civil: {
+        ...civilRow,
+        target_role: '   ',
+        structured_profile_jsonb: {
+          target: {
+            preferredLocations: ['   '],
+          },
+        },
+      },
+    });
+
+    expect(mapDomainToProfileSummary(domain)).toEqual({
+      fullName: 'Ada Lovelace',
+      primaryGoal: PROFILE_SUMMARY_FALLBACKS.primaryGoal,
+      location: PROFILE_SUMMARY_FALLBACKS.location,
     });
   });
 });
