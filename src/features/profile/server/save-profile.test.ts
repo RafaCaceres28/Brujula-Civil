@@ -523,6 +523,26 @@ describe('saveProfile draft contract', () => {
     expect(mock.state.militaryRows).toHaveLength(1);
   });
 
+  it('retries controlled on civil uniqueness conflict and converges to update', async () => {
+    const mock = createSupabaseMock({
+      state: {
+        militaryRows: [
+          buildMilitaryRow({ id: 'mil-existing', user_id: 'user-1', is_current: true }),
+        ],
+      },
+      raceConflicts: {
+        civilInsertOnce: true,
+      },
+    });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    const result = await saveProfile(validDraftInput);
+
+    expect(result.operationMode).toBe('updated');
+    expect(result.civilProfileId).toBe('civ-race');
+    expect(mock.state.civilRows).toHaveLength(1);
+  });
+
   it('forces civil status draft even when input is tampered with external status', async () => {
     const mock = createSupabaseMock();
     vi.mocked(createClient).mockResolvedValue(mock.client as never);
@@ -620,6 +640,26 @@ describe('saveProfile draft contract', () => {
     );
   });
 
+  it('maps military update DB failures to domain-friendly errors', async () => {
+    const mock = createSupabaseMock({
+      state: {
+        militaryRows: [
+          buildMilitaryRow({ id: 'mil-existing', user_id: 'user-1', is_current: true }),
+        ],
+      },
+      errors: {
+        'user_military_profiles.update': {
+          message: 'update user_military_profiles ...',
+        },
+      },
+    });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    await expect(saveProfile(validDraftInput)).rejects.toThrow(
+      'Error user_military_profiles (update current military profile): error de persistencia en base de datos',
+    );
+  });
+
   it('maps civil DB failures to domain-friendly errors', async () => {
     const mock = createSupabaseMock({
       state: {
@@ -635,6 +675,35 @@ describe('saveProfile draft contract', () => {
 
     await expect(saveProfile(validDraftInput)).rejects.toThrow(
       'Error user_civil_profiles (insert current civil profile): error de persistencia en base de datos',
+    );
+  });
+
+  it('maps civil update DB failures to domain-friendly errors', async () => {
+    const mock = createSupabaseMock({
+      state: {
+        militaryRows: [
+          buildMilitaryRow({ id: 'mil-existing', user_id: 'user-1', is_current: true }),
+        ],
+        civilRows: [
+          buildCivilRow({
+            id: 'civ-existing',
+            user_id: 'user-1',
+            military_profile_id: 'mil-existing',
+            is_current: true,
+            version_no: 4,
+          }),
+        ],
+      },
+      errors: {
+        'user_civil_profiles.update': {
+          message: 'update user_civil_profiles ...',
+        },
+      },
+    });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    await expect(saveProfile(validDraftInput)).rejects.toThrow(
+      'Error user_civil_profiles (update current civil profile): error de persistencia en base de datos',
     );
   });
 });
