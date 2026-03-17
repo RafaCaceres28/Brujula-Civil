@@ -9,6 +9,9 @@ import type {
   ProfileReadOutput,
   ProfileFormValues,
   ProfileLifecycleStatus,
+  ProfileSummaryCardProps,
+  ProfileSummaryViewModel,
+  ProfileSummaryVisualState,
   ProfileRow,
   ProfileSupabaseShape,
   SaveDraftInput,
@@ -52,6 +55,14 @@ describe('profile.types contracts', () => {
 
   it('exposes lifecycle status union for explicit transitions', () => {
     expectTypeOf<ProfileLifecycleStatus>().toEqualTypeOf<'draft' | 'submitted'>();
+  });
+
+  it('keeps summary card contract aligned with summary view model', () => {
+    expectTypeOf<ProfileSummaryVisualState>().toEqualTypeOf<'completo' | 'parcial' | 'vacio'>();
+    expectTypeOf<ProfileSummaryCardProps['summary']>().toEqualTypeOf<ProfileSummaryViewModel>();
+    expectTypeOf<ProfileSummaryCardProps['state']>().toEqualTypeOf<
+      ProfileSummaryVisualState | undefined
+    >();
   });
 
   it('defines explicit action result and error contracts', () => {
