@@ -31,6 +31,14 @@ vi.mock('@/features/profile/server/get-profile', () => ({
   getProfile: vi.fn(),
 }));
 
+vi.mock('../../../../features/profile/actions/save-profile-action', () => ({
+  saveDraftAction: vi.fn(),
+}));
+
+vi.mock('../../../../features/profile/actions/submit-profile-action', () => ({
+  submitProfileAction: vi.fn(),
+}));
+
 vi.mock('@/features/profile/services/profile.mapper', () => ({
   mapDomainToProfileFormInitialValues: vi.fn(),
 }));
@@ -117,6 +125,8 @@ describe('perfil/editar/page SSR composition', () => {
           locationPreference: 'Remote',
         },
       },
+      saveDraft: expect.any(Function),
+      submitProfile: expect.any(Function),
     });
     expect(html).toContain('Volver a perfil');
     expect(html).toContain('href="/perfil"');
@@ -132,6 +142,8 @@ describe('perfil/editar/page SSR composition', () => {
     expect(profileFormSpy).toHaveBeenCalledWith({
       userId: 'user-1',
       initialValues: undefined,
+      saveDraft: expect.any(Function),
+      submitProfile: expect.any(Function),
     });
     expect(html).toContain('Aun no encontramos un perfil guardado.');
   });
