@@ -13,6 +13,8 @@ import {
   mapDomainToProfileSummary,
 } from '@/features/profile/services/profile.mapper';
 import { getProfile } from '@/features/profile/server/get-profile';
+import { saveDraftAction } from '../../../features/profile/actions/save-profile-action';
+import { submitProfileAction } from '../../../features/profile/actions/submit-profile-action';
 import { routes } from '../../../lib/constants/routes';
 
 function getEmptySummary() {
@@ -48,7 +50,12 @@ export default async function ProfilePage() {
         Ir a editar perfil
       </Link>
       <ProfileSummaryCard summary={summary} state={summaryState} />
-      <ProfileForm userId={user.id} initialValues={initialValues} />
+      <ProfileForm
+        userId={user.id}
+        initialValues={initialValues}
+        saveDraft={saveDraftAction}
+        submitProfile={submitProfileAction}
+      />
     </PageShell>
   );
 }

@@ -7,8 +7,6 @@ import {
   submitProfileInputSchema,
   type SaveDraftInputSchemaInput,
 } from '../schemas/profile.schema';
-import { saveDraftAction } from '../actions/save-profile-action';
-import { submitProfileAction } from '../actions/submit-profile-action';
 import { ProfileActionError, type ProfileFormInitialValues } from '../types/profile.types';
 import {
   CivilianTargetForm,
@@ -40,6 +38,14 @@ export type ProfileFormProps = {
 };
 
 export type ProfileFormPayload = SaveDraftInputSchemaInput;
+
+async function missingSaveDraftAction(): Promise<{ status: 'draft' }> {
+  throw new Error('ProfileForm requires saveDraft action from a Server Component boundary.');
+}
+
+async function missingSubmitProfileAction(): Promise<{ status: 'draft' | 'submitted' }> {
+  throw new Error('ProfileForm requires submitProfile action from a Server Component boundary.');
+}
 
 const EMPTY_VALUES: ProfileFormValues = {
   profile: {
@@ -163,8 +169,8 @@ function mapActionError(error: unknown): { fieldErrors: FieldErrors; globalError
 export function ProfileForm({
   userId,
   initialValues,
-  saveDraft = saveDraftAction,
-  submitProfile = submitProfileAction,
+  saveDraft = missingSaveDraftAction,
+  submitProfile = missingSubmitProfileAction,
 }: ProfileFormProps) {
   const [values, setValues] = useState<ProfileFormValues>(() => mergeValues(initialValues));
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
