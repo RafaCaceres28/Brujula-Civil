@@ -424,6 +424,33 @@ describe('saveProfile draft contract', () => {
     vi.clearAllMocks();
   });
 
+  it('rejects tampered direct invocation before touching persistence', async () => {
+    await expect(
+      saveProfile({
+        userId: '',
+        profile: {
+          fullName: 'Ada Lovelace',
+          email: 'ada@example.com',
+          phone: '+34123456789',
+          city: 'Madrid',
+        },
+        militaryBackground: {
+          rank: 'Captain',
+          area: 'Signals',
+          yearsOfService: 7,
+          summary: 'Led teams',
+        },
+        civilianTarget: {
+          targetRole: 'Operations Manager',
+          targetSector: 'Logistics',
+          locationPreference: 'Remote',
+        },
+      } as unknown as typeof validDraftInput),
+    ).rejects.toThrowError();
+
+    expect(createClient).not.toHaveBeenCalled();
+  });
+
   it('creates base, military and civil profiles on first save', async () => {
     const mock = createSupabaseMock();
     vi.mocked(createClient).mockResolvedValue(mock.client as never);

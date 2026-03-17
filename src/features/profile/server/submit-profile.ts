@@ -1,5 +1,7 @@
+import { submitProfileInputSchema } from '../schemas/profile.schema';
 import type {
   ProfileLifecycleStatus,
+  SubmitProfileResult,
   SubmitProfileInput,
 } from '@/features/profile/types/profile.types';
 
@@ -18,8 +20,8 @@ export function transitionProfileStatus(
 export async function submitProfile(
   input: SubmitProfileInput,
   currentStatus: ProfileLifecycleStatus = 'draft',
-): Promise<{ status: ProfileLifecycleStatus }> {
-  void input;
+): Promise<SubmitProfileResult> {
+  submitProfileInputSchema.parse(input);
 
   const status = transitionProfileStatus(currentStatus);
 

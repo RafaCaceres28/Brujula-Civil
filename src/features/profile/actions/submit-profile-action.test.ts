@@ -1,15 +1,19 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { submitProfileAction } from './submit-profile-action';
 
 const { submitProfileMock } = vi.hoisted(() => ({
   submitProfileMock: vi.fn(),
 }));
 
-vi.mock('@/features/profile/server/submit-profile', () => ({
+vi.mock('../server/submit-profile', () => ({
   submitProfile: submitProfileMock,
 }));
 
 describe('submitProfileAction contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('delegates only to submitProfile with validated submit payload', async () => {
     await submitProfileAction({
       userId: 'user-1',
@@ -77,8 +81,41 @@ describe('submitProfileAction contract', () => {
           locationPreference: 'Remote',
         },
       }),
-    ).rejects.toThrowError();
+    ).rejects.toMatchObject({
+      kind: 'validation',
+      name: 'ProfileActionError',
+    });
 
     expect(submitProfileMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps domain error classification when server throws', async () => {
+    submitProfileMock.mockRejectedValueOnce(new Error('transition failed'));
+
+    await expect(
+      submitProfileAction({
+        userId: 'user-1',
+        profile: {
+          fullName: 'Ada Lovelace',
+          email: 'ada@example.com',
+          phone: '+34123456789',
+          city: 'Madrid',
+        },
+        militaryBackground: {
+          rank: 'Captain',
+          area: 'Signals',
+          yearsOfService: 7,
+          summary: 'Led teams',
+        },
+        civilianTarget: {
+          targetRole: 'Operations Manager',
+          targetSector: 'Logistics',
+          locationPreference: 'Remote',
+        },
+      }),
+    ).rejects.toMatchObject({
+      kind: 'domain',
+      name: 'ProfileActionError',
+    });
   });
 });

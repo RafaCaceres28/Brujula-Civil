@@ -1,7 +1,9 @@
 import type {
+  ProfileActionErrorKind,
   AppUserProfileInsert,
   CivilProfileInsert,
   CivilProfileUpdate,
+  SaveDraftActionResult,
   MilitaryProfileInsert,
   MilitaryProfileUpdate,
   ProfileReadOutput,
@@ -11,6 +13,7 @@ import type {
   ProfileSupabaseShape,
   SaveDraftInput,
   SaveProfileInput,
+  SubmitProfileActionResult,
   SubmitProfileInput,
 } from './profile.types';
 import type {
@@ -49,6 +52,19 @@ describe('profile.types contracts', () => {
 
   it('exposes lifecycle status union for explicit transitions', () => {
     expectTypeOf<ProfileLifecycleStatus>().toEqualTypeOf<'draft' | 'submitted'>();
+  });
+
+  it('defines explicit action result and error contracts', () => {
+    expectTypeOf<SaveDraftActionResult>().toEqualTypeOf<{
+      status: 'draft';
+      militaryProfileId: string;
+      civilProfileId: string;
+      operationMode: 'created' | 'updated' | 'mixed';
+    }>();
+    expectTypeOf<SubmitProfileActionResult>().toEqualTypeOf<{
+      status: 'draft' | 'submitted';
+    }>();
+    expectTypeOf<ProfileActionErrorKind>().toEqualTypeOf<'validation' | 'domain'>();
   });
 
   it('detects schema drift by enforcing DB-derived persistence aliases', () => {
