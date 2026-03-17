@@ -7,6 +7,8 @@ import {
   submitProfileInputSchema,
   type SaveDraftInputSchemaInput,
 } from '../schemas/profile.schema';
+import { saveDraftAction } from '../actions/save-profile-action';
+import { submitProfileAction } from '../actions/submit-profile-action';
 import { ProfileActionError, type ProfileFormInitialValues } from '../types/profile.types';
 import {
   CivilianTargetForm,
@@ -38,16 +40,6 @@ export type ProfileFormProps = {
 };
 
 export type ProfileFormPayload = SaveDraftInputSchemaInput;
-
-async function defaultSaveDraft(input: SaveDraftInputSchemaInput) {
-  const actionModule = await import('../actions/save-profile-action');
-  return actionModule.saveDraftAction(input);
-}
-
-async function defaultSubmitProfile(input: SaveDraftInputSchemaInput) {
-  const actionModule = await import('../actions/submit-profile-action');
-  return actionModule.submitProfileAction(input);
-}
 
 const EMPTY_VALUES: ProfileFormValues = {
   profile: {
@@ -171,8 +163,8 @@ function mapActionError(error: unknown): { fieldErrors: FieldErrors; globalError
 export function ProfileForm({
   userId,
   initialValues,
-  saveDraft = defaultSaveDraft,
-  submitProfile = defaultSubmitProfile,
+  saveDraft = saveDraftAction,
+  submitProfile = submitProfileAction,
 }: ProfileFormProps) {
   const [values, setValues] = useState<ProfileFormValues>(() => mergeValues(initialValues));
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
