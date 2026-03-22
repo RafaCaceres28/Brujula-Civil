@@ -128,3 +128,4 @@ export const onboardingDraftSchema = z.object({
 
 export type TargetRoleSchema = z.infer<typeof targetRoleSchema>;
 export type LanguageItemSchema = z.infer<typeof languageItemSchema>;
+export type CompetenciasStep = z.infer<typeof competenciasStepSchema>;
