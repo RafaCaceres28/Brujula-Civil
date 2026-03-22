@@ -14,7 +14,10 @@ vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
 }));
 
-function createSupabaseMock(user: { id: string } | null, error: { message: string } | null = null) {
+function createSupabaseMock(
+  user: { id: string } | null,
+  error: { message?: string; status?: number; code?: string } | null = null,
+) {
   return {
     auth: {
       getUser: vi.fn().mockResolvedValue({
@@ -35,13 +38,20 @@ describe('auth guards', () => {
     expect(user).toEqual({ id: 'user-1' });
   });
 
-  it('returns null from getCurrentUser on expected auth error', async () => {
-    const client = createSupabaseMock(null, { message: 'session missing' });
+  it('returns null from getCurrentUser on expected auth absence', async () => {
+    const client = createSupabaseMock(null, { status: 401, code: 'session_not_found' });
     vi.mocked(createClient).mockResolvedValue(client as never);
 
     const user = await getCurrentUser();
 
     expect(user).toBeNull();
+  });
+
+  it('rethrows structural failures from getCurrentUser', async () => {
+    const structuralError = new Error('dynamic api used in invalid context');
+    vi.mocked(createClient).mockRejectedValue(structuralError);
+
+    await expect(getCurrentUser()).rejects.toBe(structuralError);
   });
 
   it('redirects anonymous user to login with redirectedFrom', async () => {
@@ -51,6 +61,14 @@ describe('auth guards', () => {
     await requireUser('/dashboard');
 
     expect(redirect).toHaveBeenCalledWith('/login?redirectedFrom=%2Fdashboard');
+  });
+
+  it('propagates structural failures from requireUser without redirecting', async () => {
+    const structuralError = new Error('cookies access failure');
+    vi.mocked(createClient).mockRejectedValue(structuralError);
+
+    await expect(requireUser('/dashboard')).rejects.toBe(structuralError);
+    expect(redirect).not.toHaveBeenCalled();
   });
 
   it('redirects authenticated users away from auth routes', async () => {

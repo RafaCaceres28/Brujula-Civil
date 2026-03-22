@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProfileReadOutput } from '@/features/profile/types/profile.types';
 import ProfilePage from './page';
-import { getCurrentUser } from '@/features/auth/server/get-current-user';
+import { getRequiredUser } from '@/features/auth/server/get-required-user';
 import { getProfile } from '@/features/profile/server/get-profile';
 
 const profileSummaryCardSpy = vi.fn();
@@ -23,8 +23,8 @@ vi.mock('next/link', () => ({
     createElement('a', { href: props.href, className: props.className }, props.children),
 }));
 
-vi.mock('@/features/auth/server/get-current-user', () => ({
-  getCurrentUser: vi.fn(),
+vi.mock('@/features/auth/server/get-required-user', () => ({
+  getRequiredUser: vi.fn(),
 }));
 
 vi.mock('@/features/profile/server/get-profile', () => ({
@@ -147,7 +147,7 @@ describe('perfil/page SSR composition', () => {
   beforeEach(() => {
     profileSummaryCardSpy.mockReset();
     profileFormSpy.mockReset();
-    vi.mocked(getCurrentUser).mockResolvedValue({ id: 'user-1' } as never);
+    vi.mocked(getRequiredUser).mockResolvedValue({ id: 'user-1' } as never);
   });
 
   it('loads profile via SSR and composes summary + form with mapped values', async () => {
@@ -238,12 +238,11 @@ describe('perfil/page SSR composition', () => {
     );
   });
 
-  it('fails closed when authenticated user is missing despite app layout guard', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue(null);
+  it('preserves redirect flow from single auth authority without local hard-fail throws', async () => {
+    const redirectSignal = new Error('NEXT_REDIRECT');
+    vi.mocked(getRequiredUser).mockRejectedValue(redirectSignal);
 
-    await expect(ProfilePage()).rejects.toThrow(
-      'Perfil page requires authenticated user from (app)/layout guard.',
-    );
+    await expect(ProfilePage()).rejects.toBe(redirectSignal);
     expect(getProfile).not.toHaveBeenCalled();
   });
 });

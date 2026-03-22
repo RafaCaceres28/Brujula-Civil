@@ -4,15 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import PerfilEditarErrorBoundary from './error';
 import PerfilEditarPage from './page';
 
-const { getCurrentUserMock, getProfileMock } = vi.hoisted(() => {
+const { getRequiredUserMock, getProfileMock } = vi.hoisted(() => {
   return {
-    getCurrentUserMock: vi.fn(),
+    getRequiredUserMock: vi.fn(),
     getProfileMock: vi.fn(),
   };
 });
 
-vi.mock('@/features/auth/server/get-current-user', () => ({
-  getCurrentUser: getCurrentUserMock,
+vi.mock('@/features/auth/server/get-required-user', () => ({
+  getRequiredUser: getRequiredUserMock,
 }));
 
 vi.mock('@/features/profile/server/get-profile', () => ({
@@ -52,7 +52,7 @@ vi.mock('@/features/profile/services/profile.mapper', () => ({
 describe('perfil/editar route integration: getProfile error -> segment boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getCurrentUserMock.mockResolvedValue({ id: 'user-1' });
+    getRequiredUserMock.mockResolvedValue({ id: 'user-1' });
   });
 
   it('activates error boundary fallback when getProfile throws', async () => {

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProfileReadOutput } from '@/features/profile/types/profile.types';
 import PerfilEditarPage from './page';
-import { getCurrentUser } from '@/features/auth/server/get-current-user';
+import { getRequiredUser } from '@/features/auth/server/get-required-user';
 import { getProfile } from '@/features/profile/server/get-profile';
 import { mapDomainToProfileFormInitialValues } from '@/features/profile/services/profile.mapper';
 
@@ -23,8 +23,8 @@ vi.mock('next/link', () => ({
     createElement('a', { href: props.href, className: props.className }, props.children),
 }));
 
-vi.mock('@/features/auth/server/get-current-user', () => ({
-  getCurrentUser: vi.fn(),
+vi.mock('@/features/auth/server/get-required-user', () => ({
+  getRequiredUser: vi.fn(),
 }));
 
 vi.mock('@/features/profile/server/get-profile', () => ({
@@ -74,7 +74,7 @@ const FULL_PROFILE: ProfileReadOutput = {
 describe('perfil/editar/page SSR composition', () => {
   beforeEach(() => {
     profileFormSpy.mockReset();
-    vi.mocked(getCurrentUser).mockResolvedValue({ id: 'user-1' } as never);
+    vi.mocked(getRequiredUser).mockResolvedValue({ id: 'user-1' } as never);
     vi.mocked(mapDomainToProfileFormInitialValues).mockReturnValue({
       profile: {
         fullName: 'Ada Lovelace',
@@ -148,12 +148,11 @@ describe('perfil/editar/page SSR composition', () => {
     expect(html).toContain('Aun no encontramos un perfil guardado.');
   });
 
-  it('fails closed when authenticated user is unexpectedly missing', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue(null);
+  it('preserves redirect flow from single auth authority without local hard-fail throws', async () => {
+    const redirectSignal = new Error('NEXT_REDIRECT');
+    vi.mocked(getRequiredUser).mockRejectedValue(redirectSignal);
 
-    await expect(PerfilEditarPage()).rejects.toThrow(
-      'Perfil editar page requires authenticated user from (app)/layout guard.',
-    );
+    await expect(PerfilEditarPage()).rejects.toBe(redirectSignal);
     expect(getProfile).not.toHaveBeenCalled();
   });
 });
