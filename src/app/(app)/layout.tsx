@@ -1,6 +1,6 @@
 import { AppHeader } from '@/components/layout/app-header';
 import { AppSidebar } from '@/components/layout/app-sidebar';
-import { requireUser } from '@/features/auth/server/require-user';
+import { getRequiredUser } from '@/features/auth/server/get-required-user';
 import { ensureUserBootstrap } from '@/features/profile/server/ensure-user-bootstrap';
 
 type AppLayoutProps = {
@@ -8,7 +8,7 @@ type AppLayoutProps = {
 };
 
 export default async function AppLayout({ children }: AppLayoutProps) {
-  const user = await requireUser();
+  const user = await getRequiredUser();
 
   await ensureUserBootstrap(user.id);
 

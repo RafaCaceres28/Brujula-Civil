@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { PageShell } from '@/components/layout/page-shell';
 import { SectionHeader } from '@/components/layout/section-header';
-import { getCurrentUser } from '@/features/auth/server/get-current-user';
+import { getRequiredUser } from '@/features/auth/server/get-required-user';
 import { ProfileForm } from '@/features/profile/components/profile-form';
 import {
   ProfileSummaryCard,
@@ -26,11 +26,7 @@ function getEmptySummary() {
 }
 
 export default async function ProfilePage() {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    throw new Error('Perfil page requires authenticated user from (app)/layout guard.');
-  }
+  const user = await getRequiredUser();
 
   const profile = await getProfile(user.id);
   const summary = profile ? mapDomainToProfileSummary(profile) : getEmptySummary();
