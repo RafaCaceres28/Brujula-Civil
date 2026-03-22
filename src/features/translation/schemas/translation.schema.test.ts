@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   translationInputSchema,
   translationOutputSchema,
   type TranslationInput,
   type TranslationOutput,
 } from './translation.schema';
-import type { TranslationResult } from '../types/translation.types';
+import type { TranslationFinalResult, TranslationResult } from '../types/translation.types';
 
 describe('translationInputSchema', () => {
   it('accepts valid input from onboarding draft', () => {
@@ -452,14 +452,15 @@ describe('translationOutputSchema', () => {
 
 describe('translation schema integration', () => {
   it('ensures inferred types match TranslationResult structure', () => {
-    // Test that TranslationOutput matches TranslationResult structure
+    expectTypeOf<TranslationOutput>().toEqualTypeOf<TranslationResult>();
+    expectTypeOf<TranslationFinalResult>().toMatchTypeOf<TranslationOutput>();
+
     const sampleOutput: TranslationOutput = {
       professionalSummary: 'Test summary',
       transferableSkills: ['Skill1', 'Skill2'],
       suggestedRoles: ['Role1', 'Role2'],
     };
 
-    // This should not cause TypeScript errors if types are compatible
     const translationResult: TranslationResult = sampleOutput;
 
     expect(translationResult.professionalSummary).toBe('Test summary');
