@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { PageShell } from '@/components/layout/page-shell';
 import { SectionHeader } from '@/components/layout/section-header';
-import { getCurrentUser } from '@/features/auth/server/get-current-user';
+import { getRequiredUser } from '@/features/auth/server/get-required-user';
 import { ProfileForm } from '@/features/profile/components/profile-form';
 import { mapDomainToProfileFormInitialValues } from '@/features/profile/services/profile.mapper';
 import { getProfile } from '@/features/profile/server/get-profile';
@@ -10,11 +10,7 @@ import { submitProfileAction } from '../../../../features/profile/actions/submit
 import { routes } from '../../../../lib/constants/routes';
 
 export default async function PerfilEditarPage() {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    throw new Error('Perfil editar page requires authenticated user from (app)/layout guard.');
-  }
+  const user = await getRequiredUser();
 
   const profile = await getProfile(user.id);
   const initialValues = profile ? mapDomainToProfileFormInitialValues(profile) : undefined;
