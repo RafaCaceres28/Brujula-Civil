@@ -36,26 +36,34 @@ const nullableTrimmedStringWithDefault = (maxLength: number) =>
   nullableTrimmedString(maxLength).default(null);
 
 // Input schema for translation function
-export const translationInputSchema = z.object({
-  militaryProfile: z.object({
-    rank: requiredTrimmedString(MAX_NAME_LENGTH), // Required
-    area: requiredTrimmedString(MAX_NAME_LENGTH), // Required
-    yearsOfService: z.number().int().min(0).max(60).nullable(), // Optional
-    summary: nullableTrimmedStringWithDefault(MAX_SUMMARY_LENGTH), // Optional
-  }),
-  civilianTarget: z.object({
-    targetRole: requiredTrimmedString(MAX_NAME_LENGTH), // Required
-    targetSector: requiredTrimmedString(MAX_NAME_LENGTH), // Required
-    locationPreference: requiredTrimmedString(MAX_NAME_LENGTH), // Required
-  }),
-});
+export const translationInputSchema = z
+  .object({
+    militaryProfile: z
+      .object({
+        rank: requiredTrimmedString(MAX_NAME_LENGTH), // Required
+        area: requiredTrimmedString(MAX_NAME_LENGTH), // Required
+        yearsOfService: z.number().int().min(0).max(60).nullable(), // Required nullable
+        summary: nullableTrimmedStringWithDefault(MAX_SUMMARY_LENGTH), // Optional
+      })
+      .strict(),
+    civilianTarget: z
+      .object({
+        targetRole: requiredTrimmedString(MAX_NAME_LENGTH), // Required
+        targetSector: requiredTrimmedString(MAX_NAME_LENGTH), // Required
+        locationPreference: requiredTrimmedString(MAX_NAME_LENGTH), // Required
+      })
+      .strict(),
+  })
+  .strict();
 
 // Output schema for translation function
-export const translationOutputSchema = z.object({
-  professionalSummary: z.string().trim().min(1).max(MAX_SUMMARY_LENGTH),
-  transferableSkills: z.array(z.string().trim().min(1)).min(1),
-  suggestedRoles: z.array(z.string().trim().min(1)).min(1),
-});
+export const translationOutputSchema = z
+  .object({
+    professionalSummary: z.string().trim().min(1).max(MAX_SUMMARY_LENGTH),
+    transferableSkills: z.array(z.string().trim().min(1)).min(1),
+    suggestedRoles: z.array(z.string().trim().min(1)).min(1),
+  })
+  .strict();
 
 // Exported types for TypeScript usage
 export type TranslationInput = z.infer<typeof translationInputSchema>;

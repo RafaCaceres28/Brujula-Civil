@@ -26,7 +26,7 @@ describe('translationInputSchema', () => {
     expect(() => translationInputSchema.parse(validInput)).not.toThrow();
   });
 
-  it('accepts valid input with null/undefined values (preprocess converts to null)', () => {
+  it('accepts valid input with nullable values', () => {
     const validInput: TranslationInput = {
       militaryProfile: {
         rank: 'Valid Rank',
@@ -133,6 +133,32 @@ describe('translationInputSchema', () => {
     }
   });
 
+  it('rejects input when yearsOfService is missing', () => {
+    const invalidInput = {
+      militaryProfile: {
+        rank: 'Capitan',
+        area: 'Infanteria',
+        summary: 'Experiencia',
+      },
+      civilianTarget: {
+        targetRole: 'Project Manager',
+        targetSector: 'Construccion',
+        locationPreference: 'Bogota',
+      },
+    };
+
+    const result = translationInputSchema.safeParse(invalidInput);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['militaryProfile', 'yearsOfService'],
+          code: 'invalid_type',
+        }),
+      );
+    }
+  });
+
   it('accepts yearsOfService at boundary values', () => {
     const validInputMin = {
       militaryProfile: {
@@ -191,6 +217,58 @@ describe('translationInputSchema', () => {
           path: ['militaryProfile', 'rank'],
         }),
       );
+    }
+  });
+
+  it('rejects required strings with whitespace-only values', () => {
+    const invalidInput = {
+      militaryProfile: {
+        rank: '   ',
+        area: 'Infanteria',
+        yearsOfService: 5,
+        summary: 'Experiencia',
+      },
+      civilianTarget: {
+        targetRole: 'Project Manager',
+        targetSector: 'Construccion',
+        locationPreference: 'Bogota',
+      },
+    };
+
+    const result = translationInputSchema.safeParse(invalidInput);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['militaryProfile', 'rank'],
+          code: 'invalid_type',
+        }),
+      );
+    }
+  });
+
+  it('rejects extra keys in input boundary objects', () => {
+    const invalidInput = {
+      militaryProfile: {
+        rank: 'Capitan',
+        area: 'Infanteria',
+        yearsOfService: 5,
+        summary: 'Experiencia',
+        extraMilitaryField: 'not-allowed',
+      },
+      civilianTarget: {
+        targetRole: 'Project Manager',
+        targetSector: 'Construccion',
+        locationPreference: 'Bogota',
+        extraCivilianField: 'not-allowed',
+      },
+      extraRootField: 'not-allowed',
+    };
+
+    const result = translationInputSchema.safeParse(invalidInput);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.code === 'unrecognized_keys')).toBe(true);
     }
   });
 });
@@ -333,6 +411,43 @@ describe('translationOutputSchema', () => {
     expect(parsed.transferableSkills).toEqual(['Habilidad 1', 'Habilidad 2']);
     expect(parsed.suggestedRoles).toEqual(['Rol 1', 'Rol 2']);
   });
+
+  it('rejects output with whitespace-only professionalSummary', () => {
+    const invalidOutput = {
+      professionalSummary: '   ',
+      transferableSkills: ['Liderazgo'],
+      suggestedRoles: ['Gerente'],
+    };
+
+    const result = translationOutputSchema.safeParse(invalidOutput);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['professionalSummary'],
+        }),
+      );
+    }
+  });
+
+  it('rejects extra keys in output boundary object', () => {
+    const invalidOutput = {
+      professionalSummary: 'Resumen profesional',
+      transferableSkills: ['Liderazgo'],
+      suggestedRoles: ['Gerente'],
+      extraOutputField: 'not-allowed',
+    };
+
+    const result = translationOutputSchema.safeParse(invalidOutput);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({
+          code: 'unrecognized_keys',
+        }),
+      );
+    }
+  });
 });
 
 describe('translation schema integration', () => {
@@ -345,7 +460,7 @@ describe('translation schema integration', () => {
     };
 
     // This should not cause TypeScript errors if types are compatible
-    const translationResult: TranslationResult = sampleOutput as unknown as TranslationResult;
+    const translationResult: TranslationResult = sampleOutput;
 
     expect(translationResult.professionalSummary).toBe('Test summary');
     expect(translationResult.transferableSkills).toEqual(['Skill1', 'Skill2']);
