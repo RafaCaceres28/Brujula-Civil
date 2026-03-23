@@ -31,7 +31,10 @@ describe('translation route', () => {
     expect(response.status).toBe(200);
     expect(body.ok).toBe(true);
     expect(body.data.blocks[0].sourceRef).toBe('snapshot-1');
-    expect(body.data.qualityFlags).toContain('MISSING_CONTEXT');
+    expect(body.data.sourceRefMap[body.data.blocks[0].id]).toBe('snapshot-1');
+    expect(body.meta.source).toBe('api.translation.route');
+    expect(body.meta.requestId).toBeTypeOf('string');
+    expect(response.headers.get('x-flow-trace')).toBe('profile:snapshot-1');
   });
 
   it('returns DomainResult validation error for invalid boundary input', async () => {
@@ -49,5 +52,6 @@ describe('translation route', () => {
     expect(response.status).toBe(400);
     expect(body.ok).toBe(false);
     expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.meta.source).toBe('api.translation.route');
   });
 });

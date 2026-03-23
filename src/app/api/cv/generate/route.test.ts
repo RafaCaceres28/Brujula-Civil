@@ -39,6 +39,8 @@ describe('cv generate route', () => {
     expect(body.ok).toBe(true);
     expect(body.data.layout.columns).toBe(1);
     expect(body.data.sections[0].sourceBlockIds).toEqual(['translation-block-1']);
+    expect(body.meta.source).toBe('api.cv.generate.route');
+    expect(response.headers.get('x-flow-trace')).toBe('profile:snapshot-1');
   });
 
   it('returns DomainResult validation error for invalid boundary input', async () => {
@@ -63,5 +65,6 @@ describe('cv generate route', () => {
     expect(response.status).toBe(400);
     expect(body.ok).toBe(false);
     expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.meta.source).toBe('api.cv.generate.route');
   });
 });

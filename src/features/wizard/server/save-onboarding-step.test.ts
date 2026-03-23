@@ -37,17 +37,25 @@ function createSupabaseMock() {
                 return {
                   maybeSingle: async () => ({
                     data: {
-                      aggregated_draft_jsonb: onboardingDraftSchema.parse({
-                        experiencia: {
-                          responsibilityAreas: ['operations'],
-                          missionTypes: ['intl_stability'],
-                          functionTypes: ['coordination'],
-                          tools: ['erp'],
-                          leadershipScopes: ['team_supervision'],
-                          achievements: ['Mantuve SLA operativo'],
-                          additionalContext: null,
+                      aggregated_draft_jsonb: {
+                        ...onboardingDraftSchema.parse({
+                          experiencia: {
+                            responsibilityAreas: ['operations'],
+                            missionTypes: ['intl_stability'],
+                            functionTypes: ['coordination'],
+                            tools: ['erp'],
+                            leadershipScopes: ['team_supervision'],
+                            achievements: ['Mantuve SLA operativo'],
+                            additionalContext: null,
+                          },
+                        }),
+                        employabilityFlow: {
+                          cvPreviewDraft: {
+                            previewVersionId: 'preview-v1',
+                            isUserEdited: true,
+                          },
                         },
-                      }),
+                      },
                     },
                     error: null,
                   }),
@@ -111,6 +119,12 @@ describe('saveOnboardingStep', () => {
     expect(mergedDraft.militar).toEqual(payload);
     expect(mergedDraft.experiencia).toMatchObject({
       responsibilityAreas: ['operations'],
+    });
+    expect(mergedDraft.employabilityFlow).toMatchObject({
+      cvPreviewDraft: {
+        previewVersionId: 'preview-v1',
+      },
+      lastOnboardingStep: 'militar',
     });
 
     expect(recalculateOnboardingState).toHaveBeenCalledWith('user-1');

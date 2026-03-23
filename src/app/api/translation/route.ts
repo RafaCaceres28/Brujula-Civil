@@ -3,41 +3,70 @@ import {
   domainFailure,
   domainSuccess,
   toInternalDomainError,
+  type DomainMeta,
   type DomainResult,
 } from '../../../lib/contracts/index';
+import { getHttpStatusForDomainResult } from '../../../lib/contracts/http-error-mapper';
 import { NextResponse } from 'next/server';
 import {
   translationInputSchema,
-  translationOutputSchema,
   type TranslationOutput,
 } from '../../../features/translation/schemas/translation.schema';
+import { generateTranslation } from '../../../features/translation/server/generate-translation';
 import type { TranslationDomainError } from '../../../features/translation/types/translation.types';
 
 type TranslationRouteResult = DomainResult<TranslationOutput, TranslationDomainError>;
 
-function responseForResult(result: TranslationRouteResult) {
-  const status = result.ok ? 200 : result.error.code === 'VALIDATION_ERROR' ? 400 : 500;
-  return NextResponse.json(result, { status });
+const ROUTE_SOURCE = 'api.translation.route';
+
+function resolveRequestId(request: Request): string {
+  return request.headers.get('x-request-id')?.trim() || crypto.randomUUID();
+}
+
+function withMeta(result: TranslationRouteResult, meta: DomainMeta): TranslationRouteResult {
+  return result.ok ? domainSuccess(result.data, meta) : domainFailure(result.error, meta);
+}
+
+function createMeta(requestId: string): DomainMeta {
+  return {
+    requestId,
+    timestamp: new Date().toISOString(),
+    source: ROUTE_SOURCE,
+  };
+}
+
+function responseForResult(result: TranslationRouteResult, traceTag?: string) {
+  const status = getHttpStatusForDomainResult(result);
+  return NextResponse.json(result, {
+    status,
+    ...(traceTag ? { headers: { 'x-flow-trace': traceTag } } : {}),
+  });
 }
 
 export async function POST(request: Request) {
+  const requestId = resolveRequestId(request);
+  const meta = createMeta(requestId);
   let payload: unknown;
 
   try {
     payload = await request.json();
   } catch {
-    const result = domainFailure(
-      createValidationDomainError('Invalid JSON payload for translation endpoint'),
+    const result = withMeta(
+      domainFailure(createValidationDomainError('Invalid JSON payload for translation endpoint')),
+      meta,
     );
     return responseForResult(result);
   }
 
   const parsedInput = translationInputSchema.safeParse(payload);
   if (!parsedInput.success) {
-    const result = domainFailure(
-      createValidationDomainError('Invalid translation input', {
-        issues: parsedInput.error.issues,
-      }),
+    const result = withMeta(
+      domainFailure(
+        createValidationDomainError('Invalid translation input', {
+          issues: parsedInput.error.issues,
+        }),
+      ),
+      meta,
     );
     return responseForResult(result);
   }
@@ -48,23 +77,13 @@ export async function POST(request: Request) {
         ? parsedInput.data.sourceProfile.snapshotId
         : parsedInput.data.sourceProfile.profileId;
 
-    const output = translationOutputSchema.parse({
-      blocks: [
-        {
-          id: 'translation-block-1',
-          sourceRef,
-          content: 'Translation generation pending implementation',
-        },
-      ],
-      sourceRefMap: {
-        'translation-block-1': sourceRef,
-      },
-      qualityFlags: ['MISSING_CONTEXT'],
-    });
-
-    return responseForResult(domainSuccess(output));
+    const result = await generateTranslation(parsedInput.data);
+    return responseForResult(withMeta(result, meta), `profile:${sourceRef}`);
   } catch (error) {
-    const result = domainFailure(toInternalDomainError(error, 'Failed to generate translation'));
+    const result = withMeta(
+      domainFailure(toInternalDomainError(error, 'Failed to generate translation')),
+      meta,
+    );
     return responseForResult(result);
   }
 }
