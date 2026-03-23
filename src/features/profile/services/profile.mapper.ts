@@ -5,6 +5,10 @@ import type {
   ProfileSupabaseShape,
   ProfileWritePayload,
 } from '@/features/profile/types/profile.types';
+import {
+  profileSnapshotSchema,
+  type ProfileSnapshot,
+} from '../../translation/schemas/translation.schema';
 import { profileReadOutputSchema } from '../schemas/profile.schema';
 
 const DEFAULT_PROFILE_FULL_NAME = 'Unknown user';
@@ -154,6 +158,27 @@ export function mapDomainToProfileSummary(domain: ProfileDomainModel): ProfileSu
     primaryGoal: parsed.civilianTarget.targetRole ?? PROFILE_SUMMARY_FALLBACKS.primaryGoal,
     location: parsed.civilianTarget.locationPreference ?? PROFILE_SUMMARY_FALLBACKS.location,
   };
+}
+
+export function mapProfileToTranslationSnapshot(profile: ProfileDomainModel): ProfileSnapshot {
+  const parsed = profileReadOutputSchema.parse(profile);
+
+  const highlights = [
+    parsed.militaryBackground.summary,
+    [parsed.militaryBackground.rank, parsed.militaryBackground.area].filter(Boolean).join(' - '),
+    [parsed.civilianTarget.targetRole, parsed.civilianTarget.targetSector]
+      .filter(Boolean)
+      .join(' / '),
+  ]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => value.trim());
+
+  return profileSnapshotSchema.parse({
+    kind: 'profile_snapshot',
+    snapshotId: `profile-snapshot-${parsed.userId}`,
+    summary: parsed.militaryBackground.summary,
+    highlights: highlights.length > 0 ? highlights : ['Profile data pending completion'],
+  });
 }
 
 export const mapSupabaseShapeToProfileRow = mapDbToDomainProfile;
