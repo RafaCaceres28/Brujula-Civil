@@ -1,5 +1,10 @@
 SaaS focused on helping military professionals transition into civilian careers through guided workflows, profile translation, and CV generation.
 
+## Engineering Constitution
+
+- Governance baseline lives in `.specify/memory/constitution.md`.
+- Planning artifacts under `.specify/templates/` must satisfy constitution gates (verification-first, contract-first, quality gates, security, reversible delivery).
+
 ## Verification Commands
 
 - `pnpm lint`: lint repository files.
