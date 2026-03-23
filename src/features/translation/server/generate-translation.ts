@@ -1,10 +1,33 @@
-import { domainFailure, domainSuccess, toInternalDomainError } from '@/lib/contracts/index';
-import { translationOutputSchema } from '@/features/translation/schemas/translation.schema';
+import { domainFailure, domainSuccess, toInternalDomainError } from '../../../lib/contracts/index';
+import { translationOutputSchema } from '../schemas/translation.schema';
 import type {
   TranslationDomainInput,
   TranslationDomainOutput,
   TranslationDomainResult,
-} from '@/features/translation/types/translation.types';
+} from '../types/translation.types';
+
+function normalizeSentence(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return trimmed;
+  }
+
+  return trimmed.endsWith('.') ? trimmed : `${trimmed}.`;
+}
+
+function professionalizeText(text: string, tone: TranslationDomainInput['tone']): string {
+  const normalized = normalizeSentence(text);
+
+  if (tone === 'concise') {
+    return normalized;
+  }
+
+  if (tone === 'formal') {
+    return `Demonstrated ${normalized.charAt(0).toLowerCase()}${normalized.slice(1)}`;
+  }
+
+  return normalized;
+}
 
 const buildTranslationOutput = (input: TranslationDomainInput): TranslationDomainOutput => {
   const sourceRef =
@@ -12,18 +35,33 @@ const buildTranslationOutput = (input: TranslationDomainInput): TranslationDomai
       ? input.sourceProfile.snapshotId
       : input.sourceProfile.profileId;
 
+  const tone = input.tone ?? 'neutral';
+  const candidateBlocks =
+    input.sourceProfile.kind === 'profile_snapshot'
+      ? [input.sourceProfile.summary, ...input.sourceProfile.highlights]
+      : [input.sourceProfile.headline, ...input.sourceProfile.highlights];
+
+  const translatedBlocks = candidateBlocks
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .slice(0, 3)
+    .map((value, index) => ({
+      id: `translation-block-${index + 1}`,
+      sourceRef,
+      content: professionalizeText(value, tone),
+    }));
+
+  const qualityFlags: TranslationDomainOutput['qualityFlags'] = [];
+  if (translatedBlocks.length < 2) {
+    qualityFlags.push('MISSING_CONTEXT');
+  }
+
   return translationOutputSchema.parse({
-    blocks: [
-      {
-        id: 'translation-block-1',
-        sourceRef,
-        content: 'Translation generation pending implementation',
-      },
-    ],
-    sourceRefMap: {
-      'translation-block-1': sourceRef,
-    },
-    qualityFlags: ['MISSING_CONTEXT'],
+    blocks: translatedBlocks,
+    sourceRefMap: translatedBlocks.reduce<Record<string, string>>((map, block) => {
+      map[block.id] = sourceRef;
+      return map;
+    }, {}),
+    qualityFlags,
   });
 };
 

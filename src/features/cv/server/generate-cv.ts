@@ -3,13 +3,13 @@ import {
   domainFailure,
   domainSuccess,
   toInternalDomainError,
-} from '@/lib/contracts/index';
-import { cvPreviewOutputSchema } from '@/features/cv/schemas/cv.schema';
-import type { CvDomainInput, CvDomainOutput, CvDomainResult } from '@/features/cv/types/cv.types';
+} from '../../../lib/contracts/index';
+import { cvPreviewOutputSchema } from '../schemas/cv.schema';
+import type { CvDomainInput, CvDomainOutput, CvDomainResult } from '../types/cv.types';
 
 const buildCvPreviewOutput = (input: CvDomainInput): CvDomainOutput => {
-  const firstBlock = input.translatedContent.blocks[0];
-  if (!firstBlock) {
+  const [summaryBlock, experienceBlock, strengthsBlock] = input.translatedContent.blocks;
+  if (!summaryBlock) {
     throw createDomainError({
       code: 'VALIDATION_ERROR',
       message: 'Translated content requires at least one block',
@@ -17,20 +17,42 @@ const buildCvPreviewOutput = (input: CvDomainInput): CvDomainOutput => {
     });
   }
 
+  const sections: CvDomainOutput['sections'] = [
+    {
+      id: 'cv-section-summary',
+      title: 'Professional Summary',
+      content: summaryBlock.content,
+      sourceBlockIds: [summaryBlock.id],
+    },
+  ];
+
+  if (experienceBlock) {
+    sections.push({
+      id: 'cv-section-experience',
+      title: 'Relevant Experience',
+      content: experienceBlock.content,
+      sourceBlockIds: [experienceBlock.id],
+    });
+  }
+
+  if (strengthsBlock) {
+    sections.push({
+      id: 'cv-section-strengths',
+      title: 'Core Strengths',
+      content: strengthsBlock.content,
+      sourceBlockIds: [strengthsBlock.id],
+    });
+  }
+
+  const hasCoverageGaps = input.translatedContent.qualityFlags.includes('MISSING_CONTEXT');
+
   return cvPreviewOutputSchema.parse({
-    sections: [
-      {
-        id: 'cv-section-summary',
-        title: 'Professional Summary',
-        content: firstBlock.content,
-        sourceBlockIds: [firstBlock.id],
-      },
-    ],
+    sections,
     layout: {
       templateKey: input.templateKey,
       columns: input.templateKey === 'single-column' ? 1 : 2,
     },
-    completeness: 'needs_review',
+    completeness: hasCoverageGaps ? 'needs_review' : 'complete',
   });
 };
 

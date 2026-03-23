@@ -5,6 +5,10 @@ import { onboardingDraftSchema } from '../schemas/wizard.schema';
 import type { WizardPayloadBySlug } from '../types/wizard.types';
 import { recalculateOnboardingState } from './recalculate-onboarding-state';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export async function saveOnboardingStep<TStep extends WizardStepSlug>(
   userId: string,
   stepSlug: TStep,
@@ -50,18 +54,38 @@ export async function saveOnboardingStep<TStep extends WizardStepSlug>(
     );
   }
 
-  const previousDraft = onboardingDraftSchema.parse(
-    currentWizardState?.aggregated_draft_jsonb ?? {},
-  );
+  const currentAggregatedDraft = isRecord(currentWizardState?.aggregated_draft_jsonb)
+    ? currentWizardState.aggregated_draft_jsonb
+    : {};
+
+  const previousDraft = onboardingDraftSchema.parse(currentAggregatedDraft);
   const mergedDraft = onboardingDraftSchema.parse({
     ...previousDraft,
     [stepSlug]: payload,
   });
 
+  const currentEmployabilityFlow = isRecord(currentAggregatedDraft.employabilityFlow)
+    ? currentAggregatedDraft.employabilityFlow
+    : null;
+
+  const mergedAggregatedDraft = {
+    ...currentAggregatedDraft,
+    ...mergedDraft,
+    ...(currentEmployabilityFlow
+      ? {
+          employabilityFlow: {
+            ...currentEmployabilityFlow,
+            lastOnboardingStep: stepSlug,
+            lastUpdatedAt: now,
+          },
+        }
+      : {}),
+  };
+
   const { error: updateWizardStateError } = await supabase
     .from('user_wizard_state')
     .update({
-      aggregated_draft_jsonb: mergedDraft,
+      aggregated_draft_jsonb: mergedAggregatedDraft,
       last_saved_at: now,
     })
     .eq('user_id', userId);

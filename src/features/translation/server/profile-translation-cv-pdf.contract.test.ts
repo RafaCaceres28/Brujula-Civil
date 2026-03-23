@@ -1,36 +1,82 @@
-import { describe, expect, it } from 'vitest';
-import { cvPreviewOutputSchema } from '../../cv/schemas/cv.schema';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createClient } from '@/lib/supabase/server';
+import { createDomainError, domainFailure, domainSuccess } from '../../../lib/contracts/index';
+import { generateCv } from '../../cv/server/generate-cv';
+import { exportCvPdf } from '../../cv/server/export-cv-pdf';
+import { getCvDraft } from '../../cv/server/get-cv';
 import { mapTranslationOutputToCvInput } from '../../cv/services/cv.mapper';
-import { generatePdf, mapCvPreviewToPdfGenerationInput } from '../../documents/server/generate-pdf';
+import { saveCvDraft } from '../../cv/server/save-cv';
+import * as pdfModule from '../../documents/server/generate-pdf';
 import { mapProfileToTranslationSnapshot } from '../../profile/services/profile.mapper';
-import { translationInputSchema, translationOutputSchema } from '../schemas/translation.schema';
+import { generateTranslation } from './generate-translation';
 import { profileDomainFixture } from './__fixtures__/contract-fixtures';
 
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn(),
+}));
+
+function createDraftPersistenceMock() {
+  let aggregatedDraft: Record<string, unknown> = {};
+
+  const client = {
+    from(table: string) {
+      if (table !== 'user_wizard_state') {
+        throw new Error(`Unexpected table ${table}`);
+      }
+
+      return {
+        select() {
+          return {
+            eq() {
+              return {
+                maybeSingle: async () => ({
+                  data: {
+                    aggregated_draft_jsonb: aggregatedDraft,
+                  },
+                  error: null,
+                }),
+              };
+            },
+          };
+        },
+        update(payload: Record<string, unknown>) {
+          aggregatedDraft = payload.aggregated_draft_jsonb as Record<string, unknown>;
+          return {
+            eq: async () => ({ error: null }),
+          };
+        },
+      };
+    },
+  };
+
+  return { client };
+}
+
 describe('profile -> translation -> cv -> pdf contract slice', () => {
+  beforeEach(() => {
+    const { client } = createDraftPersistenceMock();
+    vi.mocked(createClient).mockResolvedValue(client as never);
+  });
+
   it('keeps schema-compatible payloads and traceability across all steps', async () => {
     const profileSnapshot = mapProfileToTranslationSnapshot(profileDomainFixture);
 
-    const translationInput = translationInputSchema.parse({
+    const translationInput = {
       userId: profileDomainFixture.userId,
       sourceProfile: profileSnapshot,
       sourceLanguage: 'es-ES',
       targetLanguage: 'en-US',
       tone: 'neutral',
-    });
+    } as const;
 
-    const translationOutput = translationOutputSchema.parse({
-      blocks: [
-        {
-          id: 'translation-block-1',
-          sourceRef: profileSnapshot.snapshotId,
-          content: 'Operations leader focused on logistics, planning and risk mitigation.',
-        },
-      ],
-      sourceRefMap: {
-        'translation-block-1': profileSnapshot.snapshotId,
-      },
-      qualityFlags: ['MISSING_CONTEXT'],
-    });
+    const translationResult = await generateTranslation(translationInput);
+
+    expect(translationResult.ok).toBe(true);
+    if (!translationResult.ok) {
+      throw new Error('Expected translation success');
+    }
+
+    const translationOutput = translationResult.data;
 
     expect(translationOutput.sourceRefMap['translation-block-1']).toBe(profileSnapshot.snapshotId);
 
@@ -41,33 +87,52 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
       templateKey: 'single-column',
     });
 
-    const cvPreview = cvPreviewOutputSchema.parse({
-      sections: [
-        {
-          id: 'cv-section-summary',
-          title: 'Professional Summary',
-          content: translationOutput.blocks[0]?.content,
-          sourceBlockIds: [translationOutput.blocks[0]?.id],
-        },
-      ],
-      layout: {
-        templateKey: cvInput.templateKey,
-        columns: cvInput.templateKey === 'single-column' ? 1 : 2,
-      },
-      completeness: 'needs_review',
-    });
+    const cvResult = await generateCv(cvInput);
+
+    expect(cvResult.ok).toBe(true);
+    if (!cvResult.ok) {
+      throw new Error('Expected CV preview success');
+    }
+
+    const cvPreview = cvResult.data;
 
     expect(cvPreview.sections[0]?.sourceBlockIds).toContain('translation-block-1');
 
-    const pdfInput = mapCvPreviewToPdfGenerationInput({
+    const editedCvPreview = {
+      ...cvPreview,
+      sections: cvPreview.sections.map((section) => ({
+        ...section,
+        content: `${section.content} Edited for final review.`,
+      })),
+    };
+
+    const saveResult = await saveCvDraft({
       userId: translationInput.userId,
-      cvPreview,
-      locale: 'es-ES',
+      cvPreview: editedCvPreview,
+      profileSnapshotId: profileSnapshot.snapshotId,
+      previewVersionId: 'preview-v1',
+      isUserEdited: true,
+      sourceRefMap: translationOutput.sourceRefMap,
     });
 
-    expect(pdfInput.cvPreview.sections[0]?.content).toBe(cvPreview.sections[0]?.content);
+    expect(saveResult.ok).toBe(true);
+    if (!saveResult.ok) {
+      throw new Error('Expected CV draft persistence success');
+    }
 
-    const pdfResult = await generatePdf(pdfInput);
+    const recoveredDraftResult = await getCvDraft(translationInput.userId);
+    expect(recoveredDraftResult.ok).toBe(true);
+    if (!recoveredDraftResult.ok || !recoveredDraftResult.data) {
+      throw new Error('Expected CV draft recovery success');
+    }
+
+    const pdfResult = await exportCvPdf({
+      userId: translationInput.userId,
+      cvPreview: recoveredDraftResult.data.cvPreview,
+      locale: 'es-ES',
+      previewVersionId: recoveredDraftResult.data.previewVersionId,
+      isUserEdited: recoveredDraftResult.data.isUserEdited,
+    });
 
     expect(pdfResult.ok).toBe(true);
     if (!pdfResult.ok) {
@@ -76,5 +141,117 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
 
     expect(pdfResult.data.status).toBe('queued');
     expect(pdfResult.data.storagePath).toContain(`documents/${translationInput.userId}`);
+    expect(pdfResult.meta?.source).toBe('cv.server.export-cv-pdf');
+  });
+
+  it('supports retry-safe export after a controlled PDF failure without losing draft', async () => {
+    const profileSnapshot = mapProfileToTranslationSnapshot(profileDomainFixture);
+
+    const translationResult = await generateTranslation({
+      userId: profileDomainFixture.userId,
+      sourceProfile: profileSnapshot,
+      sourceLanguage: 'es-ES',
+      targetLanguage: 'en-US',
+      tone: 'neutral',
+    });
+
+    expect(translationResult.ok).toBe(true);
+    if (!translationResult.ok) {
+      throw new Error('Expected translation success');
+    }
+
+    const cvResult = await generateCv(
+      mapTranslationOutputToCvInput({
+        userId: profileDomainFixture.userId,
+        profileSnapshotId: profileSnapshot.snapshotId,
+        translatedContent: translationResult.data,
+        templateKey: 'single-column',
+      }),
+    );
+
+    expect(cvResult.ok).toBe(true);
+    if (!cvResult.ok) {
+      throw new Error('Expected CV preview success');
+    }
+
+    const editedPreview = {
+      ...cvResult.data,
+      sections: cvResult.data.sections.map((section) => ({
+        ...section,
+        content: `${section.content} Retry-safe update.`,
+      })),
+    };
+
+    const saveResult = await saveCvDraft({
+      userId: profileDomainFixture.userId,
+      cvPreview: editedPreview,
+      profileSnapshotId: profileSnapshot.snapshotId,
+      previewVersionId: 'preview-retry-v1',
+      isUserEdited: true,
+      sourceRefMap: translationResult.data.sourceRefMap,
+    });
+
+    expect(saveResult.ok).toBe(true);
+    if (!saveResult.ok) {
+      throw new Error('Expected draft persistence success');
+    }
+
+    const generatePdfSpy = vi
+      .spyOn(pdfModule, 'generatePdf')
+      .mockResolvedValueOnce(
+        domainFailure(
+          createDomainError({
+            code: 'EXTERNAL_DEPENDENCY_ERROR',
+            message: 'PDF provider unavailable',
+            retryable: true,
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        domainSuccess({
+          documentId: 'document-retry-success',
+          status: 'queued',
+          storagePath: `documents/${profileDomainFixture.userId}/document-retry-success.pdf`,
+        }),
+      );
+
+    const firstExport = await exportCvPdf({
+      userId: profileDomainFixture.userId,
+      cvPreview: editedPreview,
+      locale: 'es-ES',
+      previewVersionId: 'preview-retry-v1',
+      isUserEdited: true,
+    });
+
+    expect(firstExport.ok).toBe(false);
+    if (firstExport.ok) {
+      throw new Error('Expected first export to fail');
+    }
+    expect(firstExport.error.code).toBe('EXTERNAL_DEPENDENCY_ERROR');
+    expect(firstExport.error.retryable).toBe(true);
+
+    const recoveredDraft = await getCvDraft(profileDomainFixture.userId);
+    expect(recoveredDraft.ok).toBe(true);
+    if (!recoveredDraft.ok || !recoveredDraft.data) {
+      throw new Error('Expected draft to remain available after failed export');
+    }
+    expect(recoveredDraft.data.previewVersionId).toBe('preview-retry-v1');
+    expect(recoveredDraft.data.cvPreview.sections[0]?.content).toContain('Retry-safe update.');
+
+    const secondExport = await exportCvPdf({
+      userId: profileDomainFixture.userId,
+      cvPreview: recoveredDraft.data.cvPreview,
+      locale: 'es-ES',
+      previewVersionId: recoveredDraft.data.previewVersionId,
+      isUserEdited: recoveredDraft.data.isUserEdited,
+    });
+
+    expect(secondExport.ok).toBe(true);
+    if (!secondExport.ok) {
+      throw new Error('Expected retry export success');
+    }
+    expect(secondExport.data.status).toBe('queued');
+
+    generatePdfSpy.mockRestore();
   });
 });
