@@ -36,3 +36,21 @@ Establecer un flujo de referencia que demuestre interoperabilidad de contratos e
 - Fixtures tipados por paso.
 - Escenarios minimos: happy path, validation error, dependency error.
 - Ejecucion en `vitest --project node` para pruebas de contrato/integracion sin UI.
+
+## Traceability Matrix (Field-Level)
+
+| Step                      | Source Field                         | Target Field                                       | Adapter/Boundary                                                      |
+| ------------------------- | ------------------------------------ | -------------------------------------------------- | --------------------------------------------------------------------- |
+| Profile -> Translation    | `profile.userId`                     | `translationInput.userId`                          | `mapProfileToTranslationSnapshot` + `translationInputSchema`          |
+| Profile -> Translation    | `militaryBackground.summary`         | `sourceProfile.summary`                            | `mapProfileToTranslationSnapshot`                                     |
+| Profile -> Translation    | `military/civilian highlights`       | `sourceProfile.highlights[]`                       | `mapProfileToTranslationSnapshot`                                     |
+| Translation -> CV Preview | `translationOutput.blocks[].content` | `cvPreview.sections[].content`                     | `mapTranslationOutputToCvInput` + `generateCv`                        |
+| Translation -> CV Preview | `translationOutput.blocks[].id`      | `cvPreview.sections[].sourceBlockIds[]`            | `generateCv`                                                          |
+| CV Preview -> PDF         | `cvPreview.sections`                 | `pdfGenerationInput.cvPreview.sections`            | `parseEditableCvPreviewBoundary` + `mapCvPreviewToPdfGenerationInput` |
+| CV Preview -> PDF         | `cvPreview.layout/completeness`      | `pdfGenerationInput.cvPreview.layout/completeness` | `mapCvPreviewToPdfGenerationInput`                                    |
+
+## Editable-before-Export Gate
+
+- El preview CV se considera **editable** hasta que se ejecuta `parseEditableCvPreviewBoundary`.
+- La normalizacion de strings (trim) ocurre en frontera UI antes de mapear a PDF.
+- Si el parse falla, el flujo no avanza a `mapCvPreviewToPdfGenerationInput` y retorna `VALIDATION_ERROR`.

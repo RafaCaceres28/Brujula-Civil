@@ -50,7 +50,9 @@ GATE: Must pass before implementation and again before merge.
 |   |-- linkedin-contract.md
 |   |-- translation-contract.md
 |   |-- documents-contract.md
-|   `-- profile-translation-cv-pdf-slice.md
+|   |-- profile-translation-cv-pdf-slice.md
+|   |-- alignment-matrix.md
+|   `-- performance-neutrality-check.md
 `-- tasks.md
 ```
 

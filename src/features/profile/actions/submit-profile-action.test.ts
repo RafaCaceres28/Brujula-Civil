@@ -10,31 +10,35 @@ vi.mock('../server/submit-profile', () => ({
 }));
 
 describe('submitProfileAction contract', () => {
+  const validSubmitPayload = {
+    userId: 'user-1',
+    profile: {
+      fullName: '  Ada Lovelace  ',
+      email: '  ADA@EXAMPLE.COM  ',
+      phone: '  +34123456789  ',
+      city: ' Madrid ',
+    },
+    militaryBackground: {
+      rank: ' Captain ',
+      area: ' Signals ',
+      yearsOfService: 7,
+      summary: 'Led teams',
+    },
+    civilianTarget: {
+      targetRole: ' Operations Manager ',
+      targetSector: ' Logistics ',
+      locationPreference: ' Remote ',
+    },
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('delegates only to submitProfile with validated submit payload', async () => {
-    await submitProfileAction({
-      userId: 'user-1',
-      profile: {
-        fullName: '  Ada Lovelace  ',
-        email: '  ADA@EXAMPLE.COM  ',
-        phone: '  +34123456789  ',
-        city: ' Madrid ',
-      },
-      militaryBackground: {
-        rank: ' Captain ',
-        area: ' Signals ',
-        yearsOfService: 7,
-        summary: 'Led teams',
-      },
-      civilianTarget: {
-        targetRole: ' Operations Manager ',
-        targetSector: ' Logistics ',
-        locationPreference: ' Remote ',
-      },
-    });
+    submitProfileMock.mockResolvedValueOnce({ status: 'submitted' });
+
+    await expect(submitProfileAction(validSubmitPayload)).resolves.toEqual({ status: 'submitted' });
 
     expect(submitProfileMock).toHaveBeenCalledTimes(1);
     expect(submitProfileMock).toHaveBeenCalledWith({
@@ -84,38 +88,23 @@ describe('submitProfileAction contract', () => {
     ).rejects.toMatchObject({
       kind: 'validation',
       name: 'ProfileActionError',
+      message: 'Invalid profile submit input',
     });
 
     expect(submitProfileMock).not.toHaveBeenCalled();
   });
 
-  it('keeps domain error classification when server throws', async () => {
-    submitProfileMock.mockRejectedValueOnce(new Error('transition failed'));
+  it('preserves domain error message when server throws a typed domain error', async () => {
+    submitProfileMock.mockRejectedValueOnce({
+      code: 'EXTERNAL_DEPENDENCY_ERROR',
+      message: 'Translation provider unavailable',
+      retryable: true,
+    });
 
-    await expect(
-      submitProfileAction({
-        userId: 'user-1',
-        profile: {
-          fullName: 'Ada Lovelace',
-          email: 'ada@example.com',
-          phone: '+34123456789',
-          city: 'Madrid',
-        },
-        militaryBackground: {
-          rank: 'Captain',
-          area: 'Signals',
-          yearsOfService: 7,
-          summary: 'Led teams',
-        },
-        civilianTarget: {
-          targetRole: 'Operations Manager',
-          targetSector: 'Logistics',
-          locationPreference: 'Remote',
-        },
-      }),
-    ).rejects.toMatchObject({
+    await expect(submitProfileAction(validSubmitPayload)).rejects.toMatchObject({
       kind: 'domain',
       name: 'ProfileActionError',
+      message: 'Translation provider unavailable',
     });
   });
 });

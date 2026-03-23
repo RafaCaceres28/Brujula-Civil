@@ -1,8 +1,9 @@
 import { z } from 'zod';
+import { domainIdSchema, localeSchema } from '../../../lib/contracts/shared.schema';
 
-// Constants copied from profile.schema.ts to maintain consistency
-const MAX_NAME_LENGTH = 120;
+const MAX_TEXT_BLOCK_LENGTH = 1500;
 const MAX_SUMMARY_LENGTH = 500;
+const MAX_LABEL_LENGTH = 160;
 
 const nullableTrimmedString = (maxLength: number) =>
   z.preprocess((value) => {
@@ -11,60 +12,77 @@ const nullableTrimmedString = (maxLength: number) =>
     }
 
     if (typeof value === 'string') {
-      const trimmedValue = value.trim();
-      return trimmedValue === '' ? null : trimmedValue;
+      const trimmed = value.trim();
+      return trimmed.length === 0 ? null : trimmed;
     }
 
     return value;
   }, z.string().trim().max(maxLength).nullable());
 
-const requiredTrimmedString = (maxLength: number) =>
-  z.preprocess((value) => {
-    if (value === undefined || value === null) {
-      return undefined; // Return undefined to trigger Zod's required field validation
-    }
+const textListSchema = z.array(z.string().trim().min(1).max(MAX_TEXT_BLOCK_LENGTH)).min(1);
 
-    if (typeof value === 'string') {
-      const trimmedValue = value.trim();
-      return trimmedValue === '' ? undefined : trimmedValue; // Empty string becomes undefined for required fields
-    }
+export const translationToneSchema = z.enum(['formal', 'neutral', 'concise']);
 
-    return value;
-  }, z.string().trim().max(maxLength)); // No nullable() - field is required
+export const profileSnapshotSchema = z
+  .object({
+    kind: z.literal('profile_snapshot'),
+    snapshotId: domainIdSchema,
+    summary: nullableTrimmedString(MAX_SUMMARY_LENGTH),
+    highlights: textListSchema,
+  })
+  .strict();
 
-const nullableTrimmedStringWithDefault = (maxLength: number) =>
-  nullableTrimmedString(maxLength).default(null);
+export const linkedInNormalizedProfileSchema = z
+  .object({
+    kind: z.literal('linkedin_normalized_profile'),
+    profileId: domainIdSchema,
+    headline: z.string().trim().min(1).max(MAX_LABEL_LENGTH),
+    highlights: textListSchema,
+  })
+  .strict();
 
-// Input schema for translation function
+export const translationSourceProfileSchema = z.discriminatedUnion('kind', [
+  profileSnapshotSchema,
+  linkedInNormalizedProfileSchema,
+]);
+
 export const translationInputSchema = z
   .object({
-    militaryProfile: z
-      .object({
-        rank: requiredTrimmedString(MAX_NAME_LENGTH), // Required
-        area: requiredTrimmedString(MAX_NAME_LENGTH), // Required
-        yearsOfService: z.number().int().min(0).max(60).nullable(), // Required nullable
-        summary: nullableTrimmedStringWithDefault(MAX_SUMMARY_LENGTH), // Optional
-      })
-      .strict(),
-    civilianTarget: z
-      .object({
-        targetRole: requiredTrimmedString(MAX_NAME_LENGTH), // Required
-        targetSector: requiredTrimmedString(MAX_NAME_LENGTH), // Required
-        locationPreference: requiredTrimmedString(MAX_NAME_LENGTH), // Required
-      })
-      .strict(),
+    userId: domainIdSchema,
+    sourceProfile: translationSourceProfileSchema,
+    sourceLanguage: localeSchema,
+    targetLanguage: localeSchema,
+    tone: translationToneSchema.optional(),
   })
   .strict();
 
-// Output schema for translation function
+export const translatedBlockSchema = z
+  .object({
+    id: domainIdSchema,
+    content: z.string().trim().min(1).max(MAX_TEXT_BLOCK_LENGTH),
+    sourceRef: domainIdSchema,
+  })
+  .strict();
+
+export const translationQualityFlagSchema = z.enum([
+  'LOW_CONFIDENCE',
+  'MISSING_CONTEXT',
+  'TERMINOLOGY_REVIEW',
+]);
+
 export const translationOutputSchema = z
   .object({
-    professionalSummary: z.string().trim().min(1).max(MAX_SUMMARY_LENGTH),
-    transferableSkills: z.array(z.string().trim().min(1)).min(1),
-    suggestedRoles: z.array(z.string().trim().min(1)).min(1),
+    blocks: z.array(translatedBlockSchema).min(1),
+    sourceRefMap: z.record(domainIdSchema, domainIdSchema),
+    qualityFlags: z.array(translationQualityFlagSchema),
   })
   .strict();
 
-// Exported types for TypeScript usage
 export type TranslationInput = z.infer<typeof translationInputSchema>;
 export type TranslationOutput = z.infer<typeof translationOutputSchema>;
+export type TranslationTone = z.infer<typeof translationToneSchema>;
+export type ProfileSnapshot = z.infer<typeof profileSnapshotSchema>;
+export type LinkedInNormalizedProfile = z.infer<typeof linkedInNormalizedProfileSchema>;
+export type TranslationSourceProfile = z.infer<typeof translationSourceProfileSchema>;
+export type TranslatedBlock = z.infer<typeof translatedBlockSchema>;
+export type TranslationQualityFlag = z.infer<typeof translationQualityFlagSchema>;

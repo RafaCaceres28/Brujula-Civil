@@ -15,10 +15,10 @@
 
 **Purpose**: Preparar estructura minima y convenciones para ejecutar el refactor sin drift.
 
-- [ ] T001 Crear modulo base de contratos compartidos en `src/lib/contracts/index.ts`.
-- [ ] T002 [P] Crear convenciones de uso de contratos en `src/lib/contracts/README.md`.
-- [ ] T003 [P] Crear utilidades base de parse seguro en `src/lib/contracts/zod-helpers.ts`.
-- [ ] T004 Crear carpeta de pruebas de contrato shared en `src/lib/contracts/__tests__/shared-contract.test.ts`.
+- [x] T001 Crear modulo base de contratos compartidos en `src/lib/contracts/index.ts`.
+- [x] T002 [P] Crear convenciones de uso de contratos en `src/lib/contracts/README.md`.
+- [x] T003 [P] Crear utilidades base de parse seguro en `src/lib/contracts/zod-helpers.ts`.
+- [x] T004 Crear carpeta de pruebas de contrato shared en `src/lib/contracts/__tests__/shared-contract.test.ts`.
 
 ---
 
@@ -26,14 +26,14 @@
 
 **Purpose**: Definir nucleo de contratos (shared + taxonomia de errores + validacion Zod) antes de adopcion por dominio.
 
-- [ ] T005 Implementar `DomainResult` discriminado en `src/lib/contracts/domain-result.ts`.
-- [ ] T006 [P] Implementar taxonomia `DomainErrorCode` en `src/lib/contracts/domain-error-codes.ts`.
-- [ ] T007 [P] Implementar `DomainError` seguro y helpers en `src/lib/contracts/domain-error.ts`.
-- [ ] T008 [P] Implementar `DomainMeta` y metadata comun en `src/lib/contracts/domain-meta.ts`.
-- [ ] T009 Integrar exports del kernel compartido en `src/lib/contracts/index.ts`.
-- [ ] T010 [P] Definir schemas Zod shared (id, locale, metadata) en `src/lib/contracts/shared.schema.ts`.
-- [ ] T011 [P] Agregar tests de taxonomia de errores en `src/lib/contracts/__tests__/domain-error.test.ts`.
-- [ ] T012 [P] Agregar tests de validacion Zod shared en `src/lib/contracts/__tests__/shared.schema.test.ts`.
+- [x] T005 Implementar `DomainResult` discriminado en `src/lib/contracts/domain-result.ts`.
+- [x] T006 [P] Implementar taxonomia `DomainErrorCode` en `src/lib/contracts/domain-error-codes.ts`.
+- [x] T007 [P] Implementar `DomainError` seguro y helpers en `src/lib/contracts/domain-error.ts`.
+- [x] T008 [P] Implementar `DomainMeta` y metadata comun en `src/lib/contracts/domain-meta.ts`.
+- [x] T009 Integrar exports del kernel compartido en `src/lib/contracts/index.ts`.
+- [x] T010 [P] Definir schemas Zod shared (id, locale, metadata) en `src/lib/contracts/shared.schema.ts`.
+- [x] T011 [P] Agregar tests de taxonomia de errores en `src/lib/contracts/__tests__/domain-error.test.ts`.
+- [x] T012 [P] Agregar tests de validacion Zod shared en `src/lib/contracts/__tests__/shared.schema.test.ts`.
 
 **Checkpoint**: Foundation complete, user stories can proceed.
 
@@ -44,29 +44,29 @@
 **Goal**: Publicar contratos compartidos y contratos minimos para Translation, CV, LinkedIn y Documents con convencion uniforme.
 **Independent Test**: Correr tests de tipos/schemas por dominio y verificar que cada dominio expone `input`, `output`, `DomainResult` y `DomainError`.
 
-- [ ] T055 [US1] Definir validaciones Zod de Documents en `src/features/documents/schemas/document.schema.ts`.
+- [x] T055 [US1] Definir validaciones Zod de Documents en `src/features/documents/schemas/document.schema.ts`.
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Crear test de contrato Translation en `src/features/translation/types/translation.types.test.ts`.
-- [ ] T014 [P] [US1] Crear test de schema Translation con Zod en `src/features/translation/schemas/translation.schema.test.ts`.
-- [ ] T015 [P] [US1] Crear test de contrato CV en `src/features/cv/types/cv.types.test.ts`.
-- [ ] T016 [P] [US1] Crear test de contrato LinkedIn en `src/features/linkedin/types/linkedin.types.test.ts`.
-- [ ] T017 [P] [US1] Crear test de contrato Documents en `src/features/documents/types/document.types.test.ts`.
-- [ ] T056 [P] [US1] Crear test de schema CV con Zod en `src/features/cv/schemas/cv.schema.test.ts`.
-- [ ] T057 [P] [US1] Crear test de schema LinkedIn con Zod en `src/features/linkedin/schemas/linkedin.schema.test.ts`.
-- [ ] T058 [P] [US1] Crear test de schema Documents con Zod en `src/features/documents/schemas/document.schema.test.ts`.
+- [x] T013 [P] [US1] Crear test de contrato Translation en `src/features/translation/types/translation.types.test.ts`.
+- [x] T014 [P] [US1] Crear test de schema Translation con Zod en `src/features/translation/schemas/translation.schema.test.ts`.
+- [x] T015 [P] [US1] Crear test de contrato CV en `src/features/cv/types/cv.types.test.ts`.
+- [x] T016 [P] [US1] Crear test de contrato LinkedIn en `src/features/linkedin/types/linkedin.types.test.ts`.
+- [x] T017 [P] [US1] Crear test de contrato Documents en `src/features/documents/types/document.types.test.ts`.
+- [x] T056 [P] [US1] Crear test de schema CV con Zod en `src/features/cv/schemas/cv.schema.test.ts`.
+- [x] T057 [P] [US1] Crear test de schema LinkedIn con Zod en `src/features/linkedin/schemas/linkedin.schema.test.ts`.
+- [x] T058 [P] [US1] Crear test de schema Documents con Zod en `src/features/documents/schemas/document.schema.test.ts`.
 
 ### Implementation for User Story 1
 
-- [ ] T018 [P] [US1] Definir contratos de Translation (`input/output/result`) en `src/features/translation/types/translation.types.ts`.
-- [ ] T019 [P] [US1] Definir validaciones Zod de Translation en `src/features/translation/schemas/translation.schema.ts`.
-- [ ] T020 [P] [US1] Definir contratos de CV (`input/output/result`) en `src/features/cv/types/cv.types.ts`.
-- [ ] T021 [P] [US1] Definir validaciones Zod de CV en `src/features/cv/schemas/cv.schema.ts`.
-- [ ] T022 [P] [US1] Definir contratos de LinkedIn (`input/output/result`) en `src/features/linkedin/types/linkedin.types.ts`.
-- [ ] T023 [P] [US1] Definir validaciones Zod de LinkedIn en `src/features/linkedin/schemas/linkedin.schema.ts`.
-- [ ] T024 [P] [US1] Definir contratos de Documents (`input/output/result`) en `src/features/documents/types/document.types.ts`.
-- [ ] T025 [US1] Integrar tipado shared de errores/resultados en los cuatro dominios desde `src/lib/contracts/index.ts`.
+- [x] T018 [P] [US1] Definir contratos de Translation (`input/output/result`) en `src/features/translation/types/translation.types.ts`.
+- [x] T019 [P] [US1] Definir validaciones Zod de Translation en `src/features/translation/schemas/translation.schema.ts`.
+- [x] T020 [P] [US1] Definir contratos de CV (`input/output/result`) en `src/features/cv/types/cv.types.ts`.
+- [x] T021 [P] [US1] Definir validaciones Zod de CV en `src/features/cv/schemas/cv.schema.ts`.
+- [x] T022 [P] [US1] Definir contratos de LinkedIn (`input/output/result`) en `src/features/linkedin/types/linkedin.types.ts`.
+- [x] T023 [P] [US1] Definir validaciones Zod de LinkedIn en `src/features/linkedin/schemas/linkedin.schema.ts`.
+- [x] T024 [P] [US1] Definir contratos de Documents (`input/output/result`) en `src/features/documents/types/document.types.ts`.
+- [x] T025 [US1] Integrar tipado shared de errores/resultados en los cuatro dominios desde `src/lib/contracts/index.ts`.
 
 ---
 
@@ -77,30 +77,30 @@
 
 ### Tests for User Story 2
 
-- [ ] T026 [P] [US2] Agregar test de handler Translation alineado a contratos en `src/app/api/translation/route.test.ts`.
-- [ ] T027 [P] [US2] Agregar test de handler LinkedIn alineado a contratos en `src/app/api/linkedin/generate/route.test.ts`.
-- [ ] T028 [P] [US2] Agregar test de handler CV generate alineado a contratos en `src/app/api/cv/generate/route.test.ts`.
-- [ ] T029 [P] [US2] Agregar test de handler CV PDF alineado a contratos en `src/app/api/cv/pdf/route.test.ts`.
-- [ ] T030 [P] [US2] Ajustar test de server action profile submit para `DomainResult` en `src/features/profile/actions/submit-profile-action.test.ts`.
-- [ ] T031 [P] [US2] Ajustar test de server action profile save para `DomainResult` en `src/features/profile/actions/save-profile-action.test.ts`.
-- [ ] T063 [P] [US2] Agregar test de validacion de frontera UI para preview editable en `src/app/(app)/cv/preview/page.test.tsx`.
+- [x] T026 [P] [US2] Agregar test de handler Translation alineado a contratos en `src/app/api/translation/route.test.ts`.
+- [x] T027 [P] [US2] Agregar test de handler LinkedIn alineado a contratos en `src/app/api/linkedin/generate/route.test.ts`.
+- [x] T028 [P] [US2] Agregar test de handler CV generate alineado a contratos en `src/app/api/cv/generate/route.test.ts`.
+- [x] T029 [P] [US2] Agregar test de handler CV PDF alineado a contratos en `src/app/api/cv/pdf/route.test.ts`.
+- [x] T030 [P] [US2] Ajustar test de server action profile submit para `DomainResult` en `src/features/profile/actions/submit-profile-action.test.ts`.
+- [x] T031 [P] [US2] Ajustar test de server action profile save para `DomainResult` en `src/features/profile/actions/save-profile-action.test.ts`.
+- [x] T063 [P] [US2] Agregar test de validacion de frontera UI para preview editable en `src/app/(app)/cv/preview/page.test.tsx`.
 
 ### Implementation for User Story 2
 
-- [ ] T032 [P] [US2] Adoptar parse Zod + `DomainResult` en route handler `src/app/api/translation/route.ts`.
-- [ ] T033 [P] [US2] Adoptar parse Zod + `DomainResult` en route handler `src/app/api/linkedin/generate/route.ts`.
-- [ ] T034 [P] [US2] Adoptar parse Zod + `DomainResult` en route handler `src/app/api/cv/generate/route.ts`.
-- [ ] T035 [P] [US2] Adoptar parse Zod + `DomainResult` en route handler `src/app/api/cv/pdf/route.ts`.
-- [ ] T036 [P] [US2] Adaptar server action submit a contrato unificado en `src/features/profile/actions/submit-profile-action.ts`.
-- [ ] T037 [P] [US2] Adaptar server action save a contrato unificado en `src/features/profile/actions/save-profile-action.ts`.
-- [ ] T038 [P] [US2] Alinear servicio Translation al contrato unificado en `src/features/translation/server/generate-translation.ts`.
-- [ ] T039 [P] [US2] Alinear servicio CV al contrato unificado en `src/features/cv/server/generate-cv.ts`.
-- [ ] T040 [P] [US2] Alinear servicio LinkedIn al contrato unificado en `src/features/linkedin/server/generate-linkedin-profile.ts`.
-- [ ] T041 [P] [US2] Alinear interfaz del servicio Documents/PDF al contrato unificado (input/output/result/error) en `src/features/documents/server/generate-pdf.ts`.
-- [ ] T042 [US2] Centralizar mapeo de errores hacia respuestas HTTP en `src/lib/contracts/http-error-mapper.ts`.
-- [ ] T059 [US2] Implementar estado/flujo de edicion previa en preview CV en `src/app/(app)/cv/preview/page.tsx`.
-- [ ] T060 [P] [US2] Ajustar contrato de salida de preview para soportar contenido editable en `src/features/cv/types/cv.types.ts`.
-- [ ] T064 [P] [US2] Integrar validacion de frontera UI (normalizacion/parse previo al envio) para preview editable en `src/features/cv/services/cv.mapper.ts`.
+- [x] T032 [P] [US2] Adoptar parse Zod + `DomainResult` en route handler `src/app/api/translation/route.ts`.
+- [x] T033 [P] [US2] Adoptar parse Zod + `DomainResult` en route handler `src/app/api/linkedin/generate/route.ts`.
+- [x] T034 [P] [US2] Adoptar parse Zod + `DomainResult` en route handler `src/app/api/cv/generate/route.ts`.
+- [x] T035 [P] [US2] Adoptar parse Zod + `DomainResult` en route handler `src/app/api/cv/pdf/route.ts`.
+- [x] T036 [P] [US2] Adaptar server action submit a contrato unificado en `src/features/profile/actions/submit-profile-action.ts`.
+- [x] T037 [P] [US2] Adaptar server action save a contrato unificado en `src/features/profile/actions/save-profile-action.ts`.
+- [x] T038 [P] [US2] Alinear servicio Translation al contrato unificado en `src/features/translation/server/generate-translation.ts`.
+- [x] T039 [P] [US2] Alinear servicio CV al contrato unificado en `src/features/cv/server/generate-cv.ts`.
+- [x] T040 [P] [US2] Alinear servicio LinkedIn al contrato unificado en `src/features/linkedin/server/generate-linkedin-profile.ts`.
+- [x] T041 [P] [US2] Alinear interfaz del servicio Documents/PDF al contrato unificado (input/output/result/error) en `src/features/documents/server/generate-pdf.ts`.
+- [x] T042 [US2] Centralizar mapeo de errores hacia respuestas HTTP en `src/lib/contracts/http-error-mapper.ts`.
+- [x] T059 [US2] Implementar estado/flujo de edicion previa en preview CV en `src/app/(app)/cv/preview/page.tsx`.
+- [x] T060 [P] [US2] Ajustar contrato de salida de preview para soportar contenido editable en `src/features/cv/types/cv.types.ts`.
+- [x] T064 [P] [US2] Integrar validacion de frontera UI (normalizacion/parse previo al envio) para preview editable en `src/features/cv/services/cv.mapper.ts`.
 
 ---
 
@@ -111,29 +111,29 @@
 
 ### Tests for User Story 3
 
-- [ ] T043 [P] [US3] Crear test de contrato cross-domain del slice en `src/features/translation/server/profile-translation-cv-pdf.contract.test.ts`.
-- [ ] T044 [P] [US3] Crear fixtures tipados compartidos para contratos en `src/features/translation/server/__fixtures__/contract-fixtures.ts`.
-- [ ] T045 [P] [US3] Agregar prueba de errores tipados transversales en `src/lib/contracts/__tests__/cross-domain-errors.test.ts`.
-- [ ] T046 [P] [US3] Agregar prueba de compatibilidad Zod input/output entre pasos en `src/features/cv/server/cv-contract-compatibility.test.ts`.
-- [ ] T061 [P] [US3] Crear test de contrato de editabilidad previa a PDF en `src/features/cv/server/cv-editability.contract.test.ts`.
+- [x] T043 [P] [US3] Crear test de contrato cross-domain del slice en `src/features/translation/server/profile-translation-cv-pdf.contract.test.ts`.
+- [x] T044 [P] [US3] Crear fixtures tipados compartidos para contratos en `src/features/translation/server/__fixtures__/contract-fixtures.ts`.
+- [x] T045 [P] [US3] Agregar prueba de errores tipados transversales en `src/lib/contracts/__tests__/cross-domain-errors.test.ts`.
+- [x] T046 [P] [US3] Agregar prueba de compatibilidad Zod input/output entre pasos en `src/features/cv/server/cv-contract-compatibility.test.ts`.
+- [x] T061 [P] [US3] Crear test de contrato de editabilidad previa a PDF en `src/features/cv/server/cv-editability.contract.test.ts`.
 
 ### Implementation for User Story 3
 
-- [ ] T047 [P] [US3] Implementar adaptador ProfileSnapshot para translation en `src/features/profile/services/profile.mapper.ts`.
-- [ ] T048 [P] [US3] Implementar adaptador TranslationOutput para CV en `src/features/cv/services/cv.mapper.ts`.
-- [ ] T049 [P] [US3] Implementar adaptador de transformacion `CvPreviewModel -> PdfGenerationInput` y su orquestacion en `src/features/documents/server/generate-pdf.ts`.
-- [ ] T050 [US3] Documentar trazabilidad del slice en `specs/001-unify-domain-contracts/contracts/profile-translation-cv-pdf-slice.md`.
-- [ ] T062 [US3] Documentar matriz de alineacion contractual en `specs/001-unify-domain-contracts/contracts/alignment-matrix.md`.
+- [x] T047 [P] [US3] Implementar adaptador ProfileSnapshot para translation en `src/features/profile/services/profile.mapper.ts`.
+- [x] T048 [P] [US3] Implementar adaptador TranslationOutput para CV en `src/features/cv/services/cv.mapper.ts`.
+- [x] T049 [P] [US3] Implementar adaptador de transformacion `CvPreviewModel -> PdfGenerationInput` y su orquestacion en `src/features/documents/server/generate-pdf.ts`.
+- [x] T050 [US3] Documentar trazabilidad del slice en `specs/001-unify-domain-contracts/contracts/profile-translation-cv-pdf-slice.md`.
+- [x] T062 [US3] Documentar matriz de alineacion contractual en `specs/001-unify-domain-contracts/contracts/alignment-matrix.md`.
 
 ---
 
 ## Final Phase: Final Polish
 
-- [ ] T051 Ejecutar `pnpm lint` y resolver issues del alcance en `/home/svens/dev/brujula-civil`.
-- [ ] T052 Ejecutar `pnpm typecheck` y resolver issues del alcance en `/home/svens/dev/brujula-civil`.
-- [ ] T053 Ejecutar `pnpm test:run` y resolver fallos del alcance en `/home/svens/dev/brujula-civil`.
-- [ ] T054 Actualizar documentacion tecnica de adopcion de contratos en `specs/001-unify-domain-contracts/quickstart.md`.
-- [ ] T065 Verificar impacto neutro de performance (baseline vs post-adopcion contractual) y registrar resultados en `specs/001-unify-domain-contracts/contracts/performance-neutrality-check.md`.
+- [x] T051 Ejecutar `pnpm lint` y resolver issues del alcance en `/home/svens/dev/brujula-civil`.
+- [x] T052 Ejecutar `pnpm typecheck` y resolver issues del alcance en `/home/svens/dev/brujula-civil`.
+- [x] T053 Ejecutar `pnpm test:run` y resolver fallos del alcance en `/home/svens/dev/brujula-civil`.
+- [x] T054 Actualizar documentacion tecnica de adopcion de contratos en `specs/001-unify-domain-contracts/quickstart.md`.
+- [x] T065 Verificar impacto neutro de performance (baseline vs post-adopcion contractual) y registrar resultados en `specs/001-unify-domain-contracts/contracts/performance-neutrality-check.md`.
 
 ---
 

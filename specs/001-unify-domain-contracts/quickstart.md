@@ -55,3 +55,30 @@ No usar `pnpm build` como validacion por defecto.
 - Contratos shared y por dominio definidos documentalmente.
 - Estrategia incremental y riesgos documentados.
 - Base lista para crear `tasks.md` y comenzar Phase 2 (task planning) sin clarificaciones pendientes.
+
+## Cierre tecnico de adopcion (Final Phase)
+
+Este bloque registra el cierre tecnico de la iniciativa `001-unify-domain-contracts` dentro del alcance de quality gates, documentacion y verificacion de neutralidad de performance.
+
+### Scope de cierre ejecutado
+
+1. `T051`: `pnpm lint`
+2. `T052`: `pnpm typecheck`
+3. `T053`: `pnpm test:run`
+4. `T054`: actualizacion de este quickstart
+5. `T065`: registro de baseline/metodo/resultados en `contracts/performance-neutrality-check.md`
+
+### Resultado operativo esperado para cierre
+
+- Lint en verde sin cambios funcionales extra.
+- Typecheck en verde sin ampliacion de alcance.
+- Suite de tests en verde dentro del estado de la iniciativa.
+- Evidencia tecnica de performance neutral en documentacion contractual.
+- SC-002 verificado mediante `contracts/alignment-matrix.md` y adopcion cerrada en handlers/actions/services.
+
+### Regla de control del alcance
+
+- No abrir nuevas lineas de trabajo fuera de `001`.
+- No modificar alcance funcional durante el bloque final.
+- Si aparece un fallo, aplicar correccion minima y localizada solo en contratos/rutas/actions/services/schemas/types/tests/docs de la iniciativa.
+- No usar `pnpm build` como gate de cierre.
