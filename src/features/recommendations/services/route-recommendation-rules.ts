@@ -55,6 +55,8 @@ function computeScore(
   input: RecommendationInputSnapshot,
   roleId: string,
   sectorId: string,
+  seniorityId: string | undefined,
+  workModelId: string | undefined,
 ): number {
   let score = 0;
 
@@ -76,6 +78,14 @@ function computeScore(
     } else if (input.teamSize >= 6) {
       score += 8;
     }
+  }
+
+  if (input.seniorityHint && seniorityId && input.seniorityHint === seniorityId) {
+    score += 14;
+  }
+
+  if (input.workModelHint && workModelId && input.workModelHint === workModelId) {
+    score += 10;
   }
 
   return score;
@@ -186,20 +196,29 @@ function buildCandidateRoutes(input: RecommendationInputSnapshot): Recommendatio
 
   const sectorPool =
     selectedSectorHints.length > 0
-      ? TARGET_SECTOR_OPTIONS.filter((option) => selectedSectorHints.includes(option.value))
-      : TARGET_SECTOR_OPTIONS.slice(0, 5);
+      ? [
+          ...TARGET_SECTOR_OPTIONS.filter((option) => selectedSectorHints.includes(option.value)),
+          ...TARGET_SECTOR_OPTIONS.filter((option) => !selectedSectorHints.includes(option.value)),
+        ]
+      : TARGET_SECTOR_OPTIONS;
 
   const rolePool =
     selectedRoleHints.length > 0
-      ? TARGET_ROLE_OPTIONS.filter((option) => selectedRoleHints.includes(option.slug))
-      : TARGET_ROLE_OPTIONS.slice(0, 8);
+      ? [
+          ...TARGET_ROLE_OPTIONS.filter((option) => selectedRoleHints.includes(option.slug)),
+          ...TARGET_ROLE_OPTIONS.filter((option) => !selectedRoleHints.includes(option.slug)),
+        ]
+      : TARGET_ROLE_OPTIONS;
 
   const signals = normalizeSignals(input);
-  const seniorityId = input.teamSize && input.teamSize >= 16 ? 'manager' : undefined;
+  const seniorityId =
+    SENIORITY_OPTIONS.find((option) => option.value === input.seniorityHint)?.value ??
+    (input.teamSize && input.teamSize >= 16 ? 'manager' : undefined);
   const normalizedSeniority =
     SENIORITY_OPTIONS.find((option) => option.value === seniorityId)?.value ??
     getDefaultSeniority(input);
   const normalizedWorkModel =
+    WORK_MODEL_OPTIONS.find((option) => option.value === input.workModelHint)?.value ??
     WORK_MODEL_OPTIONS.find((option) => option.value === input.destinationContext)?.value ??
     getDefaultWorkModel(input);
   const candidates: RouteCandidate[] = [];
@@ -212,7 +231,9 @@ function buildCandidateRoutes(input: RecommendationInputSnapshot): Recommendatio
         .map(normalizeSignal)
         .filter((signal) => signals.has(signal));
       const reasonCodes = resolveReasonCodes(input, role.slug, sector.value, matchedSignals);
-      const score = computeScore(input, role.slug, sector.value) + matchedSignals.length * 9;
+      const score =
+        computeScore(input, role.slug, sector.value, normalizedSeniority, normalizedWorkModel) +
+        matchedSignals.length * 9;
 
       const reasonSummary = createReasonSummary(role.label, sector.label, matchedSignals);
 

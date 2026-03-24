@@ -24,7 +24,7 @@ describe('generateCareerRoutes', () => {
       branch: undefined,
       corps: undefined,
       rank: undefined,
-      specialty: undefined,
+      specialty: 'signals',
       responsibilityAreas: [],
       functionTypes: [],
       technicalSkills: [],
@@ -37,5 +37,8 @@ describe('generateCareerRoutes', () => {
     }
 
     expect(result.error.code).toBe('VALIDATION_ERROR');
+    expect(result.error.message).toBe('Insufficient structured profile to generate career routes');
+    expect(result.error.message).not.toMatch(/zod|stack|trace/i);
+    expect(result.meta?.source).toBe('recs.server.generate-routes');
   });
 });

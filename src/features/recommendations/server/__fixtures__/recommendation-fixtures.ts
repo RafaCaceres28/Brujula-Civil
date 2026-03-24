@@ -26,6 +26,8 @@ export const recommendationInputFixture: RecommendationInputSnapshot = {
   officeTools: ['excel', 'word', 'powerpoint'],
   targetRoleHints: ['operations-manager'],
   targetSectorHints: ['logistics'],
+  seniorityHint: 'mid',
+  workModelHint: 'hybrid',
 };
 
 export const recommendationOutputFixture: RecommendationOutput = {

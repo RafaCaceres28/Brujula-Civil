@@ -48,17 +48,17 @@
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] Crear test de ranking y desempate de reglas en `src/features/recommendations/services/route-recommendation-rules.test.ts`.
-- [ ] T016 [P] [US1] Crear test de borde por datos insuficientes en `src/features/recommendations/server/generate-career-routes.test.ts`.
-- [ ] T017 [P] [US1] Crear test de validacion de shortlist 3-5 y reasonSummary en `src/features/recommendations/schemas/recommendation.schema.test.ts`.
+- [x] T015 [P] [US1] Crear test de ranking y desempate de reglas en `src/features/recommendations/services/route-recommendation-rules.test.ts`.
+- [x] T016 [P] [US1] Crear test de borde por datos insuficientes en `src/features/recommendations/server/generate-career-routes.test.ts`.
+- [x] T017 [P] [US1] Crear test de validacion de shortlist 3-5 y reasonSummary en `src/features/recommendations/schemas/recommendation.schema.test.ts`.
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Implementar scoring por rol/sector/seniority/workModel sobre catalogos en `src/features/recommendations/services/route-recommendation-rules.ts`.
-- [ ] T019 [US1] Implementar armado de `RecommendationInputSnapshot` desde wizard en `src/features/recommendations/services/build-recommendation-input.ts`.
-- [ ] T020 [US1] Integrar generacion de shortlist con validacion y errores seguros en `src/features/recommendations/server/generate-career-routes.ts`.
-- [ ] T021 [US1] Exponer action de obtencion de shortlist para UI en `src/features/recommendations/actions/get-career-routes-action.ts`.
-- [ ] T022 [US1] Validar contrato de action de shortlist en `src/features/recommendations/actions/get-career-routes-action.test.ts`.
+- [x] T018 [US1] Implementar scoring por rol/sector/seniority/workModel sobre catalogos en `src/features/recommendations/services/route-recommendation-rules.ts`.
+- [x] T019 [US1] Implementar armado de `RecommendationInputSnapshot` desde wizard en `src/features/recommendations/services/build-recommendation-input.ts`.
+- [x] T020 [US1] Integrar generacion de shortlist con validacion y errores seguros en `src/features/recommendations/server/generate-career-routes.ts`.
+- [x] T021 [US1] Exponer action de obtencion de shortlist para UI en `src/features/recommendations/actions/get-career-routes-action.ts`.
+- [x] T022 [US1] Validar contrato de action de shortlist en `src/features/recommendations/actions/get-career-routes-action.test.ts`.
 
 ---
 

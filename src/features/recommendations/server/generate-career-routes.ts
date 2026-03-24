@@ -1,9 +1,9 @@
 import {
+  createDomainError,
   createValidationDomainError,
   domainFailure,
   domainSuccess,
   safeParseWithDomainError,
-  toInternalDomainError,
   type DomainMeta,
   type DomainResult,
 } from '../../../lib/contracts/index';
@@ -92,7 +92,14 @@ export function generateCareerRoutes(
     }
 
     return domainSuccess(parsedOutput.data, meta);
-  } catch (error) {
-    return domainFailure(toInternalDomainError(error, 'Failed to generate career routes'), meta);
+  } catch {
+    return domainFailure(
+      createDomainError({
+        code: 'INTERNAL_ERROR',
+        message: 'Unable to generate career routes at this time',
+        retryable: false,
+      }),
+      meta,
+    );
   }
 }

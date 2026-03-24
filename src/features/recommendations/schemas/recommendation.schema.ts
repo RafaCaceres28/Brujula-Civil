@@ -62,6 +62,8 @@ export const recommendationInputSnapshotSchema = z
     officeTools: z.array(z.string().trim().min(1).max(48)).max(12).default([]),
     targetRoleHints: z.array(z.string().trim().min(1).max(64)).max(8).default([]),
     targetSectorHints: z.array(z.string().trim().min(1).max(64)).max(8).default([]),
+    seniorityHint: z.string().trim().min(1).max(64).optional(),
+    workModelHint: z.string().trim().min(1).max(64).optional(),
   })
   .strict();
 
