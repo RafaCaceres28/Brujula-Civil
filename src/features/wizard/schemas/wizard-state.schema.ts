@@ -10,6 +10,10 @@ import {
   translatedBlockSchema,
   translationQualityFlagSchema,
 } from '../../translation/schemas/translation.schema';
+import {
+  recommendationOutputSchema,
+  recommendationSelectionSchema,
+} from '../../recommendations/schemas/recommendation.schema';
 
 const sourceRefMapSchema = z.record(domainIdSchema, domainIdSchema);
 
@@ -75,6 +79,8 @@ export const employabilityFlowDraftSchema = z
     translation: translationTraceSchema.optional(),
     cvPreview: cvPreviewTraceSchema.optional(),
     export: pdfExportTraceSchema.optional(),
+    recommendations: recommendationOutputSchema.optional(),
+    selectedRecommendation: recommendationSelectionSchema.optional(),
     cvPreviewDraft: cvPreviewDraftSchema.optional(),
     lastUpdatedAt: timestampSchema.optional(),
     lastOnboardingStep: z.string().trim().min(1).max(64).optional(),
