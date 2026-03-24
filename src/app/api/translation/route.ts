@@ -1,5 +1,6 @@
 import {
   createValidationDomainError,
+  domainIdSchema,
   domainFailure,
   domainSuccess,
   toInternalDomainError,
@@ -18,6 +19,12 @@ import type { TranslationDomainError } from '../../../features/translation/types
 type TranslationRouteResult = DomainResult<TranslationOutput, TranslationDomainError>;
 
 const ROUTE_SOURCE = 'api.translation.route';
+
+const translationRouteInputSchema = translationInputSchema
+  .extend({
+    selectedRouteId: domainIdSchema,
+  })
+  .strict();
 
 function resolveRequestId(request: Request): string {
   return request.headers.get('x-request-id')?.trim() || crypto.randomUUID();
@@ -58,7 +65,7 @@ export async function POST(request: Request) {
     return responseForResult(result);
   }
 
-  const parsedInput = translationInputSchema.safeParse(payload);
+  const parsedInput = translationRouteInputSchema.safeParse(payload);
   if (!parsedInput.success) {
     const result = withMeta(
       domainFailure(
@@ -77,8 +84,18 @@ export async function POST(request: Request) {
         ? parsedInput.data.sourceProfile.snapshotId
         : parsedInput.data.sourceProfile.profileId;
 
-    const result = await generateTranslation(parsedInput.data);
-    return responseForResult(withMeta(result, meta), `profile:${sourceRef}`);
+    const result = await generateTranslation({
+      userId: parsedInput.data.userId,
+      sourceProfile: parsedInput.data.sourceProfile,
+      sourceLanguage: parsedInput.data.sourceLanguage,
+      targetLanguage: parsedInput.data.targetLanguage,
+      ...(parsedInput.data.tone ? { tone: parsedInput.data.tone } : {}),
+    });
+
+    return responseForResult(
+      withMeta(result, meta),
+      `profile:${sourceRef};route:${parsedInput.data.selectedRouteId}`,
+    );
   } catch (error) {
     const result = withMeta(
       domainFailure(toInternalDomainError(error, 'Failed to generate translation')),

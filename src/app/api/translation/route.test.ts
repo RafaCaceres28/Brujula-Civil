@@ -22,6 +22,7 @@ describe('translation route', () => {
         },
         sourceLanguage: 'es',
         targetLanguage: 'en',
+        selectedRouteId: 'route-operations-coordinator-logistics-mid',
       }),
     });
 
@@ -34,7 +35,9 @@ describe('translation route', () => {
     expect(body.data.sourceRefMap[body.data.blocks[0].id]).toBe('snapshot-1');
     expect(body.meta.source).toBe('api.translation.route');
     expect(body.meta.requestId).toBeTypeOf('string');
-    expect(response.headers.get('x-flow-trace')).toBe('profile:snapshot-1');
+    expect(response.headers.get('x-flow-trace')).toBe(
+      'profile:snapshot-1;route:route-operations-coordinator-logistics-mid',
+    );
   });
 
   it('returns DomainResult validation error for invalid boundary input', async () => {
@@ -53,5 +56,37 @@ describe('translation route', () => {
     expect(body.ok).toBe(false);
     expect(body.error.code).toBe('VALIDATION_ERROR');
     expect(body.meta.source).toBe('api.translation.route');
+  });
+
+  it('maps missing selectedRouteId to validation error', async () => {
+    const request = new Request('http://localhost/api/translation', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        userId: 'user-1',
+        sourceProfile: {
+          kind: 'profile_snapshot',
+          snapshotId: 'snapshot-1',
+          summary: 'Resumen profesional',
+          highlights: ['Experiencia en liderazgo'],
+        },
+        sourceLanguage: 'es',
+        targetLanguage: 'en',
+      }),
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.details?.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: ['selectedRouteId'],
+        }),
+      ]),
+    );
   });
 });

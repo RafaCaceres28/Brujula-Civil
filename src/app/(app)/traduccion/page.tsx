@@ -6,8 +6,13 @@ import { generateCv } from '@/features/cv/server/generate-cv';
 import { mapTranslationOutputToCvInput } from '@/features/cv/services/cv.mapper';
 import { mapProfileToTranslationSnapshot } from '@/features/profile/services/profile.mapper';
 import { getProfile } from '@/features/profile/server/get-profile';
+import { getCareerRoutesAction } from '@/features/recommendations/actions/get-career-routes-action';
+import { selectCareerRouteAction } from '@/features/recommendations/actions/select-career-route-action';
+import { CareerRouteShortlist } from '@/features/recommendations/components/career-route-shortlist';
+import type { RecommendationOutput } from '@/features/recommendations/schemas/recommendation.schema';
 import { TranslationPreview } from '@/features/translation/components/translation-preview';
 import { generateTranslation } from '@/features/translation/server/generate-translation';
+import { getOnboardingOverview } from '@/features/wizard/server/get-onboarding-overview';
 import { routes } from '@/lib/constants/routes';
 
 type TranslationPageContentProps = {
@@ -18,6 +23,8 @@ type TranslationPageContentProps = {
   cvSections?: Array<{ id: string; title: string; content: string; sourceBlockIds: string[] }>;
   profileSnapshotId?: string;
   previewCompleteness?: 'complete' | 'needs_review' | 'insufficient_data';
+  recommendations?: RecommendationOutput;
+  selectedRouteId?: string;
   error?: unknown;
 };
 
@@ -42,6 +49,15 @@ export function TranslationPageContent(props: TranslationPageContentProps) {
         error={props.error}
       />
 
+      {props.state === 'ready' && props.recommendations ? (
+        <CareerRouteShortlist
+          recommendationSetId={props.recommendations.recommendationSetId}
+          routes={props.recommendations.routes}
+          selectedRouteId={props.selectedRouteId}
+          onSelect={selectCareerRouteAction}
+        />
+      ) : null}
+
       {props.state === 'ready' ? (
         <Link
           href={`${routes.app.cv}/preview`}
@@ -56,6 +72,26 @@ export function TranslationPageContent(props: TranslationPageContentProps) {
 
 export default async function TranslationPage() {
   const user = await getRequiredUser(routes.app.translation);
+  const overview = await getOnboardingOverview(user.id);
+
+  const selectedRouteId = overview.employabilityFlow?.selectedRoute?.selectedRouteId;
+  let recommendations = overview.employabilityFlow?.recommendations;
+
+  if (!recommendations) {
+    const recommendationsResult = await getCareerRoutesAction();
+    if (!recommendationsResult.ok) {
+      return (
+        <TranslationPageContent
+          state="error"
+          retryHref={routes.app.translation}
+          error={recommendationsResult.error}
+        />
+      );
+    }
+
+    recommendations = recommendationsResult.data;
+  }
+
   const profile = await getProfile(user.id);
 
   if (!profile) {
@@ -108,6 +144,8 @@ export default async function TranslationPage() {
       cvSections={cvPreviewResult.data.sections}
       profileSnapshotId={profileSnapshot.snapshotId}
       previewCompleteness={cvPreviewResult.data.completeness}
+      recommendations={recommendations}
+      selectedRouteId={selectedRouteId}
     />
   );
 }

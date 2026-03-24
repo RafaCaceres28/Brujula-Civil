@@ -69,20 +69,20 @@
 
 ### Tests for User Story 2
 
-- [ ] T023 [P] [US2] Extender pruebas de UI para loading/empty/error y render de shortlist en `src/app/(app)/traduccion/page.test.tsx`.
-- [ ] T024 [P] [US2] Crear pruebas de seleccion y persistencia de ruta en `src/features/recommendations/server/select-career-route.test.ts`.
-- [ ] T025 [P] [US2] Extender pruebas de reingreso con `selectedRoute` en `src/features/wizard/server/get-onboarding-overview.test.ts`.
-- [ ] T026 [P] [US2] Crear pruebas de interaccion de shortlist (seleccion/cambio) en `src/features/recommendations/components/career-route-shortlist.test.tsx`.
+- [x] T023 [P] [US2] Extender pruebas de UI para loading/empty/error y render de shortlist en `src/app/(app)/traduccion/page.test.tsx`.
+- [x] T024 [P] [US2] Crear pruebas de seleccion y persistencia de ruta en `src/features/recommendations/server/select-career-route.test.ts`.
+- [x] T025 [P] [US2] Extender pruebas de reingreso con `selectedRoute` en `src/features/wizard/server/get-onboarding-overview.test.ts`.
+- [x] T026 [P] [US2] Crear pruebas de interaccion de shortlist (seleccion/cambio) en `src/features/recommendations/components/career-route-shortlist.test.tsx`.
 
 ### Implementation for User Story 2
 
-- [ ] T027 [US2] Implementar componente de shortlist con razones y seleccion en `src/features/recommendations/components/career-route-shortlist.tsx`.
-- [ ] T028 [US2] Implementar action de seleccion de ruta y validacion de frontera en `src/features/recommendations/actions/select-career-route-action.ts`.
-- [ ] T029 [US2] Integrar shortlist + seleccion + estados loading/empty/error en `src/app/(app)/traduccion/page.tsx`.
-- [ ] T030 [US2] Persistir `selectedRoute` y `recommendationSetId` en flujo activo en `src/features/recommendations/server/select-career-route.ts`.
-- [ ] T031 [US2] Recuperar contexto de seleccion al cargar traduccion en `src/features/translation/server/get-translation.ts`.
-- [ ] T032 [US2] Aplicar guard de avance cuando falta seleccion requerida en `src/app/api/translation/route.ts`.
-- [ ] T033 [US2] Validar mapeo de error de seleccion faltante en `src/app/api/translation/route.test.ts`.
+- [x] T027 [US2] Implementar componente de shortlist con razones y seleccion en `src/features/recommendations/components/career-route-shortlist.tsx`.
+- [x] T028 [US2] Implementar action de seleccion de ruta y validacion de frontera en `src/features/recommendations/actions/select-career-route-action.ts`.
+- [x] T029 [US2] Integrar shortlist + seleccion + estados loading/empty/error en `src/app/(app)/traduccion/page.tsx`.
+- [x] T030 [US2] Persistir `selectedRoute` y `recommendationSetId` en flujo activo en `src/features/recommendations/server/select-career-route.ts`.
+- [x] T031 [US2] Recuperar contexto de seleccion al cargar traduccion en `src/features/translation/server/get-translation.ts`.
+- [x] T032 [US2] Aplicar guard de avance cuando falta seleccion requerida en `src/app/api/translation/route.ts`.
+- [x] T033 [US2] Validar mapeo de error de seleccion faltante en `src/app/api/translation/route.test.ts`.
 
 ---
 

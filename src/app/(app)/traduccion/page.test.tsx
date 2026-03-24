@@ -1,6 +1,7 @@
-import { act } from 'react';
+import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
+import { CareerRouteShortlist } from '../../../features/recommendations/components/career-route-shortlist';
 import {
   TranslationPreview,
   type TranslationPreviewProps,
@@ -23,14 +24,18 @@ afterEach(() => {
   root = null;
 });
 
-function renderContent(props: TranslationPreviewProps) {
+function renderNode(node: ReactNode) {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
 
   act(() => {
-    root?.render(<TranslationPreview {...props} />);
+    root?.render(node);
   });
+}
+
+function renderContent(props: TranslationPreviewProps) {
+  renderNode(<TranslationPreview {...props} />);
 }
 
 describe('/traduccion page UI states', () => {
@@ -71,5 +76,45 @@ describe('/traduccion page UI states', () => {
     );
     expect(alert?.textContent).not.toContain('supabase timeout with stack trace');
     expect(retryLink?.textContent).toContain('Reintentar');
+  });
+
+  it('renders recommendation shortlist in ready state', () => {
+    renderNode(
+      <CareerRouteShortlist
+        recommendationSetId="recset-snapshot-1-20260324010101"
+        routes={[
+          {
+            routeId: 'route-operations-coordinator-logistics-mid',
+            roleId: 'operations-coordinator',
+            sectorId: 'logistics',
+            seniorityId: 'mid',
+            reasonSummary: 'Se recomienda por coincidencias de logistica y coordinacion.',
+            matchedSignals: ['TARGET_ROLE_HINT'],
+          },
+          {
+            routeId: 'route-project-manager-consulting-mid',
+            roleId: 'project-manager',
+            sectorId: 'consulting',
+            seniorityId: 'mid',
+            reasonSummary: 'Se recomienda por coincidencias de planificacion y liderazgo.',
+            matchedSignals: ['TARGET_SECTOR_HINT'],
+          },
+          {
+            routeId: 'route-team-lead-technology-mid',
+            roleId: 'team-lead',
+            sectorId: 'technology',
+            seniorityId: 'mid',
+            reasonSummary: 'Se recomienda por supervision y comunicacion.',
+            matchedSignals: ['LEADERSHIP_MATCH'],
+          },
+        ]}
+        selectedRouteId="route-project-manager-consulting-mid"
+      />,
+    );
+
+    expect(container?.textContent).toContain('Rutas sugeridas para tu transicion');
+    expect(container?.textContent).toContain('operations-coordinator');
+    expect(container?.textContent).toContain('project-manager');
+    expect(container?.textContent).toContain('Seleccionada');
   });
 });

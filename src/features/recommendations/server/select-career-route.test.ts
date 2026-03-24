@@ -6,7 +6,9 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }));
 
-function createSupabaseMock() {
+function createSupabaseMock(options?: { withRecommendations?: boolean }) {
+  const withRecommendations = options?.withRecommendations ?? true;
+
   const calls: {
     updateDraft?: Record<string, unknown>;
   } = {};
@@ -26,40 +28,44 @@ function createSupabaseMock() {
                   data: {
                     aggregated_draft_jsonb: {
                       employabilityFlow: {
-                        recommendations: {
-                          recommendationSetId: 'recset-snapshot-1-20260324010101',
-                          generatedAt: '2026-03-24T01:01:01.000Z',
-                          sourceSnapshotId: 'snapshot-1',
-                          routes: [
-                            {
-                              routeId: 'route-operations-coordinator-logistics-mid',
-                              roleId: 'operations-coordinator',
-                              sectorId: 'logistics',
-                              seniorityId: 'mid',
-                              reasonSummary:
-                                'Se recomienda por coincidencias de logistica y coordinacion.',
-                              matchedSignals: ['TARGET_ROLE_HINT'],
-                            },
-                            {
-                              routeId: 'route-project-manager-consulting-mid',
-                              roleId: 'project-manager',
-                              sectorId: 'consulting',
-                              seniorityId: 'mid',
-                              reasonSummary:
-                                'Se recomienda por coincidencias de planificacion y liderazgo.',
-                              matchedSignals: ['TARGET_SECTOR_HINT'],
-                            },
-                            {
-                              routeId: 'route-team-lead-technology-mid',
-                              roleId: 'team-lead',
-                              sectorId: 'technology',
-                              seniorityId: 'mid',
-                              reasonSummary:
-                                'Se recomienda por coincidencias de supervision y comunicacion.',
-                              matchedSignals: ['LEADERSHIP_MATCH'],
-                            },
-                          ],
-                        },
+                        ...(withRecommendations
+                          ? {
+                              recommendations: {
+                                recommendationSetId: 'recset-snapshot-1-20260324010101',
+                                generatedAt: '2026-03-24T01:01:01.000Z',
+                                sourceSnapshotId: 'snapshot-1',
+                                routes: [
+                                  {
+                                    routeId: 'route-operations-coordinator-logistics-mid',
+                                    roleId: 'operations-coordinator',
+                                    sectorId: 'logistics',
+                                    seniorityId: 'mid',
+                                    reasonSummary:
+                                      'Se recomienda por coincidencias de logistica y coordinacion.',
+                                    matchedSignals: ['TARGET_ROLE_HINT'],
+                                  },
+                                  {
+                                    routeId: 'route-project-manager-consulting-mid',
+                                    roleId: 'project-manager',
+                                    sectorId: 'consulting',
+                                    seniorityId: 'mid',
+                                    reasonSummary:
+                                      'Se recomienda por coincidencias de planificacion y liderazgo.',
+                                    matchedSignals: ['TARGET_SECTOR_HINT'],
+                                  },
+                                  {
+                                    routeId: 'route-team-lead-technology-mid',
+                                    roleId: 'team-lead',
+                                    sectorId: 'technology',
+                                    seniorityId: 'mid',
+                                    reasonSummary:
+                                      'Se recomienda por coincidencias de supervision y comunicacion.',
+                                    matchedSignals: ['LEADERSHIP_MATCH'],
+                                  },
+                                ],
+                              },
+                            }
+                          : {}),
                       },
                     },
                   },
@@ -101,6 +107,11 @@ describe('selectCareerRoute', () => {
     const mergedDraft = calls.updateDraft?.aggregated_draft_jsonb as Record<string, unknown>;
     expect(mergedDraft.employabilityFlow).toMatchObject({
       selectedRoute: {
+        recommendationSetId: 'recset-snapshot-1-20260324010101',
+        selectedRouteId: 'route-operations-coordinator-logistics-mid',
+      },
+      selectedRecommendation: {
+        recommendationSetId: 'recset-snapshot-1-20260324010101',
         selectedRouteId: 'route-operations-coordinator-logistics-mid',
       },
     });
@@ -122,5 +133,24 @@ describe('selectCareerRoute', () => {
     }
 
     expect(result.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('rejects selection when there is no active recommendation shortlist', async () => {
+    const { client } = createSupabaseMock({ withRecommendations: false });
+    vi.mocked(createClient).mockResolvedValue(client as never);
+
+    const result = await selectCareerRoute({
+      userId: 'user-1',
+      recommendationSetId: 'recset-snapshot-1-20260324010101',
+      selectedRouteId: 'route-operations-coordinator-logistics-mid',
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+
+    expect(result.error.code).toBe('VALIDATION_ERROR');
+    expect(result.error.message).toContain('No active recommendation shortlist');
   });
 });
