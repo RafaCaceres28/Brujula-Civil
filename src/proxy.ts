@@ -30,6 +30,10 @@ const PRIVATE_ROUTE_PREFIXES: readonly string[] = [
 
 export type ProxyDecision = 'allow' | 'redirect-login' | 'redirect-dashboard';
 
+type AuthResultErrorLike = {
+  message?: string;
+};
+
 export function getSafeRedirectedFrom(pathname: string, search: string): string {
   return sanitizeNext(`${pathname}${search}`, routes.app.dashboard);
 }
@@ -62,6 +66,17 @@ export function resolveProxyDecision(pathname: string, isAuthenticated: boolean)
   return 'allow';
 }
 
+export function resolveIsAuthenticated(
+  user: { id: string } | null,
+  error: AuthResultErrorLike | null,
+): boolean {
+  if (error) {
+    return false;
+  }
+
+  return Boolean(user);
+}
+
 export async function proxy(request: NextRequest) {
   const { url, anonKey } = getSupabasePublicEnv();
   let response = NextResponse.next({
@@ -90,11 +105,12 @@ export async function proxy(request: NextRequest) {
   // No metas lógica entre createServerClient y getUser().
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
 
-  const decision = resolveProxyDecision(pathname, Boolean(user));
+  const decision = resolveProxyDecision(pathname, resolveIsAuthenticated(user, error));
 
   if (decision === 'redirect-login') {
     const url = request.nextUrl.clone();
