@@ -46,7 +46,46 @@ describe('getOnboardingOverview', () => {
       last_completed_step: 'military_background',
       completion_percent: 20,
       is_completed: false,
-      aggregated_draft_jsonb: {},
+      aggregated_draft_jsonb: {
+        employabilityFlow: {
+          recommendations: {
+            recommendationSetId: 'recset-snapshot-1-20260324010101',
+            generatedAt: '2026-03-24T01:01:01.000Z',
+            sourceSnapshotId: 'snapshot-1',
+            routes: [
+              {
+                routeId: 'route-operations-coordinator-logistics-mid',
+                roleId: 'operations-coordinator',
+                sectorId: 'logistics',
+                seniorityId: 'mid',
+                reasonSummary: 'Se recomienda por coincidencias operativas y logisticas.',
+                matchedSignals: ['TARGET_ROLE_HINT'],
+              },
+              {
+                routeId: 'route-project-manager-consulting-mid',
+                roleId: 'project-manager',
+                sectorId: 'consulting',
+                seniorityId: 'mid',
+                reasonSummary: 'Se recomienda por coincidencias de planificacion y liderazgo.',
+                matchedSignals: ['TARGET_SECTOR_HINT'],
+              },
+              {
+                routeId: 'route-team-lead-technology-mid',
+                roleId: 'team-lead',
+                sectorId: 'technology',
+                seniorityId: 'mid',
+                reasonSummary: 'Se recomienda por experiencia de coordinacion de equipos.',
+                matchedSignals: ['LEADERSHIP_MATCH'],
+              },
+            ],
+          },
+          selectedRecommendation: {
+            recommendationSetId: 'recset-snapshot-1-20260324010101',
+            selectedRouteId: 'route-operations-coordinator-logistics-mid',
+            selectedAt: '2026-03-24T01:02:03.000Z',
+          },
+        },
+      },
       started_at: '2026-01-01T00:00:00.000Z',
       last_saved_at: '2026-01-01T00:00:00.000Z',
       completed_at: null,
@@ -97,6 +136,12 @@ describe('getOnboardingOverview', () => {
     expect(result.steps).toEqual(steps);
     expect(result.completedStepKeys).toEqual(['military_background']);
     expect(result.draft.militar.branch).toBeNull();
+    expect(result.employabilityFlow?.recommendations?.recommendationSetId).toBe(
+      'recset-snapshot-1-20260324010101',
+    );
+    expect(result.employabilityFlow?.selectedRoute?.selectedRouteId).toBe(
+      'route-operations-coordinator-logistics-mid',
+    );
   });
 
   it('throws a descriptive error when state query fails', async () => {

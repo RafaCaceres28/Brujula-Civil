@@ -80,6 +80,7 @@ export const employabilityFlowDraftSchema = z
     cvPreview: cvPreviewTraceSchema.optional(),
     export: pdfExportTraceSchema.optional(),
     recommendations: recommendationOutputSchema.optional(),
+    selectedRoute: recommendationSelectionSchema.optional(),
     selectedRecommendation: recommendationSelectionSchema.optional(),
     cvPreviewDraft: cvPreviewDraftSchema.optional(),
     lastUpdatedAt: timestampSchema.optional(),

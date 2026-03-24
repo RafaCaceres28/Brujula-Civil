@@ -50,6 +50,45 @@ function createSupabaseMock() {
                           },
                         }),
                         employabilityFlow: {
+                          recommendations: {
+                            recommendationSetId: 'recset-snapshot-1-20260324010101',
+                            generatedAt: '2026-03-24T01:01:01.000Z',
+                            sourceSnapshotId: 'snapshot-1',
+                            routes: [
+                              {
+                                routeId: 'route-operations-coordinator-logistics-mid',
+                                roleId: 'operations-coordinator',
+                                sectorId: 'logistics',
+                                seniorityId: 'mid',
+                                reasonSummary:
+                                  'Se recomienda por coincidencias de logistica y coordinacion.',
+                                matchedSignals: ['TARGET_ROLE_HINT'],
+                              },
+                              {
+                                routeId: 'route-project-manager-consulting-mid',
+                                roleId: 'project-manager',
+                                sectorId: 'consulting',
+                                seniorityId: 'mid',
+                                reasonSummary:
+                                  'Se recomienda por coincidencias de planificacion y liderazgo.',
+                                matchedSignals: ['TARGET_SECTOR_HINT'],
+                              },
+                              {
+                                routeId: 'route-team-lead-technology-mid',
+                                roleId: 'team-lead',
+                                sectorId: 'technology',
+                                seniorityId: 'mid',
+                                reasonSummary:
+                                  'Se recomienda por coincidencias de supervision y comunicacion.',
+                                matchedSignals: ['LEADERSHIP_MATCH'],
+                              },
+                            ],
+                          },
+                          selectedRoute: {
+                            recommendationSetId: 'recset-snapshot-1-20260324010101',
+                            selectedRouteId: 'route-operations-coordinator-logistics-mid',
+                            selectedAt: '2026-03-24T01:02:03.000Z',
+                          },
                           cvPreviewDraft: {
                             previewVersionId: 'preview-v1',
                             isUserEdited: true,
@@ -121,6 +160,12 @@ describe('saveOnboardingStep', () => {
       responsibilityAreas: ['operations'],
     });
     expect(mergedDraft.employabilityFlow).toMatchObject({
+      recommendations: {
+        recommendationSetId: 'recset-snapshot-1-20260324010101',
+      },
+      selectedRoute: {
+        selectedRouteId: 'route-operations-coordinator-logistics-mid',
+      },
       cvPreviewDraft: {
         previewVersionId: 'preview-v1',
       },

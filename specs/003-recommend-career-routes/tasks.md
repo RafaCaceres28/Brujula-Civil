@@ -30,12 +30,12 @@
 - [x] T006 Extender estado de flujo con shortlist y ruta elegida en `src/features/wizard/types/wizard-state.types.ts`.
 - [x] T007 Extender validacion de flujo con shortlist y ruta elegida en `src/features/wizard/schemas/wizard-state.schema.ts`.
 - [x] T008 Exportar contratos/schemas de recommendations en `src/lib/contracts/index.ts`.
-- [ ] T009 Implementar servicio de reglas deterministicas y reason codes en `src/features/recommendations/services/route-recommendation-rules.ts`.
-- [ ] T010 Implementar orchestrator server para generar shortlist con `DomainResult` en `src/features/recommendations/server/generate-career-routes.ts`.
-- [ ] T011 Implementar persistencia de seleccion de ruta en draft de usuario en `src/features/recommendations/server/select-career-route.ts`.
-- [ ] T012 Ajustar merge defensivo de `employabilityFlow` al guardar wizard en `src/features/wizard/server/save-onboarding-step.ts`.
-- [ ] T013 Ajustar recuperacion de `recommendations/selectedRoute` al leer overview en `src/features/wizard/server/get-onboarding-overview.ts`.
-- [ ] T014 Validar compatibilidad de schema extendido con draft existente en `src/features/wizard/schemas/wizard-state.schema.test.ts`.
+- [x] T009 Implementar servicio de reglas deterministicas y reason codes en `src/features/recommendations/services/route-recommendation-rules.ts`.
+- [x] T010 Implementar orchestrator server para generar shortlist con `DomainResult` en `src/features/recommendations/server/generate-career-routes.ts`.
+- [x] T011 Implementar persistencia de seleccion de ruta en draft de usuario en `src/features/recommendations/server/select-career-route.ts`.
+- [x] T012 Ajustar merge defensivo de `employabilityFlow` al guardar wizard en `src/features/wizard/server/save-onboarding-step.ts`.
+- [x] T013 Ajustar recuperacion de `recommendations/selectedRoute` al leer overview en `src/features/wizard/server/get-onboarding-overview.ts`.
+- [x] T014 Validar compatibilidad de schema extendido con draft existente en `src/features/wizard/schemas/wizard-state.schema.test.ts`.
 
 **Checkpoint**: Foundation complete; user stories can proceed.
 

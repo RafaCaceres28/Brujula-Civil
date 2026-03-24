@@ -5,6 +5,7 @@ import type {
 } from '@/types/database.types';
 import type { z } from 'zod';
 import type { WizardStepSlug } from '../config/wizard-steps';
+import type { EmployabilityFlowDraft } from './wizard-state.types';
 import type {
   competenciasStepSchema,
   experienciaStepSchema,
@@ -38,4 +39,5 @@ export type OnboardingOverview = {
   steps: WizardStepStateRow[];
   completedStepKeys: WizardStepKeyDb[];
   draft: OnboardingDraft;
+  employabilityFlow?: EmployabilityFlowDraft;
 };
