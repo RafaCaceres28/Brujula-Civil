@@ -49,21 +49,21 @@
 
 ### Tests for US1
 
-- [ ] T016 [P] [US1] Extender test de generacion para exigir metadata explicativa completa por ruta en `src/features/recommendations/server/generate-career-routes.test.ts`.
-- [ ] T017 [P] [US1] Extender test de action de shortlist para contrato explicable en `src/features/recommendations/actions/get-career-routes-action.test.ts`.
-- [ ] T018 [P] [US1] Extender test UI de shortlist para `reasonSummary`, `fitLabel` y strengths en `src/features/recommendations/components/career-route-shortlist.test.tsx`.
-- [ ] T019 [P] [US1] Extender test de pagina traduccion para estados explicables user-safe en `src/app/(app)/traduccion/page.test.tsx`.
+- [x] T016 [P] [US1] Extender test de generacion para exigir metadata explicativa completa por ruta en `src/features/recommendations/server/generate-career-routes.test.ts`.
+- [x] T017 [P] [US1] Extender test de action de shortlist para contrato explicable en `src/features/recommendations/actions/get-career-routes-action.test.ts`.
+- [x] T018 [P] [US1] Extender test UI de shortlist para `reasonSummary`, `fitLabel` y strengths en `src/features/recommendations/components/career-route-shortlist.test.tsx`.
+- [x] T019 [P] [US1] Extender test de pagina traduccion para estados explicables user-safe en `src/app/(app)/traduccion/page.test.tsx`.
 
 ### Implementation for US1
 
-- [ ] T020 [US1] Generar `explanation` por ruta desde senales/rules en `src/features/recommendations/server/generate-career-routes.ts`.
-- [ ] T021 [US1] Ajustar normalizacion de input para exponer senales explicativas en `src/features/recommendations/services/build-recommendation-input.ts`.
-- [ ] T022 [US1] Ajustar contrato de action de shortlist para metadata explicable en `src/features/recommendations/actions/get-career-routes-action.ts`.
-- [ ] T023 [US1] Renderizar summary/fit/strengths por ruta en `src/features/recommendations/components/career-route-shortlist.tsx`.
-- [ ] T024 [US1] Integrar render explicable y fallback seguro en `src/app/(app)/traduccion/page.tsx`.
-- [ ] T025 [US1] Anadir copy de fallback no tecnico para explicabilidad incompleta en `src/features/translation/components/translation-preview.tsx`.
-- [ ] T026 [US1] Validar mensajes user-safe de explicabilidad en handler de traduccion en `src/app/api/translation/route.ts`.
-- [ ] T027 [US1] Extender test del handler de traduccion para fallback seguro de explicabilidad en `src/app/api/translation/route.test.ts`.
+- [x] T020 [US1] Generar `explanation` por ruta desde senales/rules en `src/features/recommendations/server/generate-career-routes.ts`.
+- [x] T021 [US1] Ajustar normalizacion de input para exponer senales explicativas en `src/features/recommendations/services/build-recommendation-input.ts`.
+- [x] T022 [US1] Ajustar contrato de action de shortlist para metadata explicable en `src/features/recommendations/actions/get-career-routes-action.ts`.
+- [x] T023 [US1] Renderizar summary/fit/strengths por ruta en `src/features/recommendations/components/career-route-shortlist.tsx`.
+- [x] T024 [US1] Integrar render explicable y fallback seguro en `src/app/(app)/traduccion/page.tsx`.
+- [x] T025 [US1] Anadir copy de fallback no tecnico para explicabilidad incompleta en `src/features/translation/components/translation-preview.tsx`.
+- [x] T026 [US1] Validar mensajes user-safe de explicabilidad en handler de traduccion en `src/app/api/translation/route.ts`.
+- [x] T027 [US1] Extender test del handler de traduccion para fallback seguro de explicabilidad en `src/app/api/translation/route.test.ts`.
 
 ---
 

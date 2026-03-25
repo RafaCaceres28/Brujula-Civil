@@ -16,6 +16,7 @@ type TranslationPreviewProps = {
   traceability?: TranslationTraceability;
   error?: unknown;
   retryHref?: string;
+  explainabilityStatus?: 'complete' | 'partial';
 };
 
 const USER_SAFE_ERROR_MESSAGE_BY_CODE: Record<DomainErrorCode, string> = {
@@ -123,6 +124,16 @@ export function TranslationPreview(props: TranslationPreviewProps) {
 
   return (
     <>
+      {props.explainabilityStatus === 'partial' ? (
+        <section className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+          <h2 className="text-base font-semibold text-slate-900">Explicacion parcial de rutas</h2>
+          <p className="text-sm text-slate-700">
+            Algunas recomendaciones no tienen todos los detalles aun. Puedes avanzar y ajustar tu
+            eleccion cuando tengas mas contexto.
+          </p>
+        </section>
+      ) : null}
+
       <section className="space-y-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-base font-semibold text-slate-900">Perfil fuente</h2>
         <p className="text-sm text-slate-700">{props.profileSummary ?? 'Sin resumen cargado.'}</p>

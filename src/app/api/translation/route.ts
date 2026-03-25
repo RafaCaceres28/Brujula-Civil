@@ -18,6 +18,7 @@ import type { TranslationDomainError } from '../../../features/translation/types
 type TranslationRouteResult = DomainResult<TranslationOutput, TranslationDomainError>;
 
 const ROUTE_SOURCE = 'api.translation.route';
+const DOMAIN_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:_-]*$/;
 
 const translationRouteInputSchema = translationInputSchema.strict();
 
@@ -37,12 +38,66 @@ function createMeta(requestId: string): DomainMeta {
   };
 }
 
-function responseForResult(result: TranslationRouteResult, traceTag?: string) {
+function responseForResult(
+  result: TranslationRouteResult,
+  options?: { traceTag?: string; explainabilityFallbackUsed?: boolean },
+) {
   const status = getHttpStatusForDomainResult(result);
+
+  const headers: HeadersInit = {};
+  if (options?.traceTag) {
+    headers['x-flow-trace'] = options.traceTag;
+  }
+
+  if (options?.explainabilityFallbackUsed) {
+    headers['x-explainability-status'] = 'fallback';
+  }
+
   return NextResponse.json(result, {
     status,
-    ...(traceTag ? { headers: { 'x-flow-trace': traceTag } } : {}),
+    ...(Object.keys(headers).length > 0 ? { headers } : {}),
   });
+}
+
+function sanitizeExplainabilityInput(payload: unknown): {
+  payload: unknown;
+  explainabilityFallbackUsed: boolean;
+} {
+  if (typeof payload !== 'object' || payload === null || !('selectedRouteId' in payload)) {
+    return { payload, explainabilityFallbackUsed: false };
+  }
+
+  const payloadRecord = payload as Record<string, unknown>;
+  const selectedRouteId = payloadRecord.selectedRouteId;
+
+  if (selectedRouteId === undefined) {
+    return { payload, explainabilityFallbackUsed: false };
+  }
+
+  if (typeof selectedRouteId !== 'string') {
+    const safePayload = { ...payloadRecord };
+    delete safePayload.selectedRouteId;
+    return { payload: safePayload, explainabilityFallbackUsed: true };
+  }
+
+  const normalizedRouteId = selectedRouteId.trim();
+  if (!normalizedRouteId || !DOMAIN_ID_PATTERN.test(normalizedRouteId)) {
+    const safePayload = { ...payloadRecord };
+    delete safePayload.selectedRouteId;
+    return { payload: safePayload, explainabilityFallbackUsed: true };
+  }
+
+  if (normalizedRouteId === selectedRouteId) {
+    return { payload, explainabilityFallbackUsed: false };
+  }
+
+  return {
+    payload: {
+      ...payloadRecord,
+      selectedRouteId: normalizedRouteId,
+    },
+    explainabilityFallbackUsed: false,
+  };
 }
 
 function buildTraceTag(
@@ -65,6 +120,7 @@ export async function POST(request: Request) {
   const requestId = resolveRequestId(request);
   const meta = createMeta(requestId);
   let payload: unknown;
+  let explainabilityFallbackUsed = false;
 
   try {
     payload = await request.json();
@@ -76,7 +132,10 @@ export async function POST(request: Request) {
     return responseForResult(result);
   }
 
-  const parsedInput = translationRouteInputSchema.safeParse(payload);
+  const sanitizedPayload = sanitizeExplainabilityInput(payload);
+  explainabilityFallbackUsed = sanitizedPayload.explainabilityFallbackUsed;
+
+  const parsedInput = translationRouteInputSchema.safeParse(sanitizedPayload.payload);
   if (!parsedInput.success) {
     const result = withMeta(
       domainFailure(
@@ -86,7 +145,7 @@ export async function POST(request: Request) {
       ),
       meta,
     );
-    return responseForResult(result);
+    return responseForResult(result, { explainabilityFallbackUsed });
   }
 
   try {
@@ -108,12 +167,15 @@ export async function POST(request: Request) {
 
     const traceTag = buildTraceTag(sourceRef, parsedInput.data.selectedRouteId, true);
 
-    return responseForResult(withMeta(result, meta), traceTag);
+    return responseForResult(withMeta(result, meta), {
+      traceTag,
+      explainabilityFallbackUsed,
+    });
   } catch (error) {
     const result = withMeta(
       domainFailure(toInternalDomainError(error, 'Failed to generate translation')),
       meta,
     );
-    return responseForResult(result);
+    return responseForResult(result, { explainabilityFallbackUsed });
   }
 }

@@ -25,6 +25,7 @@ type TranslationPageContentProps = {
   previewCompleteness?: 'complete' | 'needs_review' | 'insufficient_data';
   recommendations?: RecommendationOutput;
   selectedRouteId?: string;
+  explainabilityStatus?: 'complete' | 'partial';
   error?: unknown;
 };
 
@@ -46,6 +47,7 @@ export function TranslationPageContent(props: TranslationPageContentProps) {
           profileSnapshotId: props.profileSnapshotId,
           previewCompleteness: props.previewCompleteness,
         }}
+        explainabilityStatus={props.explainabilityStatus}
         error={props.error}
       />
 
@@ -135,6 +137,13 @@ export default async function TranslationPage() {
     );
   }
 
+  const hasExplainabilityGaps = recommendations.routes.some(
+    (route) =>
+      !route.explanation ||
+      route.explanation.explanationKeywords.length === 0 ||
+      route.explanation.decisionGuidance.trim().length === 0,
+  );
+
   return (
     <TranslationPageContent
       state="ready"
@@ -146,6 +155,7 @@ export default async function TranslationPage() {
       previewCompleteness={cvPreviewResult.data.completeness}
       recommendations={recommendations}
       selectedRouteId={selectedRouteId}
+      explainabilityStatus={hasExplainabilityGaps ? 'partial' : 'complete'}
     />
   );
 }

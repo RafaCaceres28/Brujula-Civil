@@ -83,4 +83,32 @@ describe('translation route', () => {
     expect(body.data.selectedRouteId).toBeUndefined();
     expect(response.headers.get('x-flow-trace')).toBe('profile:snapshot-1;route:legacy-compatible');
   });
+
+  it('uses safe explainability fallback when selectedRouteId format is invalid', async () => {
+    const request = new Request('http://localhost/api/translation', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        userId: 'user-1',
+        sourceProfile: {
+          kind: 'profile_snapshot',
+          snapshotId: 'snapshot-1',
+          summary: 'Resumen profesional',
+          highlights: ['Experiencia en liderazgo'],
+        },
+        sourceLanguage: 'es',
+        targetLanguage: 'en',
+        selectedRouteId: 'route invalida con espacios',
+      }),
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.selectedRouteId).toBeUndefined();
+    expect(response.headers.get('x-flow-trace')).toBe('profile:snapshot-1;route:legacy-compatible');
+    expect(response.headers.get('x-explainability-status')).toBe('fallback');
+  });
 });

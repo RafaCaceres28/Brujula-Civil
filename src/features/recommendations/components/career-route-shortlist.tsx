@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import type { RecommendationRoute } from '../schemas/recommendation.schema';
+import { normalizeRouteExplainability } from '../services/recommendation-explanation-fallback';
 
 type SelectionInput = {
   recommendationSetId: string;
@@ -48,18 +49,28 @@ export function CareerRouteShortlist(props: CareerRouteShortlistProps) {
       ) : (
         <ul className="space-y-2">
           {props.routes.map((route) => {
-            const isSelected = activeRouteId === route.routeId;
+            const normalizedRoute = normalizeRouteExplainability(route);
+            const explanation = normalizedRoute.explanation!;
+            const hadIncompleteExplanation =
+              !route.explanation ||
+              route.explanation.explanationKeywords.length === 0 ||
+              route.explanation.decisionGuidance.trim().length === 0;
+            const isSelected = activeRouteId === normalizedRoute.routeId;
+            const fitLabel = `Ajuste ${explanation.fitLabel}`;
+            const strengths = explanation.explanationKeywords.join(', ');
 
             return (
               <li
-                key={route.routeId}
-                data-route-id={route.routeId}
+                key={normalizedRoute.routeId}
+                data-route-id={normalizedRoute.routeId}
                 className={`rounded-lg border p-3 ${
                   isSelected ? 'border-slate-900 bg-slate-50' : 'border-slate-200 bg-white'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-medium text-slate-900">{formatRouteLabel(route)}</p>
+                  <p className="text-sm font-medium text-slate-900">
+                    {formatRouteLabel(normalizedRoute)}
+                  </p>
                   {isSelected ? (
                     <span data-selected-badge className="text-xs font-semibold text-slate-900">
                       Seleccionada
@@ -67,13 +78,24 @@ export function CareerRouteShortlist(props: CareerRouteShortlistProps) {
                   ) : null}
                 </div>
 
-                <p className="mt-1 text-sm text-slate-700">{route.reasonSummary}</p>
+                <p className="mt-1 text-sm text-slate-700">{explanation.reasonSummary}</p>
+                <p className="mt-2 inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+                  {fitLabel}
+                </p>
+                <p className="mt-2 text-sm text-slate-700">{explanation.decisionGuidance}</p>
+                <p className="mt-2 text-xs text-slate-600">Fortalezas detectadas: {strengths}</p>
+
+                {hadIncompleteExplanation ? (
+                  <p className="mt-2 text-xs text-amber-700">
+                    Aun no tenemos suficientes detalles para explicar esta ruta con precision.
+                  </p>
+                ) : null}
 
                 <button
                   type="button"
                   data-action="select-route"
                   onClick={() => {
-                    setActiveRouteId(route.routeId);
+                    setActiveRouteId(normalizedRoute.routeId);
 
                     if (!props.onSelect) {
                       return;
@@ -82,7 +104,7 @@ export function CareerRouteShortlist(props: CareerRouteShortlistProps) {
                     startTransition(() => {
                       void props.onSelect?.({
                         recommendationSetId: props.recommendationSetId,
-                        selectedRouteId: route.routeId,
+                        selectedRouteId: normalizedRoute.routeId,
                       });
                     });
                   }}
