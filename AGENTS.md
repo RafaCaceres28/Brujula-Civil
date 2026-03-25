@@ -163,6 +163,8 @@ Si aparecen esos archivos, actualizar este AGENTS.md de inmediato.
 
 ## Active Technologies
 
+- Supabase Postgres (`user_wizard_state.aggregated_draft_jsonb.employabilityFlow`) (004-explicabilidad-rutas)
+
 - Supabase Postgres (`user_wizard_state.aggregated_draft_jsonb`) (003-recommend-career-routes)
 
 - TypeScript (^5, strict mode) + Next.js (App Router), React, Supabase SSR/client, Zod (001-unify-domain-contracts)
