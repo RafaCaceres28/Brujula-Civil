@@ -117,12 +117,12 @@
 
 **Purpose**: Cubrir edge cases y reforzar trazabilidad sin ampliar alcance fuera de 004.
 
-- [ ] T048 [P] Validar caso de context snapshot desactualizado por cambio de `recommendationSetId` en `src/features/recommendations/server/select-career-route.test.ts`.
-- [ ] T049 [P] Validar caso de explicabilidad parcial en pipeline contractual en `src/features/translation/server/profile-translation-cv-pdf.contract.test.ts`.
-- [ ] T050 [P] Validar continuidad de trace en PDF handler (`selectedRouteId` + explanation meta) en `src/app/api/cv/pdf/route.test.ts`.
-- [ ] T051 Implementar marcador de contexto explicativo stale y accion de reproceso en `src/features/recommendations/server/select-career-route.ts`.
-- [ ] T052 Implementar trazabilidad explanation->translation->preview->pdf en `src/features/translation/server/profile-translation-cv-pdf.contract.test.ts`.
-- [ ] T053 Actualizar no-alcance explicitos (sin LinkedIn/job-board/matching externo/scoring complejo/coaching/rediseno wizard) en `specs/004-explicabilidad-rutas/quickstart.md`.
+- [x] T048 [P] Validar caso de context snapshot desactualizado por cambio de `recommendationSetId` en `src/features/recommendations/server/select-career-route.test.ts`.
+- [x] T049 [P] Validar caso de explicabilidad parcial en pipeline contractual en `src/features/translation/server/profile-translation-cv-pdf.contract.test.ts`.
+- [x] T050 [P] Validar continuidad de trace en PDF handler (`selectedRouteId` + explanation meta) en `src/app/api/cv/pdf/route.test.ts`.
+- [x] T051 Implementar marcador de contexto explicativo stale y accion de reproceso en `src/features/recommendations/server/select-career-route.ts`.
+- [x] T052 Implementar trazabilidad explanation->translation->preview->pdf en `src/features/translation/server/profile-translation-cv-pdf.contract.test.ts`.
+- [x] T053 Actualizar no-alcance explicitos (sin LinkedIn/job-board/matching externo/scoring complejo/coaching/rediseno wizard) en `specs/004-explicabilidad-rutas/quickstart.md`.
 
 ---
 

@@ -56,7 +56,7 @@ function withTraceability(
   input: {
     previewVersionId: string;
     selectedRouteId?: string;
-    selectedRouteFitLabel?: string;
+    selectedRouteFitLabel?: 'alto' | 'medio' | 'exploratorio';
     documentId?: string;
   },
 ): DomainMeta {

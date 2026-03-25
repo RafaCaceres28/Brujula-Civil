@@ -131,6 +131,57 @@ describe('cv pdf route', () => {
     expect(body.error.code).toBe('VALIDATION_ERROR');
   });
 
+  it('keeps trace continuity from cvPreview explainability when top-level route is absent', async () => {
+    const exportSpy = vi.spyOn(exportCvPdfModule, 'exportCvPdf');
+
+    const request = new Request('http://localhost/api/cv/pdf', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        userId: 'user-1',
+        cvPreview: {
+          sections: [
+            {
+              id: 'cv-section-summary',
+              title: 'Resumen',
+              content: 'Perfil profesional orientado a resultados',
+              sourceBlockIds: ['translation-block-1'],
+            },
+          ],
+          layout: {
+            templateKey: 'single-column',
+            columns: 1,
+          },
+          completeness: 'needs_review',
+          selectedRouteId: 'route-project-manager-consulting-mid',
+          selectedRouteContext: {
+            reasonSummarySnapshot: 'Coincide con liderazgo operativo y planificacion.',
+            fitLabelSnapshot: 'medio',
+            guidanceSnapshot: 'Comparala con rutas de ajuste alto antes de decidir.',
+          },
+        },
+        format: 'pdf',
+        locale: 'es',
+        previewVersionId: 'preview-v2',
+        isUserEdited: true,
+      }),
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(response.headers.get('x-flow-trace')).toBe(
+      'preview:preview-v2;route:route-project-manager-consulting-mid',
+    );
+    expect(body.meta.traceability.selectedRouteId).toBe('route-project-manager-consulting-mid');
+    expect(body.meta.traceability.selectedRouteFitLabel).toBe('medio');
+    expect(exportSpy).toHaveBeenCalledTimes(1);
+
+    exportSpy.mockRestore();
+  });
+
   it('normalizes thrown errors to user-safe DomainError payloads', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const exportSpy = vi

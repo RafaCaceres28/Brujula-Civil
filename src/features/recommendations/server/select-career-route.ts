@@ -57,6 +57,8 @@ function validateRouteSelection(
     return createValidationDomainError('Recommendation set does not match active shortlist', {
       activeRecommendationSetId: recommendations.recommendationSetId,
       requestedRecommendationSetId: input.recommendationSetId,
+      staleExplanationContext: true,
+      reprocessAction: 'refresh_recommendations',
     });
   }
 

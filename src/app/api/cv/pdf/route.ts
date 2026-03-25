@@ -41,7 +41,12 @@ function createMeta(requestId: string): DomainMeta {
 }
 
 function withMeta(result: CvPdfRouteResult, meta: DomainMeta): CvPdfRouteResult {
-  return result.ok ? domainSuccess(result.data, meta) : domainFailure(result.error, meta);
+  const nextMeta = {
+    ...meta,
+    ...(result.meta?.traceability ? { traceability: result.meta.traceability } : {}),
+  };
+
+  return result.ok ? domainSuccess(result.data, nextMeta) : domainFailure(result.error, nextMeta);
 }
 
 function responseForResult(result: CvPdfRouteResult, traceTag?: string) {
@@ -120,8 +125,10 @@ export async function POST(request: Request) {
       requestId,
     });
 
-    const traceTag = parsedInput.data.selectedRouteId
-      ? `preview:${parsedInput.data.previewVersionId};route:${parsedInput.data.selectedRouteId}`
+    const traceRouteId =
+      parsedInput.data.selectedRouteId ?? parsedInput.data.cvPreview.selectedRouteId;
+    const traceTag = traceRouteId
+      ? `preview:${parsedInput.data.previewVersionId};route:${traceRouteId}`
       : `preview:${parsedInput.data.previewVersionId}`;
     return responseForResult(withMeta(result, meta), traceTag);
   } catch (error) {

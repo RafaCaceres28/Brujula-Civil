@@ -59,3 +59,11 @@ Atajo permitido: `pnpm verify`.
 3. Continuidad de trazabilidad en pipeline sin romper backward compatibility.
 4. Sin refactor global ni nueva infraestructura.
 5. Gates obligatorios de calidad en PASS para cerrar implementacion.
+
+## Explicit Non-Scope Guardrails
+
+- Sin ampliar integracion de LinkedIn fuera de normalizacion ya existente.
+- Sin job-board, marketplace laboral ni matching externo.
+- Sin scoring probabilistico/ML complejo ni ranking no deterministico.
+- Sin coaching extendido, asistente conversacional ni recomendaciones fuera de la shortlist.
+- Sin rediseño transversal del wizard o cambios de navegacion global.

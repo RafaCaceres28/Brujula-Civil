@@ -344,4 +344,59 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
 
     generatePdfSpy.mockRestore();
   });
+
+  it('keeps legacy compatibility when selectedRouteContext is incomplete in translation input', async () => {
+    const profileSnapshot = mapProfileToTranslationSnapshot(profileDomainFixture);
+
+    const translationResult = await generateTranslation({
+      userId: profileDomainFixture.userId,
+      sourceProfile: profileSnapshot,
+      sourceLanguage: 'es-ES',
+      targetLanguage: 'en-US',
+      tone: 'neutral',
+      selectedRouteId: 'route-team-lead-technology-mid',
+      selectedRouteContext: {
+        reasonSummarySnapshot: 'Resumen legado',
+        fitLabelSnapshot: 'medio',
+      },
+    } as never);
+
+    expect(translationResult.ok).toBe(true);
+    if (!translationResult.ok) {
+      throw new Error('Expected translation success for partial explainability context');
+    }
+
+    expect(translationResult.data.selectedRouteId).toBe('route-team-lead-technology-mid');
+    expect(translationResult.data.selectedRouteContext).toBeUndefined();
+
+    const cvResult = await generateCv(
+      mapTranslationOutputToCvInput({
+        userId: profileDomainFixture.userId,
+        profileSnapshotId: profileSnapshot.snapshotId,
+        translatedContent: translationResult.data,
+        templateKey: 'single-column',
+      }),
+    );
+
+    expect(cvResult.ok).toBe(true);
+    if (!cvResult.ok) {
+      throw new Error('Expected CV preview success');
+    }
+
+    const pdfResult = await exportCvPdf({
+      userId: profileDomainFixture.userId,
+      cvPreview: cvResult.data,
+      locale: 'es-ES',
+      previewVersionId: 'preview-partial-context-v1',
+      isUserEdited: true,
+    });
+
+    expect(pdfResult.ok).toBe(true);
+    if (!pdfResult.ok) {
+      throw new Error('Expected PDF success for partial explainability context');
+    }
+
+    expect(pdfResult.meta?.traceability?.selectedRouteId).toBe('route-team-lead-technology-mid');
+    expect(pdfResult.meta?.traceability?.selectedRouteFitLabel).toBeUndefined();
+  });
 });
