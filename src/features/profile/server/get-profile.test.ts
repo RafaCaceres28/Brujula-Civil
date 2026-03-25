@@ -302,6 +302,26 @@ describe('getProfile', () => {
     expect(result?.civilianTarget.locationPreference).toBeNull();
   });
 
+  it('normalizes oversized military source_text to avoid runtime zod too_big errors', async () => {
+    const supabase = createSupabaseMock({
+      appRows: [appProfile],
+      militaryRows: [
+        buildMilitaryRow({
+          id: 'mil-oversized',
+          source_text: `${'x'.repeat(520)}   `,
+        }),
+      ],
+      civilRows: [buildCivilRow({ id: 'civ-1' })],
+    });
+
+    vi.mocked(createClient).mockResolvedValue(supabase as never);
+
+    const result = await getProfile('user-1');
+
+    expect(result?.militaryBackground.summary).toHaveLength(500);
+    expect(result?.militaryBackground.summary).toBe('x'.repeat(500));
+  });
+
   it('resolves duplicated current military and civil rows deterministically', async () => {
     const supabase = createSupabaseMock({
       appRows: [appProfile],

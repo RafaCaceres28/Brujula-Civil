@@ -15,6 +15,7 @@ const DEFAULT_PROFILE_FULL_NAME = 'Unknown user';
 const DEFAULT_PROFILE_EMAIL = 'unknown@example.com';
 const SUMMARY_PRIMARY_GOAL_FALLBACK = 'Goal pending';
 const SUMMARY_LOCATION_FALLBACK = 'Location pending';
+const MAX_MILITARY_SUMMARY_LENGTH = 500;
 
 export const PROFILE_SUMMARY_FALLBACKS = {
   fullName: DEFAULT_PROFILE_FULL_NAME,
@@ -55,6 +56,19 @@ function toPreferredLocationsJson(locationPreference: string | null): Record<str
   };
 }
 
+function toNullableTrimmedMax(value: string | null | undefined, maxLength: number): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  return trimmed.slice(0, maxLength);
+}
+
 export function mapDbToDomainProfile(
   userId: string,
   shape: ProfileSupabaseShape,
@@ -71,7 +85,7 @@ export function mapDbToDomainProfile(
       rank: shape.military?.rank_text ?? null,
       area: shape.military?.component ?? null,
       yearsOfService: shape.military?.service_years ?? null,
-      summary: shape.military?.source_text ?? null,
+      summary: toNullableTrimmedMax(shape.military?.source_text, MAX_MILITARY_SUMMARY_LENGTH),
     },
     civilianTarget: {
       targetRole: shape.civil?.target_role ?? null,
