@@ -81,6 +81,7 @@ type CatalogResolver = {
 function normalizeCatalogToken(value: string) {
   return value
     .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim()
     .toLowerCase();

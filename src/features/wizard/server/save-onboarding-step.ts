@@ -1,7 +1,14 @@
 import { createClient } from '@/lib/supabase/server';
 import type { WizardStepSlug } from '../config/wizard-steps';
 import { getDbKeyBySlug, getStepOrderBySlug } from '../config/wizard-steps';
-import { onboardingDraftSchema } from '../schemas/wizard.schema';
+import {
+  competenciasStepSchema,
+  experienciaStepSchema,
+  militarStepSchema,
+  objetivosStepSchema,
+  onboardingDraftSchema,
+  resumenStepSchema,
+} from '../schemas/wizard.schema';
 import {
   employabilityFlowDraftSchema,
   onboardingDraftStateSchema,
@@ -25,6 +32,14 @@ export async function saveOnboardingStep<TStep extends WizardStepSlug>(
   const now = new Date().toISOString();
   const markCompleted = options?.markCompleted ?? false;
 
+  const parsedPayload = {
+    militar: militarStepSchema,
+    experiencia: experienciaStepSchema,
+    competencias: competenciasStepSchema,
+    objetivos: objetivosStepSchema,
+    resumen: resumenStepSchema,
+  }[stepSlug].parse(payload);
+
   const dbKey = getDbKeyBySlug(stepSlug);
   const stepOrder = getStepOrderBySlug(stepSlug);
 
@@ -34,7 +49,7 @@ export async function saveOnboardingStep<TStep extends WizardStepSlug>(
       step_key: dbKey,
       step_order: stepOrder,
       is_completed: markCompleted,
-      payload_jsonb: payload,
+      payload_jsonb: parsedPayload,
       saved_at: now,
     },
     {
@@ -65,7 +80,7 @@ export async function saveOnboardingStep<TStep extends WizardStepSlug>(
   const previousDraft = onboardingDraftStateSchema.parse(currentAggregatedDraft);
   const mergedDraft = onboardingDraftSchema.parse({
     ...previousDraft,
-    [stepSlug]: payload,
+    [stepSlug]: parsedPayload,
   });
 
   const currentEmployabilityFlow = isRecord(currentAggregatedDraft.employabilityFlow)

@@ -1,9 +1,18 @@
 import { Textarea } from '@/components/ui/textarea';
 import { requireUser } from '@/features/auth/server/require-user';
 import { saveCompetenciasStepAction } from '@/features/wizard/actions/save-competencias-step-action';
+import { CatalogMultiSelect } from '@/features/wizard/components/catalog-multi-select';
 import { StepGuard } from '@/features/wizard/components/step-guard';
 import { WizardShell } from '@/features/wizard/components/wizard-shell';
 import { WizardStepActions } from '@/features/wizard/components/wizard-step-actions';
+import {
+  CERTIFICATION_OPTIONS,
+  DRIVING_LICENSE_OPTIONS,
+  LANGUAGE_COMPOUND_OPTIONS,
+  OFFICE_TOOL_OPTIONS,
+  SOFT_SKILL_OPTIONS,
+  TECHNICAL_SKILL_OPTIONS,
+} from '@/features/wizard/config/wizard-catalogs';
 import { getOnboardingOverview } from '@/features/wizard/server/get-onboarding-overview';
 import { getCompetenciasStepDefaults } from '@/features/wizard/services/wizard-form.mapper';
 
@@ -11,6 +20,7 @@ export default async function CompetenciasStepPage() {
   const user = await requireUser();
   const overview = await getOnboardingOverview(user.id);
   const values = getCompetenciasStepDefaults(overview.draft.competencias);
+  const languageValues = values.languages.map((language) => `${language.name}:${language.level}`);
 
   return (
     <StepGuard requestedStepSlug="competencias" wizardState={overview.state}>
@@ -20,49 +30,56 @@ export default async function CompetenciasStepPage() {
       >
         <form action={saveCompetenciasStepAction} className="space-y-6">
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="technicalSkills" className="text-sm font-medium text-slate-900">
-                Competencias técnicas
-              </label>
-              <Textarea
-                id="technicalSkills"
-                name="technicalSkills"
-                defaultValue={values.technicalSkills.join('\n')}
-              />
-            </div>
+            <CatalogMultiSelect
+              name="technicalSkills"
+              label="Competencias técnicas"
+              options={TECHNICAL_SKILL_OPTIONS}
+              selectedValues={values.technicalSkills}
+            />
+
+            <CatalogMultiSelect
+              name="softSkills"
+              label="Competencias transversales"
+              options={SOFT_SKILL_OPTIONS}
+              selectedValues={values.softSkills}
+            />
+
+            <CatalogMultiSelect
+              name="certifications"
+              label="Certificaciones"
+              options={CERTIFICATION_OPTIONS}
+              selectedValues={values.certifications}
+            />
+
+            <CatalogMultiSelect
+              name="drivingLicenses"
+              label="Permisos de conducir"
+              options={DRIVING_LICENSE_OPTIONS}
+              selectedValues={values.drivingLicenses}
+            />
+
+            <CatalogMultiSelect
+              name="languages"
+              label="Idiomas y nivel"
+              options={LANGUAGE_COMPOUND_OPTIONS}
+              selectedValues={languageValues}
+            />
+
+            <CatalogMultiSelect
+              name="officeTools"
+              label="Herramientas ofimáticas"
+              options={OFFICE_TOOL_OPTIONS}
+              selectedValues={values.officeTools}
+            />
 
             <div className="space-y-2">
-              <label htmlFor="softSkills" className="text-sm font-medium text-slate-900">
-                Competencias transversales
+              <label htmlFor="extraTraining" className="text-sm font-medium text-slate-900">
+                Formacion adicional
               </label>
               <Textarea
-                id="softSkills"
-                name="softSkills"
-                defaultValue={values.softSkills.join('\n')}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="certifications" className="text-sm font-medium text-slate-900">
-                Certificaciones
-              </label>
-              <Textarea
-                id="certifications"
-                name="certifications"
-                defaultValue={values.certifications.join('\n')}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="languages" className="text-sm font-medium text-slate-900">
-                Idiomas
-              </label>
-              <Textarea
-                id="languages"
-                name="languages"
-                defaultValue={values.languages
-                  .map((language) => `${language.name}:${language.level}`)
-                  .join('\n')}
+                id="extraTraining"
+                name="extraTraining"
+                defaultValue={values.extraTraining ?? ''}
               />
             </div>
           </div>

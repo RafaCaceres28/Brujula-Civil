@@ -30,9 +30,28 @@ describe('wizard.schema', () => {
       militar: {
         branch: 'free-text',
       },
+      experiencia: {
+        responsibilityAreas: ['operations', 'texto-libre'],
+      },
+      competencias: {
+        languages: [
+          { name: 'english', level: 'advanced' },
+          { name: 'idioma-invalido', level: 'advanced' },
+        ],
+      },
     });
 
     expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    const invalidPaths = result.error.issues.map((issue) => issue.path.join('.'));
+
+    expect(invalidPaths).toContain('militar.branch');
+    expect(invalidPaths).toContain('experiencia.responsibilityAreas.1');
+    expect(invalidPaths).toContain('competencias.languages.1.name');
   });
 
   it('rejects invalid objetivos role contract', () => {

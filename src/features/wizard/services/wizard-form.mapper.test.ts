@@ -58,6 +58,31 @@ describe('wizard-form.mapper', () => {
     });
   });
 
+  it('normalizes legacy labels to canonical catalog ids and drops unknown structured values', () => {
+    const formData = createFormData({
+      responsibilityAreas: [
+        'Operaciones y Ejecucion',
+        'Planificacion y Turnos',
+        'valor inventado',
+        'operations',
+      ],
+      missionTypes: ['Mision Internacional: Seguridad y Estabilidad', 'tipo invalido'],
+      functionTypes: ['Coordinacion', 'coordination'],
+      tools: ['Software de Gestion (ERP/SIPERDEF)', 'herramienta libre'],
+      leadershipScopes: ['Supervision de pequenos equipos (Escuadra / Equipo)', 'scope libre'],
+      achievements: ['Lidere relevo operativo sin incidencias'],
+      additionalContext: 'Contexto legado',
+    });
+
+    const parsed = parseExperienciaFormData(formData);
+
+    expect(parsed.responsibilityAreas).toEqual(['operations', 'planning']);
+    expect(parsed.missionTypes).toEqual(['intl_stability']);
+    expect(parsed.functionTypes).toEqual(['coordination']);
+    expect(parsed.tools).toEqual(['erp']);
+    expect(parsed.leadershipScopes).toEqual(['team_supervision']);
+  });
+
   it('parses competencias language lines as name-level objects', () => {
     const formData = createFormData({
       technicalSkills: ['operations_management'],
@@ -76,6 +101,24 @@ describe('wizard-form.mapper', () => {
       { name: 'french', level: 'intermediate' },
     ]);
     expect(parsed.drivingLicenses).toEqual(['c']);
+  });
+
+  it('parses language catalog labels into canonical ids', () => {
+    const formData = createFormData({
+      technicalSkills: ['operations_management'],
+      softSkills: ['leadership'],
+      certifications: ['quality_iso'],
+      drivingLicenses: ['c'],
+      officeTools: ['excel'],
+      languages: ['Ingles:Avanzado', 'Frances:Intermedio', 'Idioma libre:nivel libre'],
+    });
+
+    const parsed = parseCompetenciasFormData(formData);
+
+    expect(parsed.languages).toEqual([
+      { name: 'english', level: 'advanced' },
+      { name: 'french', level: 'intermediate' },
+    ]);
   });
 
   it('parses objetivos target roles into canonical slug-label shape', () => {

@@ -48,24 +48,24 @@
 
 ### Tests for US1
 
-- [ ] T015 [P] [US1] Extender test de schema para rechazo de valores estructurados fuera de catalogo en `/home/svens/dev/brujula-civil/src/features/wizard/schemas/wizard.schema.test.ts`.
-- [ ] T016 [P] [US1] Extender test de mapper para parseo canonico de ids catalogados en `/home/svens/dev/brujula-civil/src/features/wizard/services/wizard-form.mapper.test.ts`.
-- [ ] T017 [P] [US1] Extender test de guardado para validacion de frontera y merge seguro en `/home/svens/dev/brujula-civil/src/features/wizard/server/save-onboarding-step.test.ts`.
-- [ ] T018 [P] [US1] Agregar test UI de controles guiados para paso militar en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/militar/page.test.tsx`.
-- [ ] T019 [P] [US1] Agregar test UI de controles guiados para paso experiencia en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/experiencia/page.test.tsx`.
-- [ ] T020 [P] [US1] Agregar test UI de controles guiados para paso competencias en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/competencias/page.test.tsx`.
-- [ ] T021 [P] [US1] Agregar test UI de controles guiados para paso objetivos en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/objetivos/page.test.tsx`.
+- [x] T015 [P] [US1] Extender test de schema para rechazo de valores estructurados fuera de catalogo en `/home/svens/dev/brujula-civil/src/features/wizard/schemas/wizard.schema.test.ts`.
+- [x] T016 [P] [US1] Extender test de mapper para parseo canonico de ids catalogados en `/home/svens/dev/brujula-civil/src/features/wizard/services/wizard-form.mapper.test.ts`.
+- [x] T017 [P] [US1] Extender test de guardado para validacion de frontera y merge seguro en `/home/svens/dev/brujula-civil/src/features/wizard/server/save-onboarding-step.test.ts`.
+- [x] T018 [P] [US1] Agregar test UI de controles guiados para paso militar en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/militar/page.test.tsx`.
+- [x] T019 [P] [US1] Agregar test UI de controles guiados para paso experiencia en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/experiencia/page.test.tsx`.
+- [x] T020 [P] [US1] Agregar test UI de controles guiados para paso competencias en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/competencias/page.test.tsx`.
+- [x] T021 [P] [US1] Agregar test UI de controles guiados para paso objetivos en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/objetivos/page.test.tsx`.
 
 ### Implementation for US1
 
-- [ ] T022 [US1] Implementar mapeo explicito campo estructurado -> opciones/control usando catalogos en `/home/svens/dev/brujula-civil/src/features/wizard/config/wizard-catalogs.ts`.
-- [ ] T023 [US1] Reemplazar inputs de campos estructurados por controles catalogados en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/militar/page.tsx`.
-- [ ] T024 [US1] Reemplazar textareas estructurados por multiselect catalogado en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/experiencia/page.tsx`.
-- [ ] T025 [US1] Reemplazar textareas/inputs estructurados por controles catalogados (incluyendo languages compound) en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/competencias/page.tsx`.
-- [ ] T026 [US1] Reemplazar textareas/inputs estructurados por controles catalogados (incluyendo seniority/roles) en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/objetivos/page.tsx`.
-- [ ] T027 [US1] Endurecer parse y normalizacion de payload guiado por catalogo en `/home/svens/dev/brujula-civil/src/features/wizard/services/wizard-form.mapper.ts`.
-- [ ] T028 [US1] Endurecer validacion final de payload guiado por catalogo en `/home/svens/dev/brujula-civil/src/features/wizard/schemas/wizard.schema.ts`.
-- [ ] T029 [US1] Reforzar validacion de frontera en guardado de pasos onboarding en `/home/svens/dev/brujula-civil/src/features/wizard/server/save-onboarding-step.ts`.
+- [x] T022 [US1] Implementar mapeo explicito campo estructurado -> opciones/control usando catalogos en `/home/svens/dev/brujula-civil/src/features/wizard/config/wizard-catalogs.ts`.
+- [x] T023 [US1] Reemplazar inputs de campos estructurados por controles catalogados en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/militar/page.tsx`.
+- [x] T024 [US1] Reemplazar textareas estructurados por multiselect catalogado en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/experiencia/page.tsx`.
+- [x] T025 [US1] Reemplazar textareas/inputs estructurados por controles catalogados (incluyendo languages compound) en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/competencias/page.tsx`.
+- [x] T026 [US1] Reemplazar textareas/inputs estructurados por controles catalogados (incluyendo seniority/roles) en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/objetivos/page.tsx`.
+- [x] T027 [US1] Endurecer parse y normalizacion de payload guiado por catalogo en `/home/svens/dev/brujula-civil/src/features/wizard/services/wizard-form.mapper.ts`.
+- [x] T028 [US1] Endurecer validacion final de payload guiado por catalogo en `/home/svens/dev/brujula-civil/src/features/wizard/schemas/wizard.schema.ts`.
+- [x] T029 [US1] Reforzar validacion de frontera en guardado de pasos onboarding en `/home/svens/dev/brujula-civil/src/features/wizard/server/save-onboarding-step.ts`.
 
 ---
 

@@ -188,4 +188,33 @@ describe('saveOnboardingStep', () => {
 
     expect(recalculateOnboardingState).toHaveBeenCalledWith('user-1');
   });
+
+  it('rejects payload with structured values outside catalog before persistence', async () => {
+    const { client, calls } = createSupabaseMock();
+
+    vi.mocked(createClient).mockResolvedValue(client as never);
+
+    await expect(
+      saveOnboardingStep(
+        'user-1',
+        'militar',
+        {
+          branch: 'valor-libre',
+          corps: 'signals',
+          rank: { code: 'captain', label: 'Capitan' },
+          specialty: { code: 'communications', label: 'Comunicaciones' },
+          serviceYears: 9,
+          destinationContext: 'hq_staff',
+          leadershipLevel: 'section_lead',
+          teamSize: '6_15',
+          unitName: 'Batallon Alfa',
+          notes: null,
+        },
+        { markCompleted: true },
+      ),
+    ).rejects.toThrow('Selecciona un valor válido del catálogo');
+
+    expect(calls.upsert).toBeUndefined();
+    expect(calls.updateDraft).toBeUndefined();
+  });
 });
