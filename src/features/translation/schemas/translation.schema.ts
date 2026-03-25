@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { domainIdSchema, localeSchema } from '../../../lib/contracts/shared.schema';
+import { selectedRouteContextSchema } from '../../recommendations/schemas/recommendation.schema';
 
 const MAX_TEXT_BLOCK_LENGTH = 1500;
 const MAX_SUMMARY_LENGTH = 500;
@@ -22,6 +23,14 @@ const nullableTrimmedString = (maxLength: number) =>
 const textListSchema = z.array(z.string().trim().min(1).max(MAX_TEXT_BLOCK_LENGTH)).min(1);
 
 export const translationToneSchema = z.enum(['formal', 'neutral', 'concise']);
+
+export const translationExplainabilityContextSchema = selectedRouteContextSchema
+  .pick({
+    reasonSummarySnapshot: true,
+    fitLabelSnapshot: true,
+    guidanceSnapshot: true,
+  })
+  .strict();
 
 export const profileSnapshotSchema = z
   .object({
@@ -54,6 +63,7 @@ export const translationInputSchema = z
     targetLanguage: localeSchema,
     tone: translationToneSchema.optional(),
     selectedRouteId: domainIdSchema.optional(),
+    selectedRouteContext: translationExplainabilityContextSchema.optional(),
   })
   .strict();
 
@@ -77,6 +87,7 @@ export const translationOutputSchema = z
     sourceRefMap: z.record(domainIdSchema, domainIdSchema),
     qualityFlags: z.array(translationQualityFlagSchema),
     selectedRouteId: domainIdSchema.optional(),
+    selectedRouteContext: translationExplainabilityContextSchema.optional(),
   })
   .strict();
 

@@ -84,6 +84,15 @@ describe('getOnboardingOverview', () => {
             selectedRouteId: 'route-operations-coordinator-logistics-mid',
             selectedAt: '2026-03-24T01:02:03.000Z',
           },
+          selectedRouteContext: {
+            recommendationSetId: 'recset-snapshot-1-20260324010101',
+            selectedRouteId: 'route-operations-coordinator-logistics-mid',
+            reasonSummarySnapshot:
+              'Se recomienda por coincidencias operativas y logisticas en transicion civil.',
+            fitLabelSnapshot: 'alto',
+            guidanceSnapshot: 'Priorizala si quieres continuidad operativa inmediata.',
+            capturedAt: '2026-03-24T01:02:03.000Z',
+          },
         },
       },
       started_at: '2026-01-01T00:00:00.000Z',
@@ -142,6 +151,11 @@ describe('getOnboardingOverview', () => {
     expect(result.employabilityFlow?.selectedRoute?.selectedRouteId).toBe(
       'route-operations-coordinator-logistics-mid',
     );
+    expect(result.employabilityFlow?.selectedRouteContext).toMatchObject({
+      selectedRouteId: 'route-operations-coordinator-logistics-mid',
+      fitLabelSnapshot: 'alto',
+      guidanceSnapshot: 'Priorizala si quieres continuidad operativa inmediata.',
+    });
   });
 
   it('throws a descriptive error when state query fails', async () => {
@@ -215,6 +229,15 @@ describe('getOnboardingOverview', () => {
             selectedRouteId: 'route-project-manager-consulting-mid',
             selectedAt: '2026-03-24T01:02:03.000Z',
           },
+          selectedRouteContext: {
+            recommendationSetId: 'recset-snapshot-1-20260324010101',
+            selectedRouteId: 'route-project-manager-consulting-mid',
+            reasonSummarySnapshot:
+              'Se recomienda por coincidencias de planificacion y liderazgo en contextos civiles.',
+            fitLabelSnapshot: 'medio',
+            guidanceSnapshot: 'Comparala con rutas de ajuste alto antes de confirmar.',
+            capturedAt: '2026-03-24T01:02:03.000Z',
+          },
         },
       },
       started_at: '2026-01-01T00:00:00.000Z',
@@ -239,5 +262,86 @@ describe('getOnboardingOverview', () => {
     expect(result.employabilityFlow?.selectedRecommendation?.selectedRouteId).toBe(
       'route-project-manager-consulting-mid',
     );
+    expect(result.employabilityFlow?.selectedRouteContext?.selectedRouteId).toBe(
+      'route-project-manager-consulting-mid',
+    );
+  });
+
+  it('keeps selectedRoute on re-entry even when selectedRouteContext is invalid', async () => {
+    const state = {
+      user_id: 'user-1',
+      current_step: 'missions_achievements',
+      last_completed_step: 'review',
+      completion_percent: 100,
+      is_completed: true,
+      aggregated_draft_jsonb: {
+        employabilityFlow: {
+          recommendations: {
+            recommendationSetId: 'recset-snapshot-1-20260324010101',
+            generatedAt: '2026-03-24T01:01:01.000Z',
+            sourceSnapshotId: 'snapshot-1',
+            routes: [
+              {
+                routeId: 'route-operations-coordinator-logistics-mid',
+                roleId: 'operations-coordinator',
+                sectorId: 'logistics',
+                seniorityId: 'mid',
+                reasonSummary: 'Se recomienda por coincidencias operativas y logisticas.',
+                matchedSignals: ['TARGET_ROLE_HINT'],
+              },
+              {
+                routeId: 'route-project-manager-consulting-mid',
+                roleId: 'project-manager',
+                sectorId: 'consulting',
+                seniorityId: 'mid',
+                reasonSummary: 'Se recomienda por coincidencias de planificacion y liderazgo.',
+                matchedSignals: ['TARGET_SECTOR_HINT'],
+              },
+              {
+                routeId: 'route-team-lead-technology-mid',
+                roleId: 'team-lead',
+                sectorId: 'technology',
+                seniorityId: 'mid',
+                reasonSummary: 'Se recomienda por experiencia de coordinacion de equipos.',
+                matchedSignals: ['LEADERSHIP_MATCH'],
+              },
+            ],
+          },
+          selectedRoute: {
+            recommendationSetId: 'recset-snapshot-1-20260324010101',
+            selectedRouteId: 'route-operations-coordinator-logistics-mid',
+            selectedAt: '2026-03-24T01:02:03.000Z',
+          },
+          selectedRouteContext: {
+            recommendationSetId: 'recset-snapshot-1-20260324010101',
+            selectedRouteId: 'route-operations-coordinator-logistics-mid',
+            reasonSummarySnapshot:
+              'Se recomienda por coincidencias operativas y logisticas en transicion civil.',
+            fitLabelSnapshot: 'invalido',
+            guidanceSnapshot: 'Priorizala para continuidad operativa.',
+            capturedAt: '2026-03-24T01:02:03.000Z',
+          },
+        },
+      },
+      started_at: '2026-01-01T00:00:00.000Z',
+      last_saved_at: '2026-01-01T00:00:00.000Z',
+      completed_at: null,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+    } as UserWizardStateRow;
+
+    const { client } = createSupabaseMock({
+      stateResult: { data: state, error: null },
+      stepsResult: { data: [], error: null },
+    });
+
+    vi.mocked(createClient).mockResolvedValue(client as never);
+
+    const result = await getOnboardingOverview('user-1');
+
+    expect(result.employabilityFlow?.selectedRoute?.selectedRouteId).toBe(
+      'route-operations-coordinator-logistics-mid',
+    );
+    expect(result.employabilityFlow?.selectedRouteContext).toBeUndefined();
   });
 });

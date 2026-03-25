@@ -1,6 +1,8 @@
 import type { DomainError } from '@/lib/contracts/domain-error';
 import type { DomainResult } from '@/lib/contracts/domain-result';
 import type {
+  RecommendationExplanation,
+  RecommendationFitLabel,
   RecommendationInputSnapshot,
   RecommendationOutput,
   RecommendationRoute,
@@ -13,6 +15,8 @@ export type RecommendationDomainInput = RecommendationInputSnapshot;
 export type RecommendationDomainOutput = RecommendationOutput;
 export type RecommendationDomainRoute = RecommendationRoute;
 export type RecommendationDomainSelection = RecommendationSelection;
+export type RecommendationDomainExplanation = RecommendationExplanation;
+export type RecommendationDomainFitLabel = RecommendationFitLabel;
 
 export type RecommendationDomainError = DomainError;
 export type RecommendationDomainResult = DomainResult<

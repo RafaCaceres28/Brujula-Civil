@@ -1,5 +1,8 @@
 import { domainFailure, domainSuccess, toInternalDomainError } from '../../../lib/contracts/index';
-import { translationOutputSchema } from '../schemas/translation.schema';
+import {
+  translationExplainabilityContextSchema,
+  translationOutputSchema,
+} from '../schemas/translation.schema';
 import type {
   TranslationDomainInput,
   TranslationDomainOutput,
@@ -55,6 +58,10 @@ const buildTranslationOutput = (input: TranslationDomainInput): TranslationDomai
     qualityFlags.push('MISSING_CONTEXT');
   }
 
+  const selectedRouteContext = translationExplainabilityContextSchema.safeParse(
+    input.selectedRouteContext,
+  );
+
   return translationOutputSchema.parse({
     blocks: translatedBlocks,
     sourceRefMap: translatedBlocks.reduce<Record<string, string>>((map, block) => {
@@ -63,6 +70,7 @@ const buildTranslationOutput = (input: TranslationDomainInput): TranslationDomai
     }, {}),
     qualityFlags,
     ...(input.selectedRouteId ? { selectedRouteId: input.selectedRouteId } : {}),
+    ...(selectedRouteContext.success ? { selectedRouteContext: selectedRouteContext.data } : {}),
   });
 };
 

@@ -1,26 +1,111 @@
 import { createClient } from '@/lib/supabase/server';
+import { selectedRouteContextSchema } from '../../recommendations/schemas/recommendation.schema';
 import { onboardingDraftSchema } from '../schemas/wizard.schema';
 import { employabilityFlowDraftSchema } from '../schemas/wizard-state.schema';
 import type { OnboardingOverview } from '../types/wizard.types';
+
+function isSameSelectedRoute(
+  selectedRoute:
+    | {
+        recommendationSetId: string;
+        selectedRouteId: string;
+      }
+    | undefined,
+  selectedRouteContext:
+    | {
+        recommendationSetId: string;
+        selectedRouteId: string;
+      }
+    | undefined,
+) {
+  if (!selectedRoute || !selectedRouteContext) {
+    return true;
+  }
+
+  return (
+    selectedRoute.recommendationSetId === selectedRouteContext.recommendationSetId &&
+    selectedRoute.selectedRouteId === selectedRouteContext.selectedRouteId
+  );
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function parseEmployabilityFlow(input: unknown) {
-  const parsedFlow = employabilityFlowDraftSchema.safeParse(input);
-
-  if (!parsedFlow.success) {
+  if (!isRecord(input)) {
     return undefined;
   }
 
-  if (parsedFlow.data.selectedRoute || !parsedFlow.data.selectedRecommendation) {
-    return parsedFlow.data;
+  const parsedFlow = employabilityFlowDraftSchema.safeParse(input);
+
+  if (parsedFlow.success) {
+    if (parsedFlow.data.selectedRoute || !parsedFlow.data.selectedRecommendation) {
+      return parsedFlow.data;
+    }
+
+    return {
+      ...parsedFlow.data,
+      selectedRoute: parsedFlow.data.selectedRecommendation,
+    };
+  }
+
+  const sanitizedInput = { ...input };
+
+  if ('selectedRouteContext' in sanitizedInput) {
+    delete sanitizedInput.selectedRouteContext;
+  }
+
+  const parsedWithoutContext = employabilityFlowDraftSchema.safeParse(sanitizedInput);
+
+  if (!parsedWithoutContext.success) {
+    return undefined;
+  }
+
+  const selectedRoute =
+    parsedWithoutContext.data.selectedRoute ?? parsedWithoutContext.data.selectedRecommendation;
+
+  if (!selectedRoute) {
+    return parsedWithoutContext.data;
+  }
+
+  if (
+    !isRecord(input.selectedRouteContext) ||
+    !isSameSelectedRoute(
+      selectedRoute,
+      input.selectedRouteContext as {
+        recommendationSetId: string;
+        selectedRouteId: string;
+      },
+    )
+  ) {
+    return {
+      ...parsedWithoutContext.data,
+      ...(parsedWithoutContext.data.selectedRoute
+        ? {}
+        : { selectedRoute: parsedWithoutContext.data.selectedRecommendation }),
+    };
+  }
+
+  const parsedSelectedRouteContext = selectedRouteContextSchema.safeParse(
+    input.selectedRouteContext,
+  );
+
+  if (!parsedSelectedRouteContext.success) {
+    return {
+      ...parsedWithoutContext.data,
+      ...(parsedWithoutContext.data.selectedRoute
+        ? {}
+        : { selectedRoute: parsedWithoutContext.data.selectedRecommendation }),
+    };
   }
 
   return {
-    ...parsedFlow.data,
-    selectedRoute: parsedFlow.data.selectedRecommendation,
+    ...parsedWithoutContext.data,
+    ...(parsedWithoutContext.data.selectedRoute
+      ? {}
+      : { selectedRoute: parsedWithoutContext.data.selectedRecommendation }),
+    selectedRouteContext: parsedSelectedRouteContext.data,
   };
 }
 

@@ -28,6 +28,11 @@ describe('cv generate route', () => {
           },
           qualityFlags: [],
           selectedRouteId: 'route-operations-coordinator-logistics-mid',
+          selectedRouteContext: {
+            reasonSummarySnapshot: 'Se recomienda por coincidencias de logistica y coordinacion.',
+            fitLabelSnapshot: 'alto',
+            guidanceSnapshot: 'Priorizala si quieres continuidad operativa inmediata.',
+          },
         },
         templateKey: 'single-column',
         selectedRouteId: 'route-operations-coordinator-logistics-mid',
@@ -42,10 +47,15 @@ describe('cv generate route', () => {
     expect(body.data.layout.columns).toBe(1);
     expect(body.data.sections[0].sourceBlockIds).toEqual(['translation-block-1']);
     expect(body.data.selectedRouteId).toBe('route-operations-coordinator-logistics-mid');
+    expect(body.data.selectedRouteContext).toMatchObject({
+      fitLabelSnapshot: 'alto',
+      guidanceSnapshot: 'Priorizala si quieres continuidad operativa inmediata.',
+    });
     expect(body.meta.source).toBe('api.cv.generate.route');
     expect(response.headers.get('x-flow-trace')).toBe(
       'profile:snapshot-1;route:route-operations-coordinator-logistics-mid',
     );
+    expect(response.headers.get('x-route-fit-label')).toBe('alto');
   });
 
   it('returns DomainResult validation error for invalid boundary input', async () => {

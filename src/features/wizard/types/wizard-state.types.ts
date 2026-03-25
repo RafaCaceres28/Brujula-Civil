@@ -10,6 +10,7 @@ import type {
 import type {
   recommendationOutputSchema,
   recommendationSelectionSchema,
+  selectedRouteContextSchema,
 } from '../../recommendations/schemas/recommendation.schema';
 
 export type EmployabilityFlowState = z.infer<typeof employabilityFlowStateSchema>;
@@ -18,6 +19,7 @@ export type CvPreviewTrace = z.infer<typeof cvPreviewTraceSchema>;
 export type PdfExportTrace = z.infer<typeof pdfExportTraceSchema>;
 export type RecommendationsTrace = z.infer<typeof recommendationOutputSchema>;
 export type SelectedRouteTrace = z.infer<typeof recommendationSelectionSchema>;
+export type SelectedRouteContextTrace = z.infer<typeof selectedRouteContextSchema>;
 export type SelectedRecommendationTrace = z.infer<typeof recommendationSelectionSchema>;
 export type CvPreviewDraft = z.infer<typeof cvPreviewDraftSchema>;
 export type EmployabilityFlowDraft = z.infer<typeof employabilityFlowDraftSchema>;

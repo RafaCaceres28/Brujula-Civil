@@ -5,6 +5,7 @@ import {
   WORK_MODEL_OPTIONS,
 } from '../../wizard/config/wizard-catalogs';
 import type {
+  RecommendationExplanation,
   RecommendationInputSnapshot,
   RecommendationRoute,
 } from '../schemas/recommendation.schema';
@@ -13,6 +14,7 @@ const MAX_SHORTLIST_ROUTES = 5;
 const MIN_SHORTLIST_ROUTES = 3;
 
 const DEFAULT_REASON_CODE = 'PROFILE_BASELINE';
+const MAX_EXPLANATION_KEYWORDS = 6;
 
 const MANAGEMENT_ROLE_SET = new Set([
   'project-manager',
@@ -41,6 +43,15 @@ const SECTOR_SIGNAL_RULES: Record<string, string[]> = {
 
 type RouteCandidate = RecommendationRoute & {
   score: number;
+};
+
+const REASON_CODE_EXPLANATION_TEXT: Record<string, string> = {
+  TARGET_ROLE_HINT: 'tu objetivo profesional declarado',
+  TARGET_SECTOR_HINT: 'el sector que elegiste como prioridad',
+  SKILL_SIGNAL_MATCH: 'senales de experiencia transferible',
+  LEADERSHIP_MATCH: 'experiencia liderando equipos',
+  TEAM_SIZE_MATCH: 'tamano de equipo gestionado',
+  PROFILE_BASELINE: 'tu perfil estructurado actual',
 };
 
 function normalizeSignal(value: string): string {
@@ -183,6 +194,83 @@ function createReasonSummary(roleLabel: string, sectorLabel: string, matches: st
   return `Se recomienda ${roleLabel} en ${sectorLabel} por coincidencias en ${highlightedMatches}.`;
 }
 
+function clampFitScore(score: number): number {
+  if (score < 0) {
+    return 0;
+  }
+
+  if (score > 100) {
+    return 100;
+  }
+
+  return score;
+}
+
+function resolveFitLabel(fitScore: number): RecommendationExplanation['fitLabel'] {
+  if (fitScore >= 85) {
+    return 'alto';
+  }
+
+  if (fitScore >= 55) {
+    return 'medio';
+  }
+
+  return 'exploratorio';
+}
+
+function createDecisionGuidance(
+  roleLabel: string,
+  sectorLabel: string,
+  fitLabel: RecommendationExplanation['fitLabel'],
+): string {
+  if (fitLabel === 'alto') {
+    return `Priorizala si buscas avanzar rapido hacia ${roleLabel} en ${sectorLabel}.`;
+  }
+
+  if (fitLabel === 'medio') {
+    return `Comparala con otras rutas y valida si ${roleLabel} en ${sectorLabel} encaja con tu objetivo inmediato.`;
+  }
+
+  return `Usala como opcion de exploracion para contrastar antes de confirmar una ruta principal.`;
+}
+
+function createExplanationKeywords(matchedSignals: string[], reasonCodes: string[]): string[] {
+  const keywords = matchedSignals.slice(0, MAX_EXPLANATION_KEYWORDS);
+
+  if (keywords.length > 0) {
+    return keywords;
+  }
+
+  return reasonCodes
+    .map((reasonCode) => REASON_CODE_EXPLANATION_TEXT[reasonCode])
+    .filter((keyword): keyword is string => Boolean(keyword))
+    .slice(0, MAX_EXPLANATION_KEYWORDS);
+}
+
+function createRouteExplanation(params: {
+  roleLabel: string;
+  sectorLabel: string;
+  matchedSignals: string[];
+  reasonCodes: string[];
+  score: number;
+}): RecommendationExplanation {
+  const fitScore = clampFitScore(params.score);
+  const fitLabel = resolveFitLabel(fitScore);
+  const reasonSummary = createReasonSummary(
+    params.roleLabel,
+    params.sectorLabel,
+    params.matchedSignals,
+  );
+
+  return {
+    reasonSummary,
+    fitLabel,
+    fitScore,
+    explanationKeywords: createExplanationKeywords(params.matchedSignals, params.reasonCodes),
+    decisionGuidance: createDecisionGuidance(params.roleLabel, params.sectorLabel, fitLabel),
+  };
+}
+
 function createRouteId(roleId: string, sectorId: string, seniorityId?: string): string {
   const normalizedSeniority = seniorityId ?? 'unspecified';
   return `route-${roleId}-${sectorId}-${normalizedSeniority}`;
@@ -235,7 +323,13 @@ function buildCandidateRoutes(input: RecommendationInputSnapshot): Recommendatio
         computeScore(input, role.slug, sector.value, normalizedSeniority, normalizedWorkModel) +
         matchedSignals.length * 9;
 
-      const reasonSummary = createReasonSummary(role.label, sector.label, matchedSignals);
+      const explanation = createRouteExplanation({
+        roleLabel: role.label,
+        sectorLabel: sector.label,
+        matchedSignals,
+        reasonCodes,
+        score,
+      });
 
       candidates.push({
         routeId: createRouteId(role.slug, sector.value, normalizedSeniority),
@@ -243,8 +337,9 @@ function buildCandidateRoutes(input: RecommendationInputSnapshot): Recommendatio
         sectorId: sector.value,
         seniorityId: normalizedSeniority,
         workModelId: normalizedWorkModel,
-        reasonSummary,
+        reasonSummary: explanation.reasonSummary,
         matchedSignals: reasonCodes,
+        explanation,
         score,
       });
     }

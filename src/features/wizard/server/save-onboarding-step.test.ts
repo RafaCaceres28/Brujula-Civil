@@ -89,6 +89,16 @@ function createSupabaseMock() {
                             selectedRouteId: 'route-operations-coordinator-logistics-mid',
                             selectedAt: '2026-03-24T01:02:03.000Z',
                           },
+                          selectedRouteContext: {
+                            recommendationSetId: 'recset-snapshot-1-20260324010101',
+                            selectedRouteId: 'route-operations-coordinator-logistics-mid',
+                            reasonSummarySnapshot:
+                              'Se recomienda por coincidencias de logistica y coordinacion.',
+                            fitLabelSnapshot: 'alto',
+                            guidanceSnapshot:
+                              'Priorizala si quieres continuidad operativa inmediata.',
+                            capturedAt: '2026-03-24T01:02:03.000Z',
+                          },
                           cvPreviewDraft: {
                             previewVersionId: 'preview-v1',
                             isUserEdited: true,
@@ -165,6 +175,10 @@ describe('saveOnboardingStep', () => {
       },
       selectedRoute: {
         selectedRouteId: 'route-operations-coordinator-logistics-mid',
+      },
+      selectedRouteContext: {
+        selectedRouteId: 'route-operations-coordinator-logistics-mid',
+        fitLabelSnapshot: 'alto',
       },
       cvPreviewDraft: {
         previewVersionId: 'preview-v1',

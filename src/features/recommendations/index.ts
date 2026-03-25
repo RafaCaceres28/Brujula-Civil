@@ -1,8 +1,11 @@
 export {
   recommendationInputSnapshotSchema,
+  recommendationExplanationSchema,
   recommendationOutputSchema,
   recommendationRouteSchema,
   recommendationSelectionSchema,
+  type RecommendationExplanation,
+  type RecommendationFitLabel,
   type RecommendationInputSnapshot,
   type RecommendationOutput,
   type RecommendationRoute,
@@ -11,7 +14,9 @@ export {
 
 export type {
   RecommendationContractVersion,
+  RecommendationDomainExplanation,
   RecommendationDomainError,
+  RecommendationDomainFitLabel,
   RecommendationDomainInput,
   RecommendationDomainOutput,
   RecommendationDomainResult,

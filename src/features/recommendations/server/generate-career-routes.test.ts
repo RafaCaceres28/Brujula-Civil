@@ -21,6 +21,62 @@ describe('generateCareerRoutes', () => {
     expect(result.data.recommendationSetId).toBe('recset-snapshot-1-20260324030000');
     expect(result.data.routes.length).toBeGreaterThanOrEqual(3);
     expect(result.data.routes.length).toBeLessThanOrEqual(5);
+
+    for (const route of result.data.routes) {
+      expect(route.explanation).toBeDefined();
+      expect(route.explanation?.reasonSummary).toBe(route.reasonSummary);
+      expect(route.explanation?.fitLabel).toMatch(/alto|medio|exploratorio/);
+      expect(route.explanation?.fitScore).toBeGreaterThanOrEqual(0);
+      expect(route.explanation?.fitScore).toBeLessThanOrEqual(100);
+      expect(route.explanation?.decisionGuidance.length).toBeGreaterThanOrEqual(8);
+      expect(route.explanation?.explanationKeywords.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('normalizes incomplete explanation payload to preserve explainability contract', () => {
+    vi.spyOn(recommendationRules, 'buildCareerRouteShortlist').mockReturnValue([
+      {
+        routeId: 'route-project-manager-logistics-mid',
+        roleId: 'project-manager',
+        sectorId: 'logistics',
+        seniorityId: 'mid',
+        reasonSummary: 'Se recomienda por continuidad de planificacion y coordinacion.',
+        matchedSignals: ['UNKNOWN_REASON_CODE'],
+      },
+      {
+        routeId: 'route-operations-coordinator-logistics-mid',
+        roleId: 'operations-coordinator',
+        sectorId: 'logistics',
+        seniorityId: 'mid',
+        reasonSummary: 'Se recomienda por experiencia operativa en logistica.',
+        matchedSignals: ['TARGET_SECTOR_HINT'],
+      },
+      {
+        routeId: 'route-team-lead-technology-mid',
+        roleId: 'team-lead',
+        sectorId: 'technology',
+        seniorityId: 'mid',
+        reasonSummary: 'Se recomienda por supervision de equipos y coordinacion.',
+        matchedSignals: ['LEADERSHIP_MATCH'],
+      },
+    ]);
+
+    const result = generateCareerRoutes(recommendationInputFixture, {
+      now: new Date('2026-03-24T03:30:00.000Z'),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    for (const route of result.data.routes) {
+      expect(route.explanation).toMatchObject({
+        reasonSummary: route.reasonSummary,
+      });
+      expect(route.explanation?.explanationKeywords.length).toBeGreaterThan(0);
+      expect(route.explanation?.decisionGuidance).toContain('ruta');
+    }
   });
 
   it('returns validation error when profile signals are insufficient', () => {

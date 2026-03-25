@@ -40,6 +40,9 @@ export function mapCvPreviewToPdfGenerationInput(input: CvPreviewToPdfInput): Do
     format: 'pdf',
     locale: input.locale,
     ...(input.selectedRouteId ? { selectedRouteId: input.selectedRouteId } : {}),
+    ...(input.cvPreview.selectedRouteContext
+      ? { selectedRouteContext: input.cvPreview.selectedRouteContext }
+      : {}),
   });
 }
 

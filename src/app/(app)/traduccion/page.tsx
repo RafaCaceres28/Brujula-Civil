@@ -25,6 +25,13 @@ type TranslationPageContentProps = {
   previewCompleteness?: 'complete' | 'needs_review' | 'insufficient_data';
   recommendations?: RecommendationOutput;
   selectedRouteId?: string;
+  explainabilityStatus?: 'complete' | 'partial';
+  reentrySelectedRouteContext?: {
+    reasonSummary: string;
+    fitLabel: string;
+    guidance: string;
+  };
+  reentrySelectedRouteContextFallback?: boolean;
   error?: unknown;
 };
 
@@ -46,6 +53,10 @@ export function TranslationPageContent(props: TranslationPageContentProps) {
           profileSnapshotId: props.profileSnapshotId,
           previewCompleteness: props.previewCompleteness,
         }}
+        explainabilityStatus={props.explainabilityStatus}
+        reentrySelectedRouteId={props.selectedRouteId}
+        reentrySelectedRouteContext={props.reentrySelectedRouteContext}
+        reentrySelectedRouteContextFallback={props.reentrySelectedRouteContextFallback}
         error={props.error}
       />
 
@@ -75,6 +86,7 @@ export default async function TranslationPage() {
   const overview = await getOnboardingOverview(user.id);
 
   const selectedRouteId = overview.employabilityFlow?.selectedRoute?.selectedRouteId;
+  const selectedRouteContext = overview.employabilityFlow?.selectedRouteContext;
   let recommendations = overview.employabilityFlow?.recommendations;
 
   if (!recommendations) {
@@ -105,6 +117,16 @@ export default async function TranslationPage() {
     sourceLanguage: 'es-ES',
     targetLanguage: 'en-US',
     tone: 'neutral',
+    ...(selectedRouteId ? { selectedRouteId } : {}),
+    ...(selectedRouteContext
+      ? {
+          selectedRouteContext: {
+            reasonSummarySnapshot: selectedRouteContext.reasonSummarySnapshot,
+            fitLabelSnapshot: selectedRouteContext.fitLabelSnapshot,
+            guidanceSnapshot: selectedRouteContext.guidanceSnapshot,
+          },
+        }
+      : {}),
   });
 
   if (!translationResult.ok) {
@@ -135,6 +157,13 @@ export default async function TranslationPage() {
     );
   }
 
+  const hasExplainabilityGaps = recommendations.routes.some(
+    (route) =>
+      !route.explanation ||
+      route.explanation.explanationKeywords.length === 0 ||
+      route.explanation.decisionGuidance.trim().length === 0,
+  );
+
   return (
     <TranslationPageContent
       state="ready"
@@ -146,6 +175,17 @@ export default async function TranslationPage() {
       previewCompleteness={cvPreviewResult.data.completeness}
       recommendations={recommendations}
       selectedRouteId={selectedRouteId}
+      explainabilityStatus={hasExplainabilityGaps ? 'partial' : 'complete'}
+      reentrySelectedRouteContext={
+        selectedRouteContext
+          ? {
+              reasonSummary: selectedRouteContext.reasonSummarySnapshot,
+              fitLabel: selectedRouteContext.fitLabelSnapshot,
+              guidance: selectedRouteContext.guidanceSnapshot,
+            }
+          : undefined
+      }
+      reentrySelectedRouteContextFallback={Boolean(selectedRouteId && !selectedRouteContext)}
     />
   );
 }

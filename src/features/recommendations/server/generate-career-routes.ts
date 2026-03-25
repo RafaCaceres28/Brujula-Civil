@@ -17,6 +17,7 @@ import {
   buildCareerRouteShortlist,
   hasRecommendationSignals,
 } from '../services/route-recommendation-rules';
+import { normalizeRecommendationRoutesExplainability } from '../services/recommendation-explanation-fallback';
 
 const GENERATE_ROUTES_SOURCE = 'recs.server.generate-routes';
 
@@ -63,7 +64,9 @@ export function generateCareerRoutes(
       );
     }
 
-    const routes = buildCareerRouteShortlist(parsedInput.data);
+    const routes = normalizeRecommendationRoutesExplainability(
+      buildCareerRouteShortlist(parsedInput.data),
+    );
 
     if (routes.length === 0) {
       return domainFailure(

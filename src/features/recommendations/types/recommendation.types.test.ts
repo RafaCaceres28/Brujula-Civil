@@ -3,7 +3,9 @@ import type { DomainError } from '@/lib/contracts/domain-error';
 import type { DomainResult } from '@/lib/contracts/domain-result';
 import type {
   RecommendationContractVersion,
+  RecommendationDomainExplanation,
   RecommendationDomainError,
+  RecommendationDomainFitLabel,
   RecommendationDomainInput,
   RecommendationDomainOutput,
   RecommendationDomainResult,
@@ -11,6 +13,8 @@ import type {
   RecommendationDomainSelection,
 } from './recommendation.types';
 import type {
+  RecommendationExplanation,
+  RecommendationFitLabel,
   RecommendationInputSnapshot,
   RecommendationOutput,
   RecommendationRoute,
@@ -26,6 +30,8 @@ describe('recommendation types contract', () => {
   it('keeps route and selection aliases aligned with schemas', () => {
     expectTypeOf<RecommendationDomainRoute>().toEqualTypeOf<RecommendationRoute>();
     expectTypeOf<RecommendationDomainSelection>().toEqualTypeOf<RecommendationSelection>();
+    expectTypeOf<RecommendationDomainExplanation>().toEqualTypeOf<RecommendationExplanation>();
+    expectTypeOf<RecommendationDomainFitLabel>().toEqualTypeOf<RecommendationFitLabel>();
   });
 
   it('exposes result as DomainResult with DomainError taxonomy', () => {

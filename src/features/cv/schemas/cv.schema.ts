@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { domainIdSchema } from '../../../lib/contracts/shared.schema';
-import { translationOutputSchema } from '../../translation/schemas/translation.schema';
+import {
+  translationExplainabilityContextSchema,
+  translationOutputSchema,
+} from '../../translation/schemas/translation.schema';
 
 const MAX_SECTION_TITLE_LENGTH = 120;
 const MAX_SECTION_CONTENT_LENGTH = 2000;
@@ -32,6 +35,7 @@ export const cvPreviewInputSchema = z
     translatedContent: translationOutputSchema,
     templateKey: cvLayoutTemplateSchema,
     selectedRouteId: domainIdSchema.optional(),
+    selectedRouteContext: translationExplainabilityContextSchema.optional(),
   })
   .strict();
 
@@ -41,6 +45,7 @@ export const cvPreviewOutputSchema = z
     layout: cvLayoutConfigSchema,
     completeness: cvCompletenessStatusSchema,
     selectedRouteId: domainIdSchema.optional(),
+    selectedRouteContext: translationExplainabilityContextSchema.optional(),
   })
   .strict();
 

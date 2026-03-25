@@ -12,6 +12,7 @@ import {
   type GenerateCareerRoutesResult,
 } from '../../recommendations/server/generate-career-routes';
 import type { RecommendationOutput } from '../../recommendations/schemas/recommendation.schema';
+import type { TranslationOutput } from '../schemas/translation.schema';
 import { getOnboardingOverview } from '../../wizard/server/get-onboarding-overview';
 
 const GET_TRANSLATION_SOURCE = 'translation.server.get-translation';
@@ -20,6 +21,7 @@ type TranslationContext = {
   profile: NonNullable<Awaited<ReturnType<typeof getProfile>>>;
   recommendations: RecommendationOutput;
   selectedRouteId?: string;
+  selectedRouteContext?: TranslationOutput['selectedRouteContext'];
 };
 
 export type GetTranslationResult = DomainResult<TranslationContext | null>;
@@ -59,6 +61,7 @@ export async function getTranslation(
     }
 
     const selectedRouteId = overview.employabilityFlow?.selectedRoute?.selectedRouteId;
+    const persistedRouteContext = overview.employabilityFlow?.selectedRouteContext;
     let recommendations = overview.employabilityFlow?.recommendations;
 
     if (!recommendations) {
@@ -78,11 +81,40 @@ export async function getTranslation(
       recommendations = generatedResult.data;
     }
 
+    let selectedRouteContext: TranslationOutput['selectedRouteContext'];
+
+    if (selectedRouteId) {
+      if (
+        persistedRouteContext &&
+        persistedRouteContext.selectedRouteId === selectedRouteId &&
+        persistedRouteContext.recommendationSetId === recommendations.recommendationSetId
+      ) {
+        selectedRouteContext = {
+          reasonSummarySnapshot: persistedRouteContext.reasonSummarySnapshot,
+          fitLabelSnapshot: persistedRouteContext.fitLabelSnapshot,
+          guidanceSnapshot: persistedRouteContext.guidanceSnapshot,
+        };
+      } else {
+        const selectedRoute = recommendations.routes.find(
+          (route) => route.routeId === selectedRouteId,
+        );
+
+        if (selectedRoute?.explanation) {
+          selectedRouteContext = {
+            reasonSummarySnapshot: selectedRoute.explanation.reasonSummary,
+            fitLabelSnapshot: selectedRoute.explanation.fitLabel,
+            guidanceSnapshot: selectedRoute.explanation.decisionGuidance,
+          };
+        }
+      }
+    }
+
     return domainSuccess(
       {
         profile,
         recommendations,
         ...(selectedRouteId ? { selectedRouteId } : {}),
+        ...(selectedRouteContext ? { selectedRouteContext } : {}),
       },
       meta,
     );

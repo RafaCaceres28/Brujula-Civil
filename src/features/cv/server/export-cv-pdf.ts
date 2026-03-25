@@ -53,13 +53,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function withTraceability(
   meta: DomainMeta,
-  input: { previewVersionId: string; selectedRouteId?: string; documentId?: string },
+  input: {
+    previewVersionId: string;
+    selectedRouteId?: string;
+    selectedRouteFitLabel?: 'alto' | 'medio' | 'exploratorio';
+    documentId?: string;
+  },
 ): DomainMeta {
   return {
     ...meta,
     traceability: {
       previewVersionId: input.previewVersionId,
       ...(input.selectedRouteId ? { selectedRouteId: input.selectedRouteId } : {}),
+      ...(input.selectedRouteFitLabel
+        ? { selectedRouteFitLabel: input.selectedRouteFitLabel }
+        : {}),
       ...(input.documentId ? { documentId: input.documentId } : {}),
     },
   };
@@ -120,6 +128,7 @@ export function createPreviewVersionId(): string {
 export async function exportCvPdf(input: ExportCvPdfInput): Promise<DocumentsDomainResult> {
   const meta = createExportMeta(input);
   const selectedRouteId = input.selectedRouteId ?? input.cvPreview.selectedRouteId;
+  const selectedRouteFitLabel = input.cvPreview.selectedRouteContext?.fitLabelSnapshot;
 
   if (!input.isUserEdited) {
     return domainFailure(
@@ -162,6 +171,7 @@ export async function exportCvPdf(input: ExportCvPdfInput): Promise<DocumentsDom
       withTraceability(meta, {
         previewVersionId: input.previewVersionId,
         selectedRouteId,
+        selectedRouteFitLabel,
       }),
     );
   }
@@ -186,6 +196,7 @@ export async function exportCvPdf(input: ExportCvPdfInput): Promise<DocumentsDom
     withTraceability(meta, {
       previewVersionId: input.previewVersionId,
       selectedRouteId,
+      selectedRouteFitLabel,
       documentId: pdfResult.data.documentId,
     }),
   );

@@ -65,6 +65,14 @@ describe('getCareerRoutesAction', () => {
             sectorId: 'logistics',
             reasonSummary: 'Your profile aligns with operational planning transferability.',
             matchedSignals: ['TARGET_ROLE_HINT'],
+            explanation: {
+              reasonSummary: 'Your profile aligns with operational planning transferability.',
+              fitLabel: 'alto',
+              fitScore: 89,
+              explanationKeywords: ['planning', 'leadership'],
+              decisionGuidance:
+                'Prioritize this route if you want near-term leadership continuity.',
+            },
           },
           {
             routeId: 'route-operations-coordinator-logistics-mid',
@@ -72,6 +80,14 @@ describe('getCareerRoutesAction', () => {
             sectorId: 'logistics',
             reasonSummary: 'Your profile aligns with coordination and logistics operations.',
             matchedSignals: ['TARGET_SECTOR_HINT'],
+            explanation: {
+              reasonSummary: 'Your profile aligns with coordination and logistics operations.',
+              fitLabel: 'medio',
+              fitScore: 67,
+              explanationKeywords: ['coordination', 'logistics'],
+              decisionGuidance:
+                'Compare it if you prefer execution-heavy operational coordination.',
+            },
           },
           {
             routeId: 'route-team-lead-technology-mid',
@@ -79,6 +95,14 @@ describe('getCareerRoutesAction', () => {
             sectorId: 'technology',
             reasonSummary: 'Your profile aligns with leadership and systems collaboration.',
             matchedSignals: ['LEADERSHIP_MATCH'],
+            explanation: {
+              reasonSummary: 'Your profile aligns with leadership and systems collaboration.',
+              fitLabel: 'medio',
+              fitScore: 61,
+              explanationKeywords: ['leadership', 'systems'],
+              decisionGuidance:
+                'Use this route if you want to move toward cross-functional tech teams.',
+            },
           },
         ],
       },
@@ -107,6 +131,98 @@ describe('getCareerRoutesAction', () => {
       },
     );
     expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    for (const route of result.data.routes) {
+      expect(route.explanation).toBeDefined();
+      expect(route.explanation?.reasonSummary).toBe(route.reasonSummary);
+      expect(route.explanation?.fitLabel).toMatch(/alto|medio|exploratorio/);
+      expect(route.explanation?.explanationKeywords.length).toBeGreaterThan(0);
+      expect(route.explanation?.decisionGuidance.length).toBeGreaterThanOrEqual(8);
+    }
+  });
+
+  it('returns safe explainability fallback when route metadata is incomplete', async () => {
+    const now = new Date('2026-03-25T01:08:00.000Z');
+    const overview = {
+      draft: {
+        militar: {
+          branch: 'army',
+        },
+      },
+      employabilityFlow: {
+        profileSnapshotId: 'profile-snapshot-user-1',
+      },
+    };
+
+    requireUserMock.mockResolvedValueOnce({ id: 'user-1' });
+    getOnboardingOverviewMock.mockResolvedValueOnce(overview);
+    buildRecommendationInputMock.mockReturnValueOnce({
+      snapshotId: 'wizard-profile-snapshot-user-1',
+    });
+    generateCareerRoutesMock.mockReturnValueOnce({
+      ok: true,
+      data: {
+        recommendationSetId: 'recset-wizard-profile-snapshot-user-1-20260325010800',
+        generatedAt: now.toISOString(),
+        sourceSnapshotId: 'wizard-profile-snapshot-user-1',
+        routes: [
+          {
+            routeId: 'route-project-manager-logistics-mid',
+            roleId: 'project-manager',
+            sectorId: 'logistics',
+            reasonSummary: 'Continuidad operativa en planificacion de proyectos.',
+            matchedSignals: ['TARGET_ROLE_HINT'],
+          },
+          {
+            routeId: 'route-operations-coordinator-logistics-mid',
+            roleId: 'operations-coordinator',
+            sectorId: 'logistics',
+            reasonSummary: 'Experiencia transferible en coordinacion de operaciones.',
+            matchedSignals: ['TARGET_SECTOR_HINT'],
+            explanation: {
+              reasonSummary: 'Experiencia transferible en coordinacion de operaciones.',
+              fitLabel: 'medio',
+              fitScore: 60,
+              explanationKeywords: ['coordinacion', 'operaciones'],
+              decisionGuidance: 'Compara esta ruta con tu objetivo de corto plazo.',
+            },
+          },
+          {
+            routeId: 'route-team-lead-technology-mid',
+            roleId: 'team-lead',
+            sectorId: 'technology',
+            reasonSummary: 'Liderazgo y colaboracion tecnica en equipos multidisciplinares.',
+            matchedSignals: ['LEADERSHIP_MATCH'],
+            explanation: {
+              reasonSummary: 'Liderazgo y colaboracion tecnica en equipos multidisciplinares.',
+              fitLabel: 'exploratorio',
+              fitScore: 41,
+              explanationKeywords: ['liderazgo', 'colaboracion'],
+              decisionGuidance: 'Usala para comparar una opcion de exploracion inicial.',
+            },
+          },
+        ],
+      },
+      meta: {
+        timestamp: now.toISOString(),
+        source: 'recs.server.generate-routes',
+      },
+    });
+
+    const result = await getCareerRoutesAction({ now });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.data.routes[0]?.explanation).toMatchObject({
+      reasonSummary: 'Continuidad operativa en planificacion de proyectos.',
+      fitLabel: 'exploratorio',
+    });
   });
 
   it('returns safe internal error when loading profile context fails', async () => {

@@ -38,6 +38,14 @@ function createSnapshotId(userId: string, profileSnapshotId?: string): string {
   return profileSnapshotId ? `wizard-${profileSnapshotId}` : `wizard-snapshot-${userId}`;
 }
 
+function normalizeSignalToken(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+function normalizeSignalList(values: string[]): string[] {
+  return [...new Set(values.map(normalizeSignalToken).filter((value) => value.length > 0))];
+}
+
 export function buildRecommendationInput(
   params: BuildRecommendationInputParams,
 ): RecommendationInputSnapshot {
@@ -54,18 +62,18 @@ export function buildRecommendationInput(
     destinationContext: toOptionalString(draft.militar.destinationContext),
     leadership: Boolean(toOptionalString(draft.militar.leadershipLevel)),
     teamSize: toTeamSize(draft.militar.teamSize),
-    responsibilityAreas: draft.experiencia.responsibilityAreas,
-    missionTypes: draft.experiencia.missionTypes,
-    functionTypes: draft.experiencia.functionTypes,
-    tools: draft.experiencia.tools,
-    technicalSkills: draft.competencias.technicalSkills,
-    softSkills: draft.competencias.softSkills,
-    certifications: draft.competencias.certifications,
+    responsibilityAreas: normalizeSignalList(draft.experiencia.responsibilityAreas),
+    missionTypes: normalizeSignalList(draft.experiencia.missionTypes),
+    functionTypes: normalizeSignalList(draft.experiencia.functionTypes),
+    tools: normalizeSignalList(draft.experiencia.tools),
+    technicalSkills: normalizeSignalList(draft.competencias.technicalSkills),
+    softSkills: normalizeSignalList(draft.competencias.softSkills),
+    certifications: normalizeSignalList(draft.competencias.certifications),
     drivingLicenses: draft.competencias.drivingLicenses,
-    languages: draft.competencias.languages.map((language) => language.name),
-    officeTools: draft.competencias.officeTools,
-    targetRoleHints: draft.objetivos.targetRoles.map((role) => role.slug),
-    targetSectorHints: draft.objetivos.targetSectors,
+    languages: normalizeSignalList(draft.competencias.languages.map((language) => language.name)),
+    officeTools: normalizeSignalList(draft.competencias.officeTools),
+    targetRoleHints: normalizeSignalList(draft.objetivos.targetRoles.map((role) => role.slug)),
+    targetSectorHints: normalizeSignalList(draft.objetivos.targetSectors),
     seniorityHint: draft.objetivos.seniority ?? undefined,
     workModelHint: draft.objetivos.workModel ?? undefined,
   });

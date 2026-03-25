@@ -90,6 +90,69 @@ describe('/traduccion page UI states', () => {
             seniorityId: 'mid',
             reasonSummary: 'Se recomienda por coincidencias de logistica y coordinacion.',
             matchedSignals: ['TARGET_ROLE_HINT'],
+            explanation: {
+              reasonSummary: 'Se recomienda por coincidencias de logistica y coordinacion.',
+              fitLabel: 'alto',
+              fitScore: 90,
+              explanationKeywords: ['logistica', 'coordinacion'],
+              decisionGuidance: 'Priorizala si quieres continuidad operativa inmediata.',
+            },
+          },
+          {
+            routeId: 'route-project-manager-consulting-mid',
+            roleId: 'project-manager',
+            sectorId: 'consulting',
+            seniorityId: 'mid',
+            reasonSummary: 'Se recomienda por coincidencias de planificacion y liderazgo.',
+            matchedSignals: ['TARGET_SECTOR_HINT'],
+            explanation: {
+              reasonSummary: 'Se recomienda por coincidencias de planificacion y liderazgo.',
+              fitLabel: 'medio',
+              fitScore: 66,
+              explanationKeywords: ['planificacion', 'liderazgo'],
+              decisionGuidance: 'Comparala con otras rutas antes de decidir.',
+            },
+          },
+          {
+            routeId: 'route-team-lead-technology-mid',
+            roleId: 'team-lead',
+            sectorId: 'technology',
+            seniorityId: 'mid',
+            reasonSummary: 'Se recomienda por supervision y comunicacion.',
+            matchedSignals: ['LEADERSHIP_MATCH'],
+            explanation: {
+              reasonSummary: 'Se recomienda por supervision y comunicacion.',
+              fitLabel: 'exploratorio',
+              fitScore: 44,
+              explanationKeywords: ['supervision', 'comunicacion'],
+              decisionGuidance: 'Usala para explorar una opcion alternativa.',
+            },
+          },
+        ]}
+        selectedRouteId="route-project-manager-consulting-mid"
+      />,
+    );
+
+    expect(container?.textContent).toContain('Rutas sugeridas para tu transicion');
+    expect(container?.textContent).toContain('operations-coordinator');
+    expect(container?.textContent).toContain('project-manager');
+    expect(container?.textContent).toContain('Ajuste alto');
+    expect(container?.textContent).toContain('Fortalezas detectadas');
+    expect(container?.textContent).toContain('Seleccionada');
+  });
+
+  it('renders safe fallback copy when recommendation explainability is incomplete', () => {
+    renderNode(
+      <CareerRouteShortlist
+        recommendationSetId="recset-safe-fallback"
+        routes={[
+          {
+            routeId: 'route-operations-coordinator-logistics-mid',
+            roleId: 'operations-coordinator',
+            sectorId: 'logistics',
+            seniorityId: 'mid',
+            reasonSummary: 'Se recomienda por coincidencias de logistica y coordinacion.',
+            matchedSignals: ['UNKNOWN_REASON_CODE'],
           },
           {
             routeId: 'route-project-manager-consulting-mid',
@@ -108,14 +171,14 @@ describe('/traduccion page UI states', () => {
             matchedSignals: ['LEADERSHIP_MATCH'],
           },
         ]}
-        selectedRouteId="route-project-manager-consulting-mid"
       />,
     );
 
-    expect(container?.textContent).toContain('Rutas sugeridas para tu transicion');
-    expect(container?.textContent).toContain('operations-coordinator');
-    expect(container?.textContent).toContain('project-manager');
-    expect(container?.textContent).toContain('Seleccionada');
+    expect(container?.textContent).toContain(
+      'Aun no tenemos suficientes detalles para explicar esta ruta con precision.',
+    );
+    expect(container?.textContent).toContain('Ajuste exploratorio');
+    expect(container?.textContent).toContain('Fortalezas detectadas: perfil transferible');
   });
 
   it('renders actionable UX when recommendation shortlist is empty', () => {
@@ -124,6 +187,43 @@ describe('/traduccion page UI states', () => {
     expect(container?.textContent).toContain('No hay rutas sugeridas disponibles en este momento.');
     expect(container?.textContent).toContain(
       'Completa tu perfil para volver a generar sugerencias.',
+    );
+  });
+
+  it('renders recovered explanation context after re-entry', () => {
+    renderContent({
+      state: 'ready',
+      profileSummary: 'Resumen profesional',
+      blocks: [],
+      cvSections: [],
+      reentrySelectedRouteId: 'route-operations-coordinator-logistics-mid',
+      reentrySelectedRouteContext: {
+        reasonSummary: 'Se recomienda por coincidencias de logistica y coordinacion.',
+        fitLabel: 'alto',
+        guidance: 'Priorizala si quieres continuidad operativa inmediata.',
+      },
+    });
+
+    expect(container?.textContent).toContain('Contexto recuperado de tu ruta seleccionada');
+    expect(container?.textContent).toContain('Ajuste recuperado: alto');
+    expect(container?.textContent).toContain(
+      'Priorizala si quieres continuidad operativa inmediata.',
+    );
+  });
+
+  it('renders safe fallback notice when re-entry context is missing', () => {
+    renderContent({
+      state: 'ready',
+      profileSummary: 'Resumen profesional',
+      blocks: [],
+      cvSections: [],
+      reentrySelectedRouteId: 'route-operations-coordinator-logistics-mid',
+      reentrySelectedRouteContextFallback: true,
+    });
+
+    expect(container?.textContent).toContain('Contexto recuperado de tu ruta seleccionada');
+    expect(container?.textContent).toContain(
+      'Recuperamos tu ruta seleccionada, pero faltan detalles explicativos en esta sesion.',
     );
   });
 });
