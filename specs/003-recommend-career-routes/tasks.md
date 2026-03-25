@@ -127,10 +127,10 @@
 
 ## Final Phase: Verification and Documentation
 
-- [ ] T053 Ejecutar `pnpm lint` y corregir issues del alcance en `/home/svens/dev/brujula-civil`.
-- [ ] T054 Ejecutar `pnpm typecheck` y corregir issues del alcance en `/home/svens/dev/brujula-civil`.
-- [ ] T055 Ejecutar `pnpm test:run` y corregir fallas del alcance en `/home/svens/dev/brujula-civil`.
-- [ ] T056 Actualizar guia operativa y criterios de validacion final en `specs/003-recommend-career-routes/quickstart.md`.
+- [x] T053 Ejecutar `pnpm lint` y corregir issues del alcance en `/home/svens/dev/brujula-civil`.
+- [x] T054 Ejecutar `pnpm typecheck` y corregir issues del alcance en `/home/svens/dev/brujula-civil`.
+- [x] T055 Ejecutar `pnpm test:run` y corregir fallas del alcance en `/home/svens/dev/brujula-civil`.
+- [x] T056 Actualizar guia operativa y criterios de validacion final en `specs/003-recommend-career-routes/quickstart.md`.
 
 ---
 

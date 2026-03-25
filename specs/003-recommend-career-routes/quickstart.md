@@ -39,6 +39,24 @@ Ejecutar SIEMPRE en este orden:
 
 Atajo permitido: `pnpm verify`.
 
+## Final Polish (Fase G)
+
+Checklist obligatorio de cierre para esta iniciativa:
+
+1. Ejecutar `pnpm lint`, `pnpm typecheck`, `pnpm test:run` en ese orden (sin build).
+2. Si aparece una falla, corregir solo archivos del alcance `003-recommend-career-routes`.
+3. Confirmar que `specs/003-recommend-career-routes/tasks.md` refleja unicamente tareas realmente completadas.
+4. Registrar evidencia del cierre con estado por gate (pass/fail) y commit final de fase.
+
+## Final Validation Criteria
+
+Para considerar el cierre de la fase, deben cumplirse todos:
+
+1. Gates obligatorios en PASS: lint, typecheck y test:run.
+2. Sin cambios fuera del alcance funcional de recomendaciones y su trazabilidad acordada.
+3. `tasks.md` con T053-T056 marcadas como completadas solo cuando exista evidencia.
+4. Commit final en formato Conventional Commits, reversible y sin AI attribution.
+
 ## Suggested Test Targets (to extend)
 
 - Reglas y recomendacion (`node`):
