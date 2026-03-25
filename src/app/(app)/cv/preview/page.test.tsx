@@ -92,6 +92,10 @@ describe('cv preview editable boundary', () => {
     const loadingStatus = container?.querySelector<HTMLElement>('[role="status"]');
 
     expect(loadingStatus?.textContent).toContain('Iniciando exportacion PDF...');
+
+    await act(async () => {
+      await Promise.resolve();
+    });
   });
 
   it('normalizes edited section content before preparing export payload', async () => {
