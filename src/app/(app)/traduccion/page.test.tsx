@@ -189,4 +189,41 @@ describe('/traduccion page UI states', () => {
       'Completa tu perfil para volver a generar sugerencias.',
     );
   });
+
+  it('renders recovered explanation context after re-entry', () => {
+    renderContent({
+      state: 'ready',
+      profileSummary: 'Resumen profesional',
+      blocks: [],
+      cvSections: [],
+      reentrySelectedRouteId: 'route-operations-coordinator-logistics-mid',
+      reentrySelectedRouteContext: {
+        reasonSummary: 'Se recomienda por coincidencias de logistica y coordinacion.',
+        fitLabel: 'alto',
+        guidance: 'Priorizala si quieres continuidad operativa inmediata.',
+      },
+    });
+
+    expect(container?.textContent).toContain('Contexto recuperado de tu ruta seleccionada');
+    expect(container?.textContent).toContain('Ajuste recuperado: alto');
+    expect(container?.textContent).toContain(
+      'Priorizala si quieres continuidad operativa inmediata.',
+    );
+  });
+
+  it('renders safe fallback notice when re-entry context is missing', () => {
+    renderContent({
+      state: 'ready',
+      profileSummary: 'Resumen profesional',
+      blocks: [],
+      cvSections: [],
+      reentrySelectedRouteId: 'route-operations-coordinator-logistics-mid',
+      reentrySelectedRouteContextFallback: true,
+    });
+
+    expect(container?.textContent).toContain('Contexto recuperado de tu ruta seleccionada');
+    expect(container?.textContent).toContain(
+      'Recuperamos tu ruta seleccionada, pero faltan detalles explicativos en esta sesion.',
+    );
+  });
 });

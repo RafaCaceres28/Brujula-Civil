@@ -17,6 +17,13 @@ type TranslationPreviewProps = {
   error?: unknown;
   retryHref?: string;
   explainabilityStatus?: 'complete' | 'partial';
+  reentrySelectedRouteId?: string;
+  reentrySelectedRouteContext?: {
+    reasonSummary: string;
+    fitLabel: string;
+    guidance: string;
+  };
+  reentrySelectedRouteContextFallback?: boolean;
 };
 
 const USER_SAFE_ERROR_MESSAGE_BY_CODE: Record<DomainErrorCode, string> = {
@@ -131,6 +138,30 @@ export function TranslationPreview(props: TranslationPreviewProps) {
             Algunas recomendaciones no tienen todos los detalles aun. Puedes avanzar y ajustar tu
             eleccion cuando tengas mas contexto.
           </p>
+        </section>
+      ) : null}
+
+      {props.reentrySelectedRouteId ? (
+        <section className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+          <h2 className="text-base font-semibold text-slate-900">
+            Contexto recuperado de tu ruta seleccionada
+          </h2>
+          <p className="text-xs text-slate-600">Ruta activa: {props.reentrySelectedRouteId}</p>
+          {props.reentrySelectedRouteContext ? (
+            <>
+              <p className="text-sm text-slate-700">
+                {props.reentrySelectedRouteContext.reasonSummary}
+              </p>
+              <p className="text-sm text-slate-700">
+                Ajuste recuperado: {props.reentrySelectedRouteContext.fitLabel}
+              </p>
+              <p className="text-sm text-slate-700">{props.reentrySelectedRouteContext.guidance}</p>
+            </>
+          ) : props.reentrySelectedRouteContextFallback ? (
+            <p className="text-sm text-amber-700">
+              Recuperamos tu ruta seleccionada, pero faltan detalles explicativos en esta sesion.
+            </p>
+          ) : null}
         </section>
       ) : null}
 

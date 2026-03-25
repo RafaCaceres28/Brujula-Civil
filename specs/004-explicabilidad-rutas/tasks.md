@@ -99,17 +99,17 @@
 
 ### Tests for US3
 
-- [ ] T040 [P] [US3] Extender test de overview para recovery de `selectedRouteContext` valido en `src/features/wizard/server/get-onboarding-overview.test.ts`.
-- [ ] T041 [P] [US3] Extender test de merge defensivo para no perder `selectedRouteContext` en `src/features/wizard/server/save-onboarding-step.test.ts`.
-- [ ] T042 [P] [US3] Extender test UI de reingreso con contexto explicable en `src/app/(app)/traduccion/page.test.tsx`.
+- [x] T040 [P] [US3] Extender test de overview para recovery de `selectedRouteContext` valido en `src/features/wizard/server/get-onboarding-overview.test.ts`.
+- [x] T041 [P] [US3] Extender test de merge defensivo para no perder `selectedRouteContext` en `src/features/wizard/server/save-onboarding-step.test.ts`.
+- [x] T042 [P] [US3] Extender test UI de reingreso con contexto explicable en `src/app/(app)/traduccion/page.test.tsx`.
 
 ### Implementation for US3
 
-- [ ] T043 [US3] Recuperar `selectedRouteContext` con fallback seguro en `src/features/wizard/server/get-onboarding-overview.ts`.
-- [ ] T044 [US3] Conservar `selectedRouteContext` en merge de draft al guardar onboarding en `src/features/wizard/server/save-onboarding-step.ts`.
-- [ ] T045 [US3] Rehidratar estado de seleccion explicable al cargar traduccion en `src/features/translation/server/get-translation.ts`.
-- [ ] T046 [US3] Mostrar resumen de contexto recuperado y aviso de fallback en `src/app/(app)/traduccion/page.tsx`.
-- [ ] T047 [US3] Cubrir compatibilidad con puente `selectedRecommendation` legado en `src/features/wizard/server/get-onboarding-overview.ts`.
+- [x] T043 [US3] Recuperar `selectedRouteContext` con fallback seguro en `src/features/wizard/server/get-onboarding-overview.ts`.
+- [x] T044 [US3] Conservar `selectedRouteContext` en merge de draft al guardar onboarding en `src/features/wizard/server/save-onboarding-step.ts`.
+- [x] T045 [US3] Rehidratar estado de seleccion explicable al cargar traduccion en `src/features/translation/server/get-translation.ts`.
+- [x] T046 [US3] Mostrar resumen de contexto recuperado y aviso de fallback en `src/app/(app)/traduccion/page.tsx`.
+- [x] T047 [US3] Cubrir compatibilidad con puente `selectedRecommendation` legado en `src/features/wizard/server/get-onboarding-overview.ts`.
 
 ---
 

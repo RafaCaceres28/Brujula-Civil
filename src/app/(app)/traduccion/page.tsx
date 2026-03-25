@@ -26,6 +26,12 @@ type TranslationPageContentProps = {
   recommendations?: RecommendationOutput;
   selectedRouteId?: string;
   explainabilityStatus?: 'complete' | 'partial';
+  reentrySelectedRouteContext?: {
+    reasonSummary: string;
+    fitLabel: string;
+    guidance: string;
+  };
+  reentrySelectedRouteContextFallback?: boolean;
   error?: unknown;
 };
 
@@ -48,6 +54,9 @@ export function TranslationPageContent(props: TranslationPageContentProps) {
           previewCompleteness: props.previewCompleteness,
         }}
         explainabilityStatus={props.explainabilityStatus}
+        reentrySelectedRouteId={props.selectedRouteId}
+        reentrySelectedRouteContext={props.reentrySelectedRouteContext}
+        reentrySelectedRouteContextFallback={props.reentrySelectedRouteContextFallback}
         error={props.error}
       />
 
@@ -167,6 +176,16 @@ export default async function TranslationPage() {
       recommendations={recommendations}
       selectedRouteId={selectedRouteId}
       explainabilityStatus={hasExplainabilityGaps ? 'partial' : 'complete'}
+      reentrySelectedRouteContext={
+        selectedRouteContext
+          ? {
+              reasonSummary: selectedRouteContext.reasonSummarySnapshot,
+              fitLabel: selectedRouteContext.fitLabelSnapshot,
+              guidance: selectedRouteContext.guidanceSnapshot,
+            }
+          : undefined
+      }
+      reentrySelectedRouteContextFallback={Boolean(selectedRouteId && !selectedRouteContext)}
     />
   );
 }
