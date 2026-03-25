@@ -1,9 +1,20 @@
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { requireUser } from '@/features/auth/server/require-user';
 import { saveMilitarStepAction } from '@/features/wizard/actions/save-militar-step-action';
+import { CatalogSingleSelect } from '@/features/wizard/components/catalog-single-select';
 import { StepGuard } from '@/features/wizard/components/step-guard';
 import { WizardShell } from '@/features/wizard/components/wizard-shell';
 import { WizardStepActions } from '@/features/wizard/components/wizard-step-actions';
+import {
+  BRANCH_OPTIONS,
+  CORPS_OPTIONS,
+  DESTINATION_CONTEXT_OPTIONS,
+  LEADERSHIP_LEVEL_OPTIONS,
+  RANK_OPTIONS,
+  SPECIALTY_OPTIONS,
+  TEAM_SIZE_OPTIONS,
+} from '@/features/wizard/config/wizard-catalogs';
 import { getOnboardingOverview } from '@/features/wizard/server/get-onboarding-overview';
 import { getMilitarStepDefaults } from '@/features/wizard/services/wizard-form.mapper';
 
@@ -20,37 +31,37 @@ export default async function MilitarStepPage() {
       >
         <form action={saveMilitarStepAction} className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label htmlFor="branch" className="text-sm font-medium text-slate-900">
-                Ejército
-              </label>
-              <Input id="branch" name="branch" defaultValue={values.branch ?? ''} />
-            </div>
+            <CatalogSingleSelect
+              id="branch"
+              name="branch"
+              label="Ejército"
+              options={BRANCH_OPTIONS}
+              defaultValue={values.branch}
+            />
 
-            <div className="space-y-2">
-              <label htmlFor="corps" className="text-sm font-medium text-slate-900">
-                Cuerpo / rama
-              </label>
-              <Input id="corps" name="corps" defaultValue={values.corps ?? ''} />
-            </div>
+            <CatalogSingleSelect
+              id="corps"
+              name="corps"
+              label="Cuerpo / rama"
+              options={CORPS_OPTIONS}
+              defaultValue={values.corps}
+            />
 
-            <div className="space-y-2">
-              <label htmlFor="rankCode" className="text-sm font-medium text-slate-900">
-                Empleo / rango
-              </label>
-              <Input id="rankCode" name="rankCode" defaultValue={values.rank.code ?? ''} />
-            </div>
+            <CatalogSingleSelect
+              id="rankCode"
+              name="rankCode"
+              label="Empleo / rango"
+              options={RANK_OPTIONS}
+              defaultValue={values.rank.code}
+            />
 
-            <div className="space-y-2">
-              <label htmlFor="specialtyCode" className="text-sm font-medium text-slate-900">
-                Especialidad
-              </label>
-              <Input
-                id="specialtyCode"
-                name="specialtyCode"
-                defaultValue={values.specialty.code ?? ''}
-              />
-            </div>
+            <CatalogSingleSelect
+              id="specialtyCode"
+              name="specialtyCode"
+              label="Especialidad"
+              options={SPECIALTY_OPTIONS}
+              defaultValue={values.specialty.code}
+            />
 
             <div className="space-y-2">
               <label htmlFor="serviceYears" className="text-sm font-medium text-slate-900">
@@ -65,34 +76,29 @@ export default async function MilitarStepPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="destinationContext" className="text-sm font-medium text-slate-900">
-                Contexto de destino
-              </label>
-              <Input
-                id="destinationContext"
-                name="destinationContext"
-                defaultValue={values.destinationContext ?? ''}
-              />
-            </div>
+            <CatalogSingleSelect
+              id="destinationContext"
+              name="destinationContext"
+              label="Contexto de destino"
+              options={DESTINATION_CONTEXT_OPTIONS}
+              defaultValue={values.destinationContext}
+            />
 
-            <div className="space-y-2">
-              <label htmlFor="leadershipLevel" className="text-sm font-medium text-slate-900">
-                Nivel de liderazgo
-              </label>
-              <Input
-                id="leadershipLevel"
-                name="leadershipLevel"
-                defaultValue={values.leadershipLevel ?? ''}
-              />
-            </div>
+            <CatalogSingleSelect
+              id="leadershipLevel"
+              name="leadershipLevel"
+              label="Nivel de liderazgo"
+              options={LEADERSHIP_LEVEL_OPTIONS}
+              defaultValue={values.leadershipLevel}
+            />
 
-            <div className="space-y-2">
-              <label htmlFor="teamSize" className="text-sm font-medium text-slate-900">
-                Tamaño de equipo
-              </label>
-              <Input id="teamSize" name="teamSize" defaultValue={values.teamSize ?? ''} />
-            </div>
+            <CatalogSingleSelect
+              id="teamSize"
+              name="teamSize"
+              label="Tamaño de equipo"
+              options={TEAM_SIZE_OPTIONS}
+              defaultValue={values.teamSize}
+            />
 
             <div className="space-y-2">
               <label htmlFor="unitName" className="text-sm font-medium text-slate-900">
@@ -105,7 +111,7 @@ export default async function MilitarStepPage() {
               <label htmlFor="notes" className="text-sm font-medium text-slate-900">
                 Notas
               </label>
-              <Input id="notes" name="notes" defaultValue={values.notes ?? ''} />
+              <Textarea id="notes" name="notes" defaultValue={values.notes ?? ''} />
             </div>
           </div>
 

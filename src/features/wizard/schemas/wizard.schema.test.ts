@@ -25,6 +25,35 @@ describe('wizard.schema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejects structured values outside catalog', () => {
+    const result = onboardingDraftSchema.safeParse({
+      militar: {
+        branch: 'free-text',
+      },
+      experiencia: {
+        responsibilityAreas: ['operations', 'texto-libre'],
+      },
+      competencias: {
+        languages: [
+          { name: 'english', level: 'advanced' },
+          { name: 'idioma-invalido', level: 'advanced' },
+        ],
+      },
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    const invalidPaths = result.error.issues.map((issue) => issue.path.join('.'));
+
+    expect(invalidPaths).toContain('militar.branch');
+    expect(invalidPaths).toContain('experiencia.responsibilityAreas.1');
+    expect(invalidPaths).toContain('competencias.languages.1.name');
+  });
+
   it('rejects invalid objetivos role contract', () => {
     const result = objetivosStepSchema.safeParse({
       targetRoles: [{ slug: '', label: 'Role' }],
@@ -36,5 +65,35 @@ describe('wizard.schema', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it('rejects free text labels in structured rank and target role payload', () => {
+    const result = onboardingDraftSchema.safeParse({
+      militar: {
+        rank: {
+          code: 'captain',
+          label: 'Rango libre manipulado',
+        },
+      },
+      objetivos: {
+        targetRoles: [
+          {
+            slug: 'operations-coordinator',
+            label: 'Rol libre manipulado',
+          },
+        ],
+      },
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    const invalidPaths = result.error.issues.map((issue) => issue.path.join('.'));
+
+    expect(invalidPaths).toContain('militar.rank.label');
+    expect(invalidPaths).toContain('objetivos.targetRoles.0.label');
   });
 });

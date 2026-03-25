@@ -1,9 +1,17 @@
 import { Textarea } from '@/components/ui/textarea';
 import { requireUser } from '@/features/auth/server/require-user';
 import { saveExperienciaStepAction } from '@/features/wizard/actions/save-experiencia-step-action';
+import { CatalogMultiSelect } from '@/features/wizard/components/catalog-multi-select';
 import { StepGuard } from '@/features/wizard/components/step-guard';
 import { WizardShell } from '@/features/wizard/components/wizard-shell';
 import { WizardStepActions } from '@/features/wizard/components/wizard-step-actions';
+import {
+  FUNCTION_TYPE_OPTIONS,
+  LEADERSHIP_SCOPE_OPTIONS,
+  MISSION_TYPE_OPTIONS,
+  RESPONSIBILITY_AREA_OPTIONS,
+  TOOL_OPTIONS,
+} from '@/features/wizard/config/wizard-catalogs';
 import { getOnboardingOverview } from '@/features/wizard/server/get-onboarding-overview';
 import { getExperienciaStepDefaults } from '@/features/wizard/services/wizard-form.mapper';
 
@@ -20,38 +28,26 @@ export default async function ExperienciaStepPage() {
       >
         <form action={saveExperienciaStepAction} className="space-y-6">
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="responsibilityAreas" className="text-sm font-medium text-slate-900">
-                Areas de responsabilidad
-              </label>
-              <Textarea
-                id="responsibilityAreas"
-                name="responsibilityAreas"
-                defaultValue={values.responsibilityAreas.join('\n')}
-              />
-            </div>
+            <CatalogMultiSelect
+              name="responsibilityAreas"
+              label="Areas de responsabilidad"
+              options={RESPONSIBILITY_AREA_OPTIONS}
+              selectedValues={values.responsibilityAreas}
+            />
 
-            <div className="space-y-2">
-              <label htmlFor="missionTypes" className="text-sm font-medium text-slate-900">
-                Tipos de mision
-              </label>
-              <Textarea
-                id="missionTypes"
-                name="missionTypes"
-                defaultValue={values.missionTypes.join('\n')}
-              />
-            </div>
+            <CatalogMultiSelect
+              name="missionTypes"
+              label="Tipos de mision"
+              options={MISSION_TYPE_OPTIONS}
+              selectedValues={values.missionTypes}
+            />
 
-            <div className="space-y-2">
-              <label htmlFor="functionTypes" className="text-sm font-medium text-slate-900">
-                Tipos de funcion
-              </label>
-              <Textarea
-                id="functionTypes"
-                name="functionTypes"
-                defaultValue={values.functionTypes.join('\n')}
-              />
-            </div>
+            <CatalogMultiSelect
+              name="functionTypes"
+              label="Tipos de funcion"
+              options={FUNCTION_TYPE_OPTIONS}
+              selectedValues={values.functionTypes}
+            />
 
             <div className="space-y-2">
               <label htmlFor="achievements" className="text-sm font-medium text-slate-900">
@@ -64,23 +60,19 @@ export default async function ExperienciaStepPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="tools" className="text-sm font-medium text-slate-900">
-                Herramientas
-              </label>
-              <Textarea id="tools" name="tools" defaultValue={values.tools.join('\n')} />
-            </div>
+            <CatalogMultiSelect
+              name="tools"
+              label="Herramientas"
+              options={TOOL_OPTIONS}
+              selectedValues={values.tools}
+            />
 
-            <div className="space-y-2">
-              <label htmlFor="leadershipScopes" className="text-sm font-medium text-slate-900">
-                Alcance de liderazgo
-              </label>
-              <Textarea
-                id="leadershipScopes"
-                name="leadershipScopes"
-                defaultValue={values.leadershipScopes.join('\n')}
-              />
-            </div>
+            <CatalogMultiSelect
+              name="leadershipScopes"
+              label="Alcance de liderazgo"
+              options={LEADERSHIP_SCOPE_OPTIONS}
+              selectedValues={values.leadershipScopes}
+            />
 
             <div className="space-y-2">
               <label htmlFor="additionalContext" className="text-sm font-medium text-slate-900">

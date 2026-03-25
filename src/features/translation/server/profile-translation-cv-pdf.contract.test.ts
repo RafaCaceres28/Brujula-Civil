@@ -8,11 +8,22 @@ import { mapTranslationOutputToCvInput } from '../../cv/services/cv.mapper';
 import { saveCvDraft } from '../../cv/server/save-cv';
 import * as pdfModule from '../../documents/server/generate-pdf';
 import { mapProfileToTranslationSnapshot } from '../../profile/services/profile.mapper';
+import { getProfile } from '../../profile/server/get-profile';
+import { getOnboardingOverview } from '../../wizard/server/get-onboarding-overview';
 import { generateTranslation } from './generate-translation';
+import { getTranslation } from './get-translation';
 import { profileDomainFixture } from './__fixtures__/contract-fixtures';
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
+}));
+
+vi.mock('../../profile/server/get-profile', () => ({
+  getProfile: vi.fn(),
+}));
+
+vi.mock('../../wizard/server/get-onboarding-overview', () => ({
+  getOnboardingOverview: vi.fn(),
 }));
 
 function createDraftPersistenceMock() {
@@ -398,5 +409,148 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
 
     expect(pdfResult.meta?.traceability?.selectedRouteId).toBe('route-team-lead-technology-mid');
     expect(pdfResult.meta?.traceability?.selectedRouteFitLabel).toBeUndefined();
+  });
+
+  it('keeps recommendation explainability context after guided draft re-entry', async () => {
+    vi.mocked(getProfile).mockResolvedValue(profileDomainFixture);
+    vi.mocked(getOnboardingOverview).mockResolvedValue({
+      state: null,
+      steps: [],
+      completedStepKeys: [],
+      draft: {
+        militar: {
+          branch: 'army',
+          corps: 'signals',
+          rank: { code: 'captain', label: 'Capitán' },
+          specialty: { code: 'communications', label: 'Comunicaciones / Sistemas' },
+          serviceYears: 8,
+          destinationContext: 'hq_staff',
+          leadershipLevel: 'section_lead',
+          teamSize: '6_15',
+          unitName: null,
+          notes: null,
+        },
+        experiencia: {
+          responsibilityAreas: ['operations'],
+          missionTypes: ['intl_stability'],
+          functionTypes: ['coordination'],
+          tools: ['erp'],
+          leadershipScopes: ['team_supervision'],
+          achievements: [],
+          additionalContext: null,
+        },
+        competencias: {
+          technicalSkills: ['operations_management'],
+          softSkills: ['leadership'],
+          certifications: ['quality_iso'],
+          drivingLicenses: ['c'],
+          languages: [{ name: 'english', level: 'advanced' }],
+          officeTools: ['excel'],
+          extraTraining: null,
+        },
+        objetivos: {
+          targetRoles: [{ slug: 'project-manager', label: 'Gestor de Proyectos y Operaciones' }],
+          targetSectors: ['consulting'],
+          preferredLocations: ['madrid'],
+          workModel: 'hybrid',
+          seniority: 'manager',
+          preferencesNotes: null,
+        },
+        resumen: {
+          confirmed: false,
+        },
+      },
+      employabilityFlow: {
+        recommendations: {
+          recommendationSetId: 'recset-snapshot-1-20260324010101',
+          generatedAt: '2026-03-24T01:01:01.000Z',
+          sourceSnapshotId: 'snapshot-1',
+          routes: [
+            {
+              routeId: 'route-project-manager-consulting-mid',
+              roleId: 'project-manager',
+              sectorId: 'consulting',
+              seniorityId: 'mid',
+              reasonSummary: 'Se recomienda por coincidencias de planificacion y liderazgo.',
+              matchedSignals: ['TARGET_ROLE_HINT'],
+              explanation: {
+                reasonSummary: 'Se recomienda por coincidencias de planificacion y liderazgo.',
+                fitLabel: 'alto',
+                fitScore: 88,
+                explanationKeywords: ['planificacion', 'liderazgo'],
+                decisionGuidance:
+                  'Priorizala si quieres continuidad operativa con foco en gestion de equipos.',
+              },
+            },
+            {
+              routeId: 'route-operations-coordinator-logistics-mid',
+              roleId: 'operations-coordinator',
+              sectorId: 'logistics',
+              seniorityId: 'mid',
+              reasonSummary: 'Se recomienda por coincidencias operativas y logisticas.',
+              matchedSignals: ['TARGET_SECTOR_HINT'],
+            },
+            {
+              routeId: 'route-team-lead-technology-mid',
+              roleId: 'team-lead',
+              sectorId: 'technology',
+              seniorityId: 'mid',
+              reasonSummary: 'Se recomienda por experiencia de coordinacion de equipos.',
+              matchedSignals: ['LEADERSHIP_MATCH'],
+            },
+          ],
+        },
+        selectedRoute: {
+          recommendationSetId: 'recset-snapshot-1-20260324010101',
+          selectedRouteId: 'route-project-manager-consulting-mid',
+          selectedAt: '2026-03-24T01:05:03.000Z',
+        },
+        selectedRouteContext: {
+          recommendationSetId: 'recset-snapshot-1-20260324010101',
+          selectedRouteId: 'route-project-manager-consulting-mid',
+          reasonSummarySnapshot: 'Se recomienda por coincidencias de planificacion y liderazgo.',
+          fitLabelSnapshot: 'alto',
+          guidanceSnapshot:
+            'Priorizala si quieres continuidad operativa con foco en gestion de equipos.',
+          capturedAt: '2026-03-24T01:05:03.000Z',
+        },
+      },
+    });
+
+    const context = await getTranslation(profileDomainFixture.userId, 'req-us3-translation');
+
+    expect(context.ok).toBe(true);
+    if (!context.ok || !context.data) {
+      throw new Error('Expected translation context success with guided re-entry data');
+    }
+
+    expect(context.data.selectedRouteId).toBe('route-project-manager-consulting-mid');
+    expect(context.data.selectedRouteContext).toMatchObject({
+      fitLabelSnapshot: 'alto',
+      reasonSummarySnapshot: 'Se recomienda por coincidencias de planificacion y liderazgo.',
+    });
+
+    const profileSnapshot = mapProfileToTranslationSnapshot(context.data.profile);
+    const translationResult = await generateTranslation({
+      userId: context.data.profile.userId,
+      sourceProfile: profileSnapshot,
+      sourceLanguage: 'es-ES',
+      targetLanguage: 'en-US',
+      tone: 'neutral',
+      selectedRouteId: context.data.selectedRouteId,
+      selectedRouteContext: context.data.selectedRouteContext,
+    });
+
+    expect(translationResult.ok).toBe(true);
+    if (!translationResult.ok) {
+      throw new Error('Expected translation success for guided re-entry context');
+    }
+
+    expect(translationResult.data.selectedRouteId).toBe('route-project-manager-consulting-mid');
+    expect(translationResult.data.selectedRouteContext).toMatchObject({
+      fitLabelSnapshot: 'alto',
+      guidanceSnapshot:
+        'Priorizala si quieres continuidad operativa con foco en gestion de equipos.',
+    });
   });
 });

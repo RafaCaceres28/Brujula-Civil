@@ -17,8 +17,8 @@ const draftFixture = onboardingDraftSchema.parse({
   militar: {
     branch: 'army',
     corps: 'signals',
-    rank: { code: 'captain', label: 'Capitan' },
-    specialty: { code: 'communications', label: 'Comunicaciones' },
+    rank: { code: 'captain', label: 'Capitán' },
+    specialty: { code: 'communications', label: 'Comunicaciones / Sistemas' },
     serviceYears: 10,
     destinationContext: 'hq_staff',
     leadershipLevel: 'section_lead',
@@ -40,12 +40,12 @@ const draftFixture = onboardingDraftSchema.parse({
     softSkills: ['leadership'],
     certifications: ['quality_iso'],
     drivingLicenses: ['c'],
-    languages: [{ name: 'Ingles', level: 'advanced' }],
+    languages: [{ name: 'english', level: 'advanced' }],
     officeTools: ['excel'],
     extraTraining: null,
   },
   objetivos: {
-    targetRoles: [{ slug: 'operations-manager', label: 'Operations Manager' }],
+    targetRoles: [{ slug: 'project-manager', label: 'Gestor de Proyectos y Operaciones' }],
     targetSectors: ['logistics'],
     preferredLocations: ['madrid'],
     workModel: 'hybrid',
@@ -58,6 +58,7 @@ function createSupabaseMock(options: {
   currentMilitaryProfile: { id: string } | null;
   currentCivilProfile: { id: string; version_no: number } | null;
   latestVersions?: Array<{ version_no: number }>;
+  wizardDraft?: unknown;
 }) {
   const records: {
     militaryUpdate?: MilitaryProfileUpdate;
@@ -75,7 +76,7 @@ function createSupabaseMock(options: {
               eq() {
                 return {
                   maybeSingle: async () => ({
-                    data: { aggregated_draft_jsonb: draftFixture },
+                    data: { aggregated_draft_jsonb: options.wizardDraft ?? draftFixture },
                     error: null,
                   }),
                 };
@@ -192,14 +193,14 @@ describe('projectWizardToProfiles', () => {
     expect(records.militaryUpdate).toMatchObject({
       branch: 'army',
       component: 'signals',
-      rank_text: 'Capitan',
-      specialty_text: 'Comunicaciones',
+      rank_text: 'Capitán',
+      specialty_text: 'Comunicaciones / Sistemas',
       service_years: 10,
     });
 
     expect(records.civilUpdate).toMatchObject({
       military_profile_id: 'mil-1',
-      target_role: 'Operations Manager',
+      target_role: 'Gestor de Proyectos y Operaciones',
       target_sector: 'logistics',
       status: 'draft',
     });
@@ -227,9 +228,53 @@ describe('projectWizardToProfiles', () => {
       user_id: 'user-1',
       military_profile_id: 'mil-new',
       version_no: 3,
-      target_role: 'Operations Manager',
+      target_role: 'Gestor de Proyectos y Operaciones',
       target_sector: 'logistics',
       is_current: true,
+    });
+  });
+
+  it('keeps compatibility with mixed legacy-guided wizard drafts on projection', async () => {
+    const { client, records } = createSupabaseMock({
+      currentMilitaryProfile: null,
+      currentCivilProfile: null,
+      latestVersions: [{ version_no: 0 }],
+      wizardDraft: {
+        militar: {
+          branch: 'Ejército de Tierra',
+          corps: 'Ingenieros y Zapadores',
+          rank: { code: 'captain', label: 'Capitán' },
+          specialty: { code: 'Comunicaciones / Sistemas', label: 'legacy' },
+          serviceYears: 12,
+        },
+        experiencia: {
+          responsibilityAreas: ['Operaciones y Ejecución', 'legacy-invalid'],
+        },
+        competencias: {
+          technicalSkills: ['Gestión de Operaciones'],
+        },
+        objetivos: {
+          targetRoles: ['Coordinador de Operaciones y Logística'],
+          targetSectors: ['Logística y Transporte'],
+        },
+      },
+    });
+
+    vi.mocked(createClient).mockResolvedValue(client as never);
+
+    await expect(projectWizardToProfiles('user-1')).resolves.toBeUndefined();
+
+    expect(records.militaryInsert).toMatchObject({
+      branch: 'army',
+      component: 'engineers',
+      rank_text: 'Capitán',
+      specialty_text: 'Comunicaciones / Sistemas',
+      service_years: 12,
+    });
+    expect(records.civilInsert).toMatchObject({
+      target_role: 'Coordinador de Operaciones y Logística',
+      target_sector: 'logistics',
+      version_no: 1,
     });
   });
 });

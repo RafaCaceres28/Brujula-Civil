@@ -344,4 +344,140 @@ describe('getOnboardingOverview', () => {
     );
     expect(result.employabilityFlow?.selectedRouteContext).toBeUndefined();
   });
+
+  it('recovers mixed legacy-guided drafts and degrades invalid structured values safely', async () => {
+    const state = {
+      user_id: 'user-1',
+      current_step: 'missions_achievements',
+      last_completed_step: 'military_background',
+      completion_percent: 40,
+      is_completed: false,
+      aggregated_draft_jsonb: {
+        militar: {
+          branch: 'Ejército de Tierra',
+          destinationContext: 'legacy-invalid',
+          unitName: '   Unidad Legacy   ',
+        },
+        experiencia: {
+          responsibilityAreas: ['Operaciones y Ejecución', 'planning', 'legacy-invalid'],
+          achievements: ['  Lideré célula logística  '],
+        },
+        objetivos: {
+          targetRoles: ['Gestor de Proyectos y Operaciones', 'legacy-invalid-role'],
+        },
+        employabilityFlow: {
+          recommendations: {
+            recommendationSetId: 'recset-snapshot-1-20260324010101',
+            generatedAt: '2026-03-24T01:01:01.000Z',
+            sourceSnapshotId: 'snapshot-1',
+            routes: [
+              {
+                routeId: 'route-project-manager-consulting-mid',
+                roleId: 'project-manager',
+                sectorId: 'consulting',
+                seniorityId: 'mid',
+                reasonSummary: 'Se recomienda por coincidencias de planificacion y liderazgo.',
+                matchedSignals: ['TARGET_ROLE_HINT'],
+              },
+              {
+                routeId: 'route-operations-coordinator-logistics-mid',
+                roleId: 'operations-coordinator',
+                sectorId: 'logistics',
+                seniorityId: 'mid',
+                reasonSummary: 'Se recomienda por coincidencias operativas y logisticas.',
+                matchedSignals: ['TARGET_SECTOR_HINT'],
+              },
+              {
+                routeId: 'route-team-lead-technology-mid',
+                roleId: 'team-lead',
+                sectorId: 'technology',
+                seniorityId: 'mid',
+                reasonSummary: 'Se recomienda por experiencia de coordinacion de equipos.',
+                matchedSignals: ['LEADERSHIP_MATCH'],
+              },
+            ],
+          },
+          selectedRecommendation: {
+            recommendationSetId: 'recset-snapshot-1-20260324010101',
+            selectedRouteId: 'route-project-manager-consulting-mid',
+            selectedAt: '2026-03-24T01:02:03.000Z',
+          },
+          selectedRouteContext: {
+            recommendationSetId: 'recset-snapshot-1-20260324010101',
+            selectedRouteId: 'route-operations-coordinator-logistics-mid',
+            reasonSummarySnapshot: 'Contexto inconsistente legado',
+            fitLabelSnapshot: 'alto',
+            guidanceSnapshot: 'No debe persistir por mismatch con selected route.',
+            capturedAt: '2026-03-24T01:02:03.000Z',
+          },
+        },
+      },
+      started_at: '2026-01-01T00:00:00.000Z',
+      last_saved_at: '2026-01-01T00:00:00.000Z',
+      completed_at: null,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+    } as UserWizardStateRow;
+
+    const { client } = createSupabaseMock({
+      stateResult: { data: state, error: null },
+      stepsResult: { data: [], error: null },
+    });
+
+    vi.mocked(createClient).mockResolvedValue(client as never);
+
+    const result = await getOnboardingOverview('user-1');
+
+    expect(result.draft.militar.branch).toBe('army');
+    expect(result.draft.militar.destinationContext).toBeNull();
+    expect(result.draft.militar.unitName).toBe('Unidad Legacy');
+    expect(result.draft.experiencia.responsibilityAreas).toEqual(['operations', 'planning']);
+    expect(result.draft.objetivos.targetRoles).toEqual([
+      { slug: 'project-manager', label: 'Gestor de Proyectos y Operaciones' },
+    ]);
+    expect(result.employabilityFlow?.selectedRoute?.selectedRouteId).toBe(
+      'route-project-manager-consulting-mid',
+    );
+    expect(result.employabilityFlow?.selectedRouteContext).toBeUndefined();
+  });
+
+  it('moves obsolete legacy role labels to narrative fallback without breaking re-entry', async () => {
+    const state = {
+      user_id: 'user-1',
+      current_step: 'preferences',
+      last_completed_step: 'skills_tools',
+      completion_percent: 80,
+      is_completed: false,
+      aggregated_draft_jsonb: {
+        objetivos: {
+          targetRoles: ['Arquitecto de Soluciones Legacy'],
+          targetSectors: ['consulting'],
+          preferredLocations: ['madrid'],
+          workModel: 'hybrid',
+          seniority: 'manager',
+          preferencesNotes: null,
+        },
+      },
+      started_at: '2026-01-01T00:00:00.000Z',
+      last_saved_at: '2026-01-01T00:00:00.000Z',
+      completed_at: null,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+    } as UserWizardStateRow;
+
+    const { client } = createSupabaseMock({
+      stateResult: { data: state, error: null },
+      stepsResult: { data: [], error: null },
+    });
+
+    vi.mocked(createClient).mockResolvedValue(client as never);
+
+    const result = await getOnboardingOverview('user-1');
+
+    expect(result.draft.objetivos.targetRoles).toEqual([]);
+    expect(result.draft.objetivos.preferencesNotes).toBe(
+      'Rol objetivo legacy no disponible: Arquitecto de Soluciones Legacy',
+    );
+    expect(result.draft.objetivos.targetSectors).toEqual(['consulting']);
+  });
 });

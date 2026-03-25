@@ -462,3 +462,78 @@ export const LOCATION_OPTIONS: CatalogOption[] = [
   { value: 'melilla', label: 'Melilla' },
   { value: 'remote_anywhere', label: 'Remoto / cualquier ubicación' },
 ];
+
+export const TARGET_ROLE_CATALOG_OPTIONS: CatalogOption[] = TARGET_ROLE_OPTIONS.map((option) => ({
+  value: option.slug,
+  label: option.label,
+}));
+
+export const LANGUAGE_COMPOUND_OPTIONS: CatalogOption[] = LANGUAGE_OPTIONS.flatMap((language) =>
+  LANGUAGE_LEVEL_OPTIONS.map((level) => ({
+    value: `${language.value}:${level.value}`,
+    label: `${language.label} - ${level.label}`,
+  })),
+);
+
+export const ONBOARDING_FIELD_CONTROL_MAP = {
+  structured: {
+    'militar.branch': 'single',
+    'militar.corps': 'single',
+    'militar.rank.code': 'single',
+    'militar.specialty.code': 'single',
+    'militar.serviceYears': 'number',
+    'militar.destinationContext': 'single',
+    'militar.leadershipLevel': 'single',
+    'militar.teamSize': 'single',
+    'experiencia.responsibilityAreas': 'multi',
+    'experiencia.missionTypes': 'multi',
+    'experiencia.functionTypes': 'multi',
+    'experiencia.tools': 'multi',
+    'experiencia.leadershipScopes': 'multi',
+    'competencias.technicalSkills': 'multi',
+    'competencias.softSkills': 'multi',
+    'competencias.certifications': 'multi',
+    'competencias.drivingLicenses': 'multi',
+    'competencias.languages': 'compound',
+    'competencias.officeTools': 'multi',
+    'objetivos.targetRoles': 'multi',
+    'objetivos.targetSectors': 'multi',
+    'objetivos.preferredLocations': 'multi',
+    'objetivos.workModel': 'single',
+    'objetivos.seniority': 'single',
+  },
+  narrative: {
+    'militar.unitName': 'text',
+    'militar.notes': 'textarea',
+    'experiencia.achievements': 'textarea-list',
+    'experiencia.additionalContext': 'textarea',
+    'competencias.extraTraining': 'textarea',
+    'objetivos.preferencesNotes': 'textarea',
+  },
+} as const;
+
+export const STRUCTURED_FIELD_OPTIONS_MAP = {
+  'militar.branch': BRANCH_OPTIONS,
+  'militar.corps': CORPS_OPTIONS,
+  'militar.rank.code': RANK_OPTIONS,
+  'militar.specialty.code': SPECIALTY_OPTIONS,
+  'militar.destinationContext': DESTINATION_CONTEXT_OPTIONS,
+  'militar.leadershipLevel': LEADERSHIP_LEVEL_OPTIONS,
+  'militar.teamSize': TEAM_SIZE_OPTIONS,
+  'experiencia.responsibilityAreas': RESPONSIBILITY_AREA_OPTIONS,
+  'experiencia.missionTypes': MISSION_TYPE_OPTIONS,
+  'experiencia.functionTypes': FUNCTION_TYPE_OPTIONS,
+  'experiencia.tools': TOOL_OPTIONS,
+  'experiencia.leadershipScopes': LEADERSHIP_SCOPE_OPTIONS,
+  'competencias.technicalSkills': TECHNICAL_SKILL_OPTIONS,
+  'competencias.softSkills': SOFT_SKILL_OPTIONS,
+  'competencias.certifications': CERTIFICATION_OPTIONS,
+  'competencias.drivingLicenses': DRIVING_LICENSE_OPTIONS,
+  'competencias.languages': LANGUAGE_COMPOUND_OPTIONS,
+  'competencias.officeTools': OFFICE_TOOL_OPTIONS,
+  'objetivos.targetRoles': TARGET_ROLE_CATALOG_OPTIONS,
+  'objetivos.targetSectors': TARGET_SECTOR_OPTIONS,
+  'objetivos.preferredLocations': LOCATION_OPTIONS,
+  'objetivos.workModel': WORK_MODEL_OPTIONS,
+  'objetivos.seniority': SENIORITY_OPTIONS,
+} as const;

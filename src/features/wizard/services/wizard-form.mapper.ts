@@ -14,8 +14,33 @@ import type {
   OnboardingDraft,
   ResumenStepPayload,
 } from '../types/wizard.types';
-
-import { RANK_OPTIONS, SPECIALTY_OPTIONS } from '../config/wizard-catalogs';
+import {
+  BRANCH_OPTIONS,
+  CERTIFICATION_OPTIONS,
+  CORPS_OPTIONS,
+  DESTINATION_CONTEXT_OPTIONS,
+  DRIVING_LICENSE_OPTIONS,
+  FUNCTION_TYPE_OPTIONS,
+  LANGUAGE_LEVEL_OPTIONS,
+  LANGUAGE_OPTIONS,
+  LEADERSHIP_LEVEL_OPTIONS,
+  LEADERSHIP_SCOPE_OPTIONS,
+  LOCATION_OPTIONS,
+  MISSION_TYPE_OPTIONS,
+  OFFICE_TOOL_OPTIONS,
+  RANK_OPTIONS,
+  RESPONSIBILITY_AREA_OPTIONS,
+  SENIORITY_OPTIONS,
+  SOFT_SKILL_OPTIONS,
+  SPECIALTY_OPTIONS,
+  TARGET_ROLE_OPTIONS,
+  TARGET_SECTOR_OPTIONS,
+  TEAM_SIZE_OPTIONS,
+  TECHNICAL_SKILL_OPTIONS,
+  TOOL_OPTIONS,
+  WORK_MODEL_OPTIONS,
+  type CatalogOption,
+} from '../config/wizard-catalogs';
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -48,31 +73,83 @@ function getTextareaList(formData: FormData, key: string) {
     .filter(Boolean);
 }
 
-function toSlug(value: string) {
+type CatalogResolver = {
+  allowedValues: Set<string>;
+  labelToValue: Map<string, string>;
+};
+
+function normalizeCatalogToken(value: string) {
   return value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .toLowerCase();
 }
 
-function getLanguageList(formData: FormData, key: string) {
-  return getTextareaList(formData, key).map((item) => {
-    const [namePart, levelPart] = item.split(':').map((value) => value.trim());
-
-    return {
-      name: namePart,
-      level: levelPart || 'intermediate',
-    };
-  });
+function createCatalogResolver(options: CatalogOption[]): CatalogResolver {
+  return {
+    allowedValues: new Set(options.map((option) => option.value)),
+    labelToValue: new Map(
+      options.map((option) => [normalizeCatalogToken(option.label), option.value] as const),
+    ),
+  };
 }
 
-function getTargetRoles(formData: FormData, key: string) {
-  return getTextareaList(formData, key).map((label) => ({
-    slug: toSlug(label),
-    label,
-  }));
+function resolveCatalogValue(rawValue: string, resolver: CatalogResolver): string | null {
+  const normalizedRawValue = rawValue.trim();
+  if (!normalizedRawValue) {
+    return null;
+  }
+
+  if (resolver.allowedValues.has(normalizedRawValue)) {
+    return normalizedRawValue;
+  }
+
+  return resolver.labelToValue.get(normalizeCatalogToken(normalizedRawValue)) ?? null;
+}
+
+function getFormValues(formData: FormData, key: string) {
+  const directValues = formData
+    .getAll(key)
+    .map((value) => (typeof value === 'string' ? value.trim() : ''))
+    .filter(Boolean);
+
+  if (directValues.length > 1) {
+    return directValues;
+  }
+
+  if (directValues.length === 1) {
+    return directValues[0]
+      .split('\n')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return getTextareaList(formData, key);
+}
+
+function getCatalogSingleValue(formData: FormData, key: string, resolver: CatalogResolver) {
+  const value = getNullableString(formData, key);
+  if (!value) {
+    return null;
+  }
+
+  return resolveCatalogValue(value, resolver);
+}
+
+function getCatalogMultiValues(formData: FormData, key: string, resolver: CatalogResolver) {
+  const values = getFormValues(formData, key);
+  const uniqueValues = new Set<string>();
+
+  for (const value of values) {
+    const resolvedValue = resolveCatalogValue(value, resolver);
+    if (resolvedValue) {
+      uniqueValues.add(resolvedValue);
+    }
+  }
+
+  return Array.from(uniqueValues);
 }
 
 function getOptionLabel(
@@ -86,6 +163,37 @@ function getOptionLabel(
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
+
+const BRANCH_RESOLVER = createCatalogResolver(BRANCH_OPTIONS);
+const CORPS_RESOLVER = createCatalogResolver(CORPS_OPTIONS);
+const RANK_RESOLVER = createCatalogResolver(RANK_OPTIONS);
+const SPECIALTY_RESOLVER = createCatalogResolver(SPECIALTY_OPTIONS);
+const DESTINATION_CONTEXT_RESOLVER = createCatalogResolver(DESTINATION_CONTEXT_OPTIONS);
+const LEADERSHIP_LEVEL_RESOLVER = createCatalogResolver(LEADERSHIP_LEVEL_OPTIONS);
+const TEAM_SIZE_RESOLVER = createCatalogResolver(TEAM_SIZE_OPTIONS);
+const RESPONSIBILITY_AREA_RESOLVER = createCatalogResolver(RESPONSIBILITY_AREA_OPTIONS);
+const MISSION_TYPE_RESOLVER = createCatalogResolver(MISSION_TYPE_OPTIONS);
+const FUNCTION_TYPE_RESOLVER = createCatalogResolver(FUNCTION_TYPE_OPTIONS);
+const TOOL_RESOLVER = createCatalogResolver(TOOL_OPTIONS);
+const LEADERSHIP_SCOPE_RESOLVER = createCatalogResolver(LEADERSHIP_SCOPE_OPTIONS);
+const TECHNICAL_SKILL_RESOLVER = createCatalogResolver(TECHNICAL_SKILL_OPTIONS);
+const SOFT_SKILL_RESOLVER = createCatalogResolver(SOFT_SKILL_OPTIONS);
+const CERTIFICATION_RESOLVER = createCatalogResolver(CERTIFICATION_OPTIONS);
+const DRIVING_LICENSE_RESOLVER = createCatalogResolver(DRIVING_LICENSE_OPTIONS);
+const LANGUAGE_RESOLVER = createCatalogResolver(LANGUAGE_OPTIONS);
+const LANGUAGE_LEVEL_RESOLVER = createCatalogResolver(LANGUAGE_LEVEL_OPTIONS);
+const OFFICE_TOOL_RESOLVER = createCatalogResolver(OFFICE_TOOL_OPTIONS);
+const TARGET_SECTOR_RESOLVER = createCatalogResolver(TARGET_SECTOR_OPTIONS);
+const LOCATION_RESOLVER = createCatalogResolver(LOCATION_OPTIONS);
+const WORK_MODEL_RESOLVER = createCatalogResolver(WORK_MODEL_OPTIONS);
+const SENIORITY_RESOLVER = createCatalogResolver(SENIORITY_OPTIONS);
+
+const TARGET_ROLE_BY_SLUG = new Map(
+  TARGET_ROLE_OPTIONS.map((option) => [option.slug, option.label] as const),
+);
+const TARGET_ROLE_BY_LABEL = new Map(
+  TARGET_ROLE_OPTIONS.map((option) => [normalizeCatalogToken(option.label), option] as const),
+);
 
 const EMPTY_DRAFT = onboardingDraftSchema.parse({});
 
@@ -127,11 +235,61 @@ export function getResumenStepDefaults(value: unknown): { confirmed: boolean } {
   };
 }
 
+function getLanguageList(formData: FormData, key: string) {
+  return getFormValues(formData, key)
+    .map((item) => {
+      const [rawName, rawLevel] = item
+        .split(/[:|]/)
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+      const languageName = rawName ? resolveCatalogValue(rawName, LANGUAGE_RESOLVER) : null;
+      if (!languageName) {
+        return null;
+      }
+
+      const languageLevel = rawLevel
+        ? resolveCatalogValue(rawLevel, LANGUAGE_LEVEL_RESOLVER)
+        : 'intermediate';
+
+      return {
+        name: languageName,
+        level: languageLevel ?? 'intermediate',
+      };
+    })
+    .filter((item): item is { name: string; level: string } => item !== null);
+}
+
+function getTargetRoles(formData: FormData, key: string) {
+  return getFormValues(formData, key)
+    .map((item) => {
+      const slug = item.trim();
+
+      if (TARGET_ROLE_BY_SLUG.has(slug)) {
+        return {
+          slug,
+          label: TARGET_ROLE_BY_SLUG.get(slug) ?? item,
+        };
+      }
+
+      const byLabel = TARGET_ROLE_BY_LABEL.get(normalizeCatalogToken(item));
+      if (byLabel) {
+        return {
+          slug: byLabel.slug,
+          label: byLabel.label,
+        };
+      }
+
+      return null;
+    })
+    .filter((item): item is { slug: string; label: string } => item !== null);
+}
+
 export function parseMilitarFormData(formData: FormData): MilitarStepPayload {
-  const branch = getNullableString(formData, 'branch');
-  const corps = getNullableString(formData, 'corps');
-  const rankCode = getNullableString(formData, 'rankCode');
-  const specialtyCode = getNullableString(formData, 'specialtyCode');
+  const branch = getCatalogSingleValue(formData, 'branch', BRANCH_RESOLVER);
+  const corps = getCatalogSingleValue(formData, 'corps', CORPS_RESOLVER);
+  const rankCode = getCatalogSingleValue(formData, 'rankCode', RANK_RESOLVER);
+  const specialtyCode = getCatalogSingleValue(formData, 'specialtyCode', SPECIALTY_RESOLVER);
 
   return militarStepSchema.parse({
     branch,
@@ -145,9 +303,13 @@ export function parseMilitarFormData(formData: FormData): MilitarStepPayload {
       label: getOptionLabel(SPECIALTY_OPTIONS, specialtyCode),
     },
     serviceYears: getNullableNumber(formData, 'serviceYears'),
-    destinationContext: getNullableString(formData, 'destinationContext'),
-    leadershipLevel: getNullableString(formData, 'leadershipLevel'),
-    teamSize: getNullableString(formData, 'teamSize'),
+    destinationContext: getCatalogSingleValue(
+      formData,
+      'destinationContext',
+      DESTINATION_CONTEXT_RESOLVER,
+    ),
+    leadershipLevel: getCatalogSingleValue(formData, 'leadershipLevel', LEADERSHIP_LEVEL_RESOLVER),
+    teamSize: getCatalogSingleValue(formData, 'teamSize', TEAM_SIZE_RESOLVER),
     unitName: getNullableString(formData, 'unitName'),
     notes: getNullableString(formData, 'notes'),
   });
@@ -155,51 +317,43 @@ export function parseMilitarFormData(formData: FormData): MilitarStepPayload {
 
 export function parseExperienciaFormData(formData: FormData): ExperienciaStepPayload {
   return experienciaStepSchema.parse({
-    responsibilityAreas: getTextareaList(formData, 'responsibilityAreas'),
-    missionTypes: getTextareaList(formData, 'missionTypes'),
-    functionTypes: getTextareaList(formData, 'functionTypes'),
+    responsibilityAreas: getCatalogMultiValues(
+      formData,
+      'responsibilityAreas',
+      RESPONSIBILITY_AREA_RESOLVER,
+    ),
+    missionTypes: getCatalogMultiValues(formData, 'missionTypes', MISSION_TYPE_RESOLVER),
+    functionTypes: getCatalogMultiValues(formData, 'functionTypes', FUNCTION_TYPE_RESOLVER),
     achievements: getTextareaList(formData, 'achievements'),
-    tools: getTextareaList(formData, 'tools'),
-    leadershipScopes: getTextareaList(formData, 'leadershipScopes'),
+    tools: getCatalogMultiValues(formData, 'tools', TOOL_RESOLVER),
+    leadershipScopes: getCatalogMultiValues(
+      formData,
+      'leadershipScopes',
+      LEADERSHIP_SCOPE_RESOLVER,
+    ),
     additionalContext: getNullableString(formData, 'additionalContext'),
   });
 }
 
 export function parseCompetenciasFormData(formData: FormData): CompetenciasStepPayload {
   return competenciasStepSchema.parse({
-    technicalSkills: getTextareaList(formData, 'technicalSkills'),
-    softSkills: getTextareaList(formData, 'softSkills'),
-    certifications: getTextareaList(formData, 'certifications'),
-    drivingLicenses: getTextareaList(formData, 'drivingLicenses'),
+    technicalSkills: getCatalogMultiValues(formData, 'technicalSkills', TECHNICAL_SKILL_RESOLVER),
+    softSkills: getCatalogMultiValues(formData, 'softSkills', SOFT_SKILL_RESOLVER),
+    certifications: getCatalogMultiValues(formData, 'certifications', CERTIFICATION_RESOLVER),
+    drivingLicenses: getCatalogMultiValues(formData, 'drivingLicenses', DRIVING_LICENSE_RESOLVER),
     languages: getLanguageList(formData, 'languages'),
-    officeTools: getTextareaList(formData, 'officeTools'),
+    officeTools: getCatalogMultiValues(formData, 'officeTools', OFFICE_TOOL_RESOLVER),
     extraTraining: getNullableString(formData, 'extraTraining'),
   });
 }
 
 export function parseObjetivosFormData(formData: FormData): ObjetivosStepPayload {
-  const rawWorkModel = formData.get('workModel');
-  const rawSeniority = formData.get('seniority');
-
-  const workModel =
-    rawWorkModel === 'onsite' || rawWorkModel === 'hybrid' || rawWorkModel === 'remote'
-      ? rawWorkModel
-      : null;
-
-  const seniority =
-    rawSeniority === 'junior' ||
-    rawSeniority === 'mid' ||
-    rawSeniority === 'senior' ||
-    rawSeniority === 'manager'
-      ? rawSeniority
-      : null;
-
   return objetivosStepSchema.parse({
     targetRoles: getTargetRoles(formData, 'targetRoles'),
-    targetSectors: getTextareaList(formData, 'targetSectors'),
-    preferredLocations: getTextareaList(formData, 'preferredLocations'),
-    workModel,
-    seniority,
+    targetSectors: getCatalogMultiValues(formData, 'targetSectors', TARGET_SECTOR_RESOLVER),
+    preferredLocations: getCatalogMultiValues(formData, 'preferredLocations', LOCATION_RESOLVER),
+    workModel: getCatalogSingleValue(formData, 'workModel', WORK_MODEL_RESOLVER),
+    seniority: getCatalogSingleValue(formData, 'seniority', SENIORITY_RESOLVER),
     preferencesNotes: getNullableString(formData, 'preferencesNotes'),
   });
 }
