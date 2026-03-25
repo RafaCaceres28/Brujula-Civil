@@ -128,10 +128,10 @@
 
 ## Final Phase Polish
 
-- [ ] T054 Ejecutar `pnpm lint` y corregir issues del alcance en `/home/svens/dev/brujula-civil`.
-- [ ] T055 Ejecutar `pnpm typecheck` y corregir issues del alcance en `/home/svens/dev/brujula-civil`.
-- [ ] T056 Ejecutar `pnpm test:run` y corregir fallas del alcance en `/home/svens/dev/brujula-civil`.
-- [ ] T057 Actualizar estrategia de rollout/cierre y checklist final de 004 en `specs/004-explicabilidad-rutas/tasks.md`.
+- [x] T054 Ejecutar `pnpm lint` y corregir issues del alcance en `/home/svens/dev/brujula-civil`.
+- [x] T055 Ejecutar `pnpm typecheck` y corregir issues del alcance en `/home/svens/dev/brujula-civil`.
+- [x] T056 Ejecutar `pnpm test:run` y corregir fallas del alcance en `/home/svens/dev/brujula-civil`.
+- [x] T057 Actualizar estrategia de rollout/cierre y checklist final de 004 en `specs/004-explicabilidad-rutas/tasks.md`.
 
 ---
 
@@ -169,6 +169,13 @@
 2. Liberar US2 (decision guiada y continuidad del pipeline existente).
 3. Liberar US3 (continuidad de sesion/reingreso sin perdida de contexto).
 4. Ejecutar Hardening y luego Final Phase Polish para cierre operacional.
+
+## Final Closure Checklist (004)
+
+- [x] Scope guardrails de 004 mantenidos sin expansion funcional fuera de recomendaciones/wizard/translation/cv/documents.
+- [x] Gates de cierre ejecutados en orden: `pnpm lint` -> `pnpm typecheck` -> `pnpm test:run`.
+- [x] Sin fallas pendientes de lint, tipos o tests al cierre de fase.
+- [x] Final Phase Polish (T054-T057) completada y marcada en este documento.
 
 ## Scope Guardrails (Must Keep)
 
