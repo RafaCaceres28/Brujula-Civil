@@ -119,6 +119,23 @@ describe('profile.mapper db -> domain', () => {
       },
     });
   });
+
+  it('truncates oversized military summary deterministically to satisfy domain schema', () => {
+    const overLimitSummary = `  ${'x'.repeat(501)}  `;
+
+    const mapped = mapDbToDomainProfile('user-6', {
+      ...FULL_SHAPE,
+      military: FULL_SHAPE.military
+        ? {
+            ...FULL_SHAPE.military,
+            source_text: overLimitSummary,
+          }
+        : null,
+    });
+
+    expect(mapped.militaryBackground.summary).toHaveLength(500);
+    expect(mapped.militaryBackground.summary).toBe('x'.repeat(500));
+  });
 });
 
 describe('profile.mapper domain -> form', () => {
