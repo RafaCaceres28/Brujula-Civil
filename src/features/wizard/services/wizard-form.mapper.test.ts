@@ -63,7 +63,7 @@ describe('wizard-form.mapper', () => {
       technicalSkills: ['operations_management'],
       softSkills: ['leadership'],
       certifications: ['quality_iso'],
-      languages: ['Ingles:advanced', 'Frances'],
+      languages: ['english:advanced', 'french'],
       drivingLicenses: ['c'],
       officeTools: ['excel'],
       extraTraining: 'Curso de liderazgo',
@@ -72,15 +72,15 @@ describe('wizard-form.mapper', () => {
     const parsed = parseCompetenciasFormData(formData);
 
     expect(parsed.languages).toEqual([
-      { name: 'Ingles', level: 'advanced' },
-      { name: 'Frances', level: 'intermediate' },
+      { name: 'english', level: 'advanced' },
+      { name: 'french', level: 'intermediate' },
     ]);
     expect(parsed.drivingLicenses).toEqual(['c']);
   });
 
   it('parses objetivos target roles into canonical slug-label shape', () => {
     const formData = createFormData({
-      targetRoles: ['Jefe de Logistica'],
+      targetRoles: ['operations-coordinator'],
       targetSectors: ['logistics'],
       preferredLocations: ['madrid'],
       workModel: 'hybrid',
@@ -90,7 +90,9 @@ describe('wizard-form.mapper', () => {
 
     const parsed = parseObjetivosFormData(formData);
 
-    expect(parsed.targetRoles).toEqual([{ slug: 'jefe-de-logistica', label: 'Jefe de Logistica' }]);
+    expect(parsed.targetRoles).toEqual([
+      { slug: 'operations-coordinator', label: 'Coordinador de Operaciones y Logística' },
+    ]);
     expect(parsed.seniority).toBe('manager');
     expect(parsed.workModel).toBe('hybrid');
   });

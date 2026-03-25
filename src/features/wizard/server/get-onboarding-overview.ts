@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { selectedRouteContextSchema } from '../../recommendations/schemas/recommendation.schema';
-import { onboardingDraftSchema } from '../schemas/wizard.schema';
-import { employabilityFlowDraftSchema } from '../schemas/wizard-state.schema';
+import {
+  employabilityFlowDraftSchema,
+  onboardingDraftStateSchema,
+} from '../schemas/wizard-state.schema';
 import type { OnboardingOverview } from '../types/wizard.types';
 
 function isSameSelectedRoute(
@@ -133,7 +135,7 @@ export async function getOnboardingOverview(userId: string): Promise<OnboardingO
   const aggregatedDraft = isRecord(state?.aggregated_draft_jsonb)
     ? state.aggregated_draft_jsonb
     : {};
-  const draft = onboardingDraftSchema.parse(aggregatedDraft);
+  const draft = onboardingDraftStateSchema.parse(aggregatedDraft);
   const employabilityFlow = parseEmployabilityFlow(aggregatedDraft.employabilityFlow);
   const typedSteps = (steps ?? []) as OnboardingOverview['steps'];
 

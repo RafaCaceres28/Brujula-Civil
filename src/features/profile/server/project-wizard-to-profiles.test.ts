@@ -40,12 +40,12 @@ const draftFixture = onboardingDraftSchema.parse({
     softSkills: ['leadership'],
     certifications: ['quality_iso'],
     drivingLicenses: ['c'],
-    languages: [{ name: 'Ingles', level: 'advanced' }],
+    languages: [{ name: 'english', level: 'advanced' }],
     officeTools: ['excel'],
     extraTraining: null,
   },
   objetivos: {
-    targetRoles: [{ slug: 'operations-manager', label: 'Operations Manager' }],
+    targetRoles: [{ slug: 'project-manager', label: 'Gestor de Proyectos y Operaciones' }],
     targetSectors: ['logistics'],
     preferredLocations: ['madrid'],
     workModel: 'hybrid',
@@ -199,7 +199,7 @@ describe('projectWizardToProfiles', () => {
 
     expect(records.civilUpdate).toMatchObject({
       military_profile_id: 'mil-1',
-      target_role: 'Operations Manager',
+      target_role: 'Gestor de Proyectos y Operaciones',
       target_sector: 'logistics',
       status: 'draft',
     });
@@ -227,7 +227,7 @@ describe('projectWizardToProfiles', () => {
       user_id: 'user-1',
       military_profile_id: 'mil-new',
       version_no: 3,
-      target_role: 'Operations Manager',
+      target_role: 'Gestor de Proyectos y Operaciones',
       target_sector: 'logistics',
       is_current: true,
     });

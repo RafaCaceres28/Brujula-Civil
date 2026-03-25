@@ -25,6 +25,16 @@ describe('wizard.schema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejects structured values outside catalog', () => {
+    const result = onboardingDraftSchema.safeParse({
+      militar: {
+        branch: 'free-text',
+      },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it('rejects invalid objetivos role contract', () => {
     const result = objetivosStepSchema.safeParse({
       targetRoles: [{ slug: '', label: 'Role' }],

@@ -2,7 +2,10 @@ import { createClient } from '@/lib/supabase/server';
 import type { WizardStepSlug } from '../config/wizard-steps';
 import { getDbKeyBySlug, getStepOrderBySlug } from '../config/wizard-steps';
 import { onboardingDraftSchema } from '../schemas/wizard.schema';
-import { employabilityFlowDraftSchema } from '../schemas/wizard-state.schema';
+import {
+  employabilityFlowDraftSchema,
+  onboardingDraftStateSchema,
+} from '../schemas/wizard-state.schema';
 import type { WizardPayloadBySlug } from '../types/wizard.types';
 import { recalculateOnboardingState } from './recalculate-onboarding-state';
 
@@ -59,7 +62,7 @@ export async function saveOnboardingStep<TStep extends WizardStepSlug>(
     ? currentWizardState.aggregated_draft_jsonb
     : {};
 
-  const previousDraft = onboardingDraftSchema.parse(currentAggregatedDraft);
+  const previousDraft = onboardingDraftStateSchema.parse(currentAggregatedDraft);
   const mergedDraft = onboardingDraftSchema.parse({
     ...previousDraft,
     [stepSlug]: payload,
