@@ -35,11 +35,24 @@ function withMeta(result: CvGenerateRouteResult, meta: DomainMeta): CvGenerateRo
   return result.ok ? domainSuccess(result.data, meta) : domainFailure(result.error, meta);
 }
 
-function responseForResult(result: CvGenerateRouteResult, traceTag?: string) {
+function responseForResult(
+  result: CvGenerateRouteResult,
+  options?: { traceTag?: string; selectedRouteFitLabel?: string },
+) {
   const status = getHttpStatusForDomainResult(result);
+  const headers: HeadersInit = {};
+
+  if (options?.traceTag) {
+    headers['x-flow-trace'] = options.traceTag;
+  }
+
+  if (options?.selectedRouteFitLabel) {
+    headers['x-route-fit-label'] = options.selectedRouteFitLabel;
+  }
+
   return NextResponse.json(result, {
     status,
-    ...(traceTag ? { headers: { 'x-flow-trace': traceTag } } : {}),
+    ...(Object.keys(headers).length > 0 ? { headers } : {}),
   });
 }
 
@@ -88,7 +101,12 @@ export async function POST(request: Request) {
         ? result.data.selectedRouteId
         : (parsedInput.data.selectedRouteId ?? parsedInput.data.translatedContent.selectedRouteId),
     });
-    return responseForResult(withMeta(result, meta), traceTag);
+    return responseForResult(withMeta(result, meta), {
+      traceTag,
+      selectedRouteFitLabel: result.ok
+        ? result.data.selectedRouteContext?.fitLabelSnapshot
+        : parsedInput.data.selectedRouteContext?.fitLabelSnapshot,
+    });
   } catch (error) {
     const result = withMeta(
       domainFailure(toInternalDomainError(error, 'Failed to generate CV preview')),

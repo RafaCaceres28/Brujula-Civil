@@ -74,21 +74,21 @@
 
 ### Tests for US2
 
-- [ ] T028 [P] [US2] Extender test de seleccion para snapshot explicativo persistido en `src/features/recommendations/server/select-career-route.test.ts`.
-- [ ] T029 [P] [US2] Crear test de action de seleccion con validacion de frontera explicable en `src/features/recommendations/actions/select-career-route-action.test.ts`.
-- [ ] T030 [P] [US2] Extender test de handler translation para trazabilidad `selectedRouteId` + explanation meta en `src/app/api/translation/route.test.ts`.
-- [ ] T031 [P] [US2] Extender test de handler CV generate para metadatos explicativos minimos en `src/app/api/cv/generate/route.test.ts`.
+- [x] T028 [P] [US2] Extender test de seleccion para snapshot explicativo persistido en `src/features/recommendations/server/select-career-route.test.ts`.
+- [x] T029 [P] [US2] Crear test de action de seleccion con validacion de frontera explicable en `src/features/recommendations/actions/select-career-route-action.test.ts`.
+- [x] T030 [P] [US2] Extender test de handler translation para trazabilidad `selectedRouteId` + explanation meta en `src/app/api/translation/route.test.ts`.
+- [x] T031 [P] [US2] Extender test de handler CV generate para metadatos explicativos minimos en `src/app/api/cv/generate/route.test.ts`.
 
 ### Implementation for US2
 
-- [ ] T032 [US2] Persistir `selectedRouteContext` (summary/fit/guidance snapshot) en `src/features/recommendations/server/select-career-route.ts`.
-- [ ] T033 [US2] Validar y normalizar input de seleccion explicable en `src/features/recommendations/actions/select-career-route-action.ts`.
-- [ ] T034 [US2] Mostrar guidance de decision y confirmacion de eleccion activa en `src/features/recommendations/components/career-route-shortlist.tsx`.
-- [ ] T035 [US2] Reusar contexto de ruta elegida al generar traduccion en `src/features/translation/server/generate-translation.ts`.
-- [ ] T036 [US2] Propagar metadata explicativa minima hacia preview CV en `src/features/cv/server/generate-cv.ts`.
-- [ ] T037 [US2] Propagar metadata explicativa minima hacia exportacion PDF en `src/features/cv/server/export-cv-pdf.ts`.
-- [ ] T038 [US2] Incluir metadata explicativa en payload de documento exportable en `src/features/documents/server/generate-pdf.ts`.
-- [ ] T039 [US2] Asegurar trazabilidad explanation->translation en handler API en `src/app/api/translation/route.ts`.
+- [x] T032 [US2] Persistir `selectedRouteContext` (summary/fit/guidance snapshot) en `src/features/recommendations/server/select-career-route.ts`.
+- [x] T033 [US2] Validar y normalizar input de seleccion explicable en `src/features/recommendations/actions/select-career-route-action.ts`.
+- [x] T034 [US2] Mostrar guidance de decision y confirmacion de eleccion activa en `src/features/recommendations/components/career-route-shortlist.tsx`.
+- [x] T035 [US2] Reusar contexto de ruta elegida al generar traduccion en `src/features/translation/server/generate-translation.ts`.
+- [x] T036 [US2] Propagar metadata explicativa minima hacia preview CV en `src/features/cv/server/generate-cv.ts`.
+- [x] T037 [US2] Propagar metadata explicativa minima hacia exportacion PDF en `src/features/cv/server/export-cv-pdf.ts`.
+- [x] T038 [US2] Incluir metadata explicativa en payload de documento exportable en `src/features/documents/server/generate-pdf.ts`.
+- [x] T039 [US2] Asegurar trazabilidad explanation->translation en handler API en `src/app/api/translation/route.ts`.
 
 ---
 

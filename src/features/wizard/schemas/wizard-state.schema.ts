@@ -13,6 +13,7 @@ import {
 import {
   recommendationOutputSchema,
   recommendationSelectionSchema,
+  selectedRouteContextSchema,
 } from '../../recommendations/schemas/recommendation.schema';
 
 const sourceRefMapSchema = z.record(domainIdSchema, domainIdSchema);
@@ -82,6 +83,7 @@ export const employabilityFlowDraftSchema = z
     export: pdfExportTraceSchema.optional(),
     recommendations: recommendationOutputSchema.optional(),
     selectedRoute: recommendationSelectionSchema.optional(),
+    selectedRouteContext: selectedRouteContextSchema.optional(),
     selectedRecommendation: recommendationSelectionSchema.optional(),
     cvPreviewDraft: cvPreviewDraftSchema.optional(),
     lastUpdatedAt: timestampSchema.optional(),

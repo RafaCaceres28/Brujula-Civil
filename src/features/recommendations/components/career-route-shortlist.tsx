@@ -35,6 +35,10 @@ export function CareerRouteShortlist(props: CareerRouteShortlistProps) {
         <p className="text-sm text-slate-600">
           Elige una ruta para mantener consistencia en traduccion, preview y exportacion.
         </p>
+        <p className="text-sm text-slate-700">
+          Guia rapida: prioriza ajuste alto para continuidad inmediata y compara ajuste medio si
+          quieres alternativas.
+        </p>
       </header>
 
       {!hasRoutes ? (
@@ -83,6 +87,11 @@ export function CareerRouteShortlist(props: CareerRouteShortlistProps) {
                   {fitLabel}
                 </p>
                 <p className="mt-2 text-sm text-slate-700">{explanation.decisionGuidance}</p>
+                {isSelected ? (
+                  <p className="mt-2 text-xs font-medium text-slate-700">
+                    Eleccion activa: esta guia se conservara al continuar a traduccion y preview.
+                  </p>
+                ) : null}
                 <p className="mt-2 text-xs text-slate-600">Fortalezas detectadas: {strengths}</p>
 
                 {hadIncompleteExplanation ? (

@@ -23,6 +23,11 @@ describe('translation route', () => {
         sourceLanguage: 'es',
         targetLanguage: 'en',
         selectedRouteId: 'route-operations-coordinator-logistics-mid',
+        selectedRouteContext: {
+          reasonSummarySnapshot: 'Se recomienda por coincidencias de logistica y coordinacion.',
+          fitLabelSnapshot: 'alto',
+          guidanceSnapshot: 'Priorizala si quieres continuidad operativa inmediata.',
+        },
       }),
     });
 
@@ -33,11 +38,16 @@ describe('translation route', () => {
     expect(body.ok).toBe(true);
     expect(body.data.blocks[0].sourceRef).toBe('snapshot-1');
     expect(body.data.sourceRefMap[body.data.blocks[0].id]).toBe('snapshot-1');
+    expect(body.data.selectedRouteContext).toMatchObject({
+      fitLabelSnapshot: 'alto',
+      guidanceSnapshot: 'Priorizala si quieres continuidad operativa inmediata.',
+    });
     expect(body.meta.source).toBe('api.translation.route');
     expect(body.meta.requestId).toBeTypeOf('string');
     expect(response.headers.get('x-flow-trace')).toBe(
       'profile:snapshot-1;route:route-operations-coordinator-logistics-mid',
     );
+    expect(response.headers.get('x-route-fit-label')).toBe('alto');
   });
 
   it('returns DomainResult validation error for invalid boundary input', async () => {

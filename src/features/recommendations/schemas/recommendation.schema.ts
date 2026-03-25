@@ -50,6 +50,17 @@ export const recommendationSelectionSchema = z
   })
   .strict();
 
+export const selectedRouteContextSchema = z
+  .object({
+    recommendationSetId: domainIdSchema,
+    selectedRouteId: domainIdSchema,
+    reasonSummarySnapshot: recommendationReasonSchema,
+    fitLabelSnapshot: recommendationFitLabelSchema,
+    guidanceSnapshot: z.string().trim().min(8).max(240),
+    capturedAt: timestampSchema,
+  })
+  .strict();
+
 export const recommendationInputSnapshotSchema = z
   .object({
     userId: domainIdSchema,
@@ -82,6 +93,7 @@ export const recommendationInputSnapshotSchema = z
 export type RecommendationRoute = z.infer<typeof recommendationRouteSchema>;
 export type RecommendationOutput = z.infer<typeof recommendationOutputSchema>;
 export type RecommendationSelection = z.infer<typeof recommendationSelectionSchema>;
+export type SelectedRouteContext = z.infer<typeof selectedRouteContextSchema>;
 export type RecommendationInputSnapshot = z.infer<typeof recommendationInputSnapshotSchema>;
 export type RecommendationFitLabel = z.infer<typeof recommendationFitLabelSchema>;
 export type RecommendationExplanation = z.infer<typeof recommendationExplanationSchema>;

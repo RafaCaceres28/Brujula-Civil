@@ -12,8 +12,10 @@ import { z } from 'zod';
 import { employabilityFlowDraftSchema } from '../../wizard/schemas/wizard-state.schema';
 import {
   recommendationSelectionSchema,
+  selectedRouteContextSchema,
   type RecommendationSelection,
 } from '../schemas/recommendation.schema';
+import { normalizeRouteExplainability } from '../services/recommendation-explanation-fallback';
 
 const SELECT_ROUTE_SOURCE = 'recs.server.select-route';
 
@@ -71,6 +73,35 @@ function validateRouteSelection(
   return null;
 }
 
+function buildSelectedRouteContext(input: {
+  recommendationSetId: string;
+  selectedRouteId: string;
+  selectedAt: string;
+  employabilityFlow: z.infer<typeof employabilityFlowDraftSchema>;
+}) {
+  const selectedRoute = input.employabilityFlow.recommendations?.routes.find(
+    (route) => route.routeId === input.selectedRouteId,
+  );
+
+  if (!selectedRoute) {
+    return undefined;
+  }
+
+  const normalizedRoute = normalizeRouteExplainability(selectedRoute);
+
+  return selectedRouteContextSchema.parse({
+    recommendationSetId: input.recommendationSetId,
+    selectedRouteId: input.selectedRouteId,
+    reasonSummarySnapshot:
+      normalizedRoute.explanation?.reasonSummary ?? normalizedRoute.reasonSummary,
+    fitLabelSnapshot: normalizedRoute.explanation?.fitLabel ?? 'exploratorio',
+    guidanceSnapshot:
+      normalizedRoute.explanation?.decisionGuidance ??
+      'Usa esta ruta como referencia inicial mientras reunes mas contexto.',
+    capturedAt: input.selectedAt,
+  });
+}
+
 export async function selectCareerRoute(input: unknown): Promise<SelectCareerRouteResult> {
   const nowIso = new Date().toISOString();
 
@@ -121,10 +152,17 @@ export async function selectCareerRoute(input: unknown): Promise<SelectCareerRou
       selectedRouteId: parsedInput.data.selectedRouteId,
       selectedAt: nowIso,
     });
+    const selectedRouteContext = buildSelectedRouteContext({
+      recommendationSetId: parsedInput.data.recommendationSetId,
+      selectedRouteId: parsedInput.data.selectedRouteId,
+      selectedAt: nowIso,
+      employabilityFlow: currentFlow,
+    });
 
     const nextEmployabilityFlow = employabilityFlowDraftSchema.parse({
       ...currentFlow,
       selectedRoute: parsedSelection,
+      ...(selectedRouteContext ? { selectedRouteContext } : {}),
       selectedRecommendation: parsedSelection,
       lastUpdatedAt: nowIso,
     });

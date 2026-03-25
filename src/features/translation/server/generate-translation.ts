@@ -63,6 +63,7 @@ const buildTranslationOutput = (input: TranslationDomainInput): TranslationDomai
     }, {}),
     qualityFlags,
     ...(input.selectedRouteId ? { selectedRouteId: input.selectedRouteId } : {}),
+    ...(input.selectedRouteContext ? { selectedRouteContext: input.selectedRouteContext } : {}),
   });
 };
 

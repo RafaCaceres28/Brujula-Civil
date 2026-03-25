@@ -19,6 +19,12 @@ export type TranslatedProfileContent = {
   blocks: TranslatedBlock[];
   sourceRefMap: Record<string, string>;
   qualityFlags: TranslationQualityFlag[];
+  selectedRouteId?: string;
+  selectedRouteContext?: {
+    reasonSummarySnapshot: string;
+    fitLabelSnapshot: 'alto' | 'medio' | 'exploratorio';
+    guidanceSnapshot: string;
+  };
 };
 
 export type TranslationDomainOutput = TranslationOutput;

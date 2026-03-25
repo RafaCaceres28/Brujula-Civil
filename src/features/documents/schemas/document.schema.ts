@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { domainIdSchema, localeSchema } from '../../../lib/contracts/index';
 import { cvPreviewOutputSchema } from '../../cv/schemas/cv.schema';
+import { translationExplainabilityContextSchema } from '../../translation/schemas/translation.schema';
 
 const MAX_STORAGE_PATH_LENGTH = 512;
 const MAX_URL_LENGTH = 2048;
@@ -30,6 +31,7 @@ export const pdfGenerationInputSchema = z
     format: pdfFormatSchema,
     locale: localeSchema,
     selectedRouteId: domainIdSchema.optional(),
+    selectedRouteContext: translationExplainabilityContextSchema.optional(),
   })
   .strict();
 

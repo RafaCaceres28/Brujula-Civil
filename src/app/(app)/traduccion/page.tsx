@@ -77,6 +77,7 @@ export default async function TranslationPage() {
   const overview = await getOnboardingOverview(user.id);
 
   const selectedRouteId = overview.employabilityFlow?.selectedRoute?.selectedRouteId;
+  const selectedRouteContext = overview.employabilityFlow?.selectedRouteContext;
   let recommendations = overview.employabilityFlow?.recommendations;
 
   if (!recommendations) {
@@ -107,6 +108,16 @@ export default async function TranslationPage() {
     sourceLanguage: 'es-ES',
     targetLanguage: 'en-US',
     tone: 'neutral',
+    ...(selectedRouteId ? { selectedRouteId } : {}),
+    ...(selectedRouteContext
+      ? {
+          selectedRouteContext: {
+            reasonSummarySnapshot: selectedRouteContext.reasonSummarySnapshot,
+            fitLabelSnapshot: selectedRouteContext.fitLabelSnapshot,
+            guidanceSnapshot: selectedRouteContext.guidanceSnapshot,
+          },
+        }
+      : {}),
   });
 
   if (!translationResult.ok) {

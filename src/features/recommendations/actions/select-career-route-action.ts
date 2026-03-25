@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import { requireUser } from '@/features/auth/server/require-user';
 import {
+  domainIdSchema,
   domainFailure,
   safeParseWithDomainError,
   type DomainMeta,
@@ -15,9 +16,9 @@ const SELECT_CAREER_ROUTE_ACTION_SOURCE = 'recs.action.select-career-route';
 
 const selectCareerRouteActionSchema = z
   .object({
-    recommendationSetId: z.string().trim().min(1).max(128),
-    selectedRouteId: z.string().trim().min(1).max(128),
-    requestId: z.string().trim().min(1).max(128).optional(),
+    recommendationSetId: domainIdSchema,
+    selectedRouteId: domainIdSchema,
+    requestId: domainIdSchema.optional(),
   })
   .strict();
 

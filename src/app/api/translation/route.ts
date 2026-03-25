@@ -9,6 +9,7 @@ import {
 import { getHttpStatusForDomainResult } from '../../../lib/contracts/http-error-mapper';
 import { NextResponse } from 'next/server';
 import {
+  translationExplainabilityContextSchema,
   translationInputSchema,
   type TranslationOutput,
 } from '../../../features/translation/schemas/translation.schema';
@@ -40,7 +41,11 @@ function createMeta(requestId: string): DomainMeta {
 
 function responseForResult(
   result: TranslationRouteResult,
-  options?: { traceTag?: string; explainabilityFallbackUsed?: boolean },
+  options?: {
+    traceTag?: string;
+    explainabilityFallbackUsed?: boolean;
+    selectedRouteFitLabel?: string;
+  },
 ) {
   const status = getHttpStatusForDomainResult(result);
 
@@ -53,6 +58,10 @@ function responseForResult(
     headers['x-explainability-status'] = 'fallback';
   }
 
+  if (options?.selectedRouteFitLabel) {
+    headers['x-route-fit-label'] = options.selectedRouteFitLabel;
+  }
+
   return NextResponse.json(result, {
     status,
     ...(Object.keys(headers).length > 0 ? { headers } : {}),
@@ -63,40 +72,59 @@ function sanitizeExplainabilityInput(payload: unknown): {
   payload: unknown;
   explainabilityFallbackUsed: boolean;
 } {
-  if (typeof payload !== 'object' || payload === null || !('selectedRouteId' in payload)) {
+  if (typeof payload !== 'object' || payload === null) {
     return { payload, explainabilityFallbackUsed: false };
   }
 
   const payloadRecord = payload as Record<string, unknown>;
+  let explainabilityFallbackUsed = false;
+  const safePayload: Record<string, unknown> = { ...payloadRecord };
+
+  if ('selectedRouteContext' in payloadRecord && payloadRecord.selectedRouteContext !== undefined) {
+    const parsedContext = translationExplainabilityContextSchema.safeParse(
+      payloadRecord.selectedRouteContext,
+    );
+
+    if (parsedContext.success) {
+      safePayload.selectedRouteContext = parsedContext.data;
+    } else {
+      delete safePayload.selectedRouteContext;
+      explainabilityFallbackUsed = true;
+    }
+  }
+
+  if (!('selectedRouteId' in payloadRecord)) {
+    return { payload: safePayload, explainabilityFallbackUsed };
+  }
+
   const selectedRouteId = payloadRecord.selectedRouteId;
 
   if (selectedRouteId === undefined) {
-    return { payload, explainabilityFallbackUsed: false };
+    return { payload: safePayload, explainabilityFallbackUsed };
   }
 
   if (typeof selectedRouteId !== 'string') {
-    const safePayload = { ...payloadRecord };
     delete safePayload.selectedRouteId;
+    delete safePayload.selectedRouteContext;
     return { payload: safePayload, explainabilityFallbackUsed: true };
   }
 
   const normalizedRouteId = selectedRouteId.trim();
   if (!normalizedRouteId || !DOMAIN_ID_PATTERN.test(normalizedRouteId)) {
-    const safePayload = { ...payloadRecord };
     delete safePayload.selectedRouteId;
+    delete safePayload.selectedRouteContext;
     return { payload: safePayload, explainabilityFallbackUsed: true };
   }
 
   if (normalizedRouteId === selectedRouteId) {
-    return { payload, explainabilityFallbackUsed: false };
+    return { payload: safePayload, explainabilityFallbackUsed };
   }
 
+  safePayload.selectedRouteId = normalizedRouteId;
+
   return {
-    payload: {
-      ...payloadRecord,
-      selectedRouteId: normalizedRouteId,
-    },
-    explainabilityFallbackUsed: false,
+    payload: safePayload,
+    explainabilityFallbackUsed,
   };
 }
 
@@ -162,6 +190,9 @@ export async function POST(request: Request) {
       ...(parsedInput.data.selectedRouteId
         ? { selectedRouteId: parsedInput.data.selectedRouteId }
         : {}),
+      ...(parsedInput.data.selectedRouteContext
+        ? { selectedRouteContext: parsedInput.data.selectedRouteContext }
+        : {}),
       ...(parsedInput.data.tone ? { tone: parsedInput.data.tone } : {}),
     });
 
@@ -170,6 +201,7 @@ export async function POST(request: Request) {
     return responseForResult(withMeta(result, meta), {
       traceTag,
       explainabilityFallbackUsed,
+      selectedRouteFitLabel: parsedInput.data.selectedRouteContext?.fitLabelSnapshot,
     });
   } catch (error) {
     const result = withMeta(

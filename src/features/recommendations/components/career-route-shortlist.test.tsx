@@ -91,6 +91,7 @@ describe('CareerRouteShortlist', () => {
     renderShortlist({ selectedRouteId: 'route-project-manager-consulting-mid' });
 
     expect(container?.textContent).toContain('Rutas sugeridas para tu transicion');
+    expect(container?.textContent).toContain('Guia rapida: prioriza ajuste alto');
     expect(container?.textContent).toContain('operations-coordinator');
     expect(container?.textContent).toContain('project-manager');
     expect(container?.textContent).toContain('Ajuste alto');
@@ -105,6 +106,9 @@ describe('CareerRouteShortlist', () => {
       '[data-route-id="route-project-manager-consulting-mid"] [data-selected-badge]',
     );
     expect(selectedBadge).not.toBeNull();
+    expect(container?.textContent).toContain(
+      'Eleccion activa: esta guia se conservara al continuar a traduccion y preview.',
+    );
   });
 
   it('uses safe fallback copy when route explanation is incomplete', () => {

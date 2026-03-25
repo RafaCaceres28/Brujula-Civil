@@ -137,6 +137,13 @@ describe('selectCareerRoute', () => {
         recommendationSetId: 'recset-snapshot-1-20260324010101',
         selectedRouteId: 'route-operations-coordinator-logistics-mid',
       },
+      selectedRouteContext: {
+        recommendationSetId: 'recset-snapshot-1-20260324010101',
+        selectedRouteId: 'route-operations-coordinator-logistics-mid',
+        reasonSummarySnapshot: 'Se recomienda por coincidencias de logistica y coordinacion.',
+        fitLabelSnapshot: 'alto',
+        guidanceSnapshot: 'Priorizala si quieres continuidad operativa inmediata.',
+      },
       selectedRecommendation: {
         recommendationSetId: 'recset-snapshot-1-20260324010101',
         selectedRouteId: 'route-operations-coordinator-logistics-mid',
