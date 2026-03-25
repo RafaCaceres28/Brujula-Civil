@@ -248,6 +248,33 @@ describe('saveOnboardingStep', () => {
     expect(calls.updateDraft).toBeUndefined();
   });
 
+  it('returns user-safe actionable boundary error for manipulated structured payload', async () => {
+    const { client, calls } = createSupabaseMock();
+
+    vi.mocked(createClient).mockResolvedValue(client as never);
+
+    await expect(
+      saveOnboardingStep(
+        'user-1',
+        'objetivos',
+        {
+          targetRoles: [{ slug: 'project-manager', label: 'texto libre manipulado' }],
+          targetSectors: ['sector-libre'],
+          preferredLocations: ['madrid'],
+          workModel: 'presencial-total-legacy',
+          seniority: 'manager',
+          preferencesNotes: null,
+        },
+        { markCompleted: true },
+      ),
+    ).rejects.toThrow(
+      'No pudimos guardar este paso porque hay selecciones estructuradas inválidas. Revisa los campos marcados e intenta nuevamente.',
+    );
+
+    expect(calls.upsert).toBeUndefined();
+    expect(calls.updateDraft).toBeUndefined();
+  });
+
   it('keeps legacy employabilityFlow payload intact during defensive draft merge', async () => {
     const { client, calls } = createSupabaseMock();
 

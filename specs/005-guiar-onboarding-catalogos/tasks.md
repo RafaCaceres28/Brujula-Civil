@@ -120,12 +120,12 @@
 
 **Purpose**: Cubrir edge cases de seguridad/compatibilidad y blindar reingreso sin expandir alcance.
 
-- [ ] T051 [P] Agregar caso de valor legacy fuera de catalogo con fallback narrativo seguro en `/home/svens/dev/brujula-civil/src/features/wizard/server/get-onboarding-overview.test.ts`.
-- [ ] T052 [P] Agregar caso de payload manipulado con texto libre en campo estructurado y rechazo user-safe en `/home/svens/dev/brujula-civil/src/features/wizard/server/save-onboarding-step.test.ts`.
-- [ ] T053 [P] Agregar caso de catalogo actualizado entre sesiones (opcion obsoleta) en `/home/svens/dev/brujula-civil/src/features/wizard/schemas/wizard-state.schema.test.ts`.
-- [ ] T054 [P] Agregar caso de UI para opciones obsoletas/invalidas con mensaje accionable en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/objetivos/page.test.tsx`.
-- [ ] T055 Implementar manejo robusto de opciones legacy/obsoletas en reingreso de onboarding en `/home/svens/dev/brujula-civil/src/features/wizard/server/get-onboarding-overview.ts`.
-- [ ] T056 Implementar mensajes de error de frontera seguros y accionables en `/home/svens/dev/brujula-civil/src/features/wizard/server/save-onboarding-step.ts`.
+- [x] T051 [P] Agregar caso de valor legacy fuera de catalogo con fallback narrativo seguro en `/home/svens/dev/brujula-civil/src/features/wizard/server/get-onboarding-overview.test.ts`.
+- [x] T052 [P] Agregar caso de payload manipulado con texto libre en campo estructurado y rechazo user-safe en `/home/svens/dev/brujula-civil/src/features/wizard/server/save-onboarding-step.test.ts`.
+- [x] T053 [P] Agregar caso de catalogo actualizado entre sesiones (opcion obsoleta) en `/home/svens/dev/brujula-civil/src/features/wizard/schemas/wizard-state.schema.test.ts`.
+- [x] T054 [P] Agregar caso de UI para opciones obsoletas/invalidas con mensaje accionable en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/objetivos/page.test.tsx`.
+- [x] T055 Implementar manejo robusto de opciones legacy/obsoletas en reingreso de onboarding en `/home/svens/dev/brujula-civil/src/features/wizard/server/get-onboarding-overview.ts`.
+- [x] T056 Implementar mensajes de error de frontera seguros y accionables en `/home/svens/dev/brujula-civil/src/features/wizard/server/save-onboarding-step.ts`.
 
 ---
 

@@ -66,6 +66,11 @@ export default async function ObjetivosStepPage() {
               defaultValue={values.seniority}
             />
 
+            <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+              Si una seleccion guardada antes ya no aparece, elige la opcion mas cercana y detalla
+              el contexto en Notas de preferencias.
+            </p>
+
             <div className="space-y-2">
               <label htmlFor="preferencesNotes" className="text-sm font-medium text-slate-900">
                 Notas de preferencias

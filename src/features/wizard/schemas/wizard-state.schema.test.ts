@@ -152,4 +152,24 @@ describe('wizard-state.schema', () => {
       { slug: 'operations-coordinator', label: 'Coordinador de Operaciones y Logística' },
     ]);
   });
+
+  it('drops obsolete catalog selections after catalog updates while preserving useful narrative continuity', () => {
+    const parsed = onboardingDraftStateSchema.parse({
+      objetivos: {
+        targetRoles: [{ slug: 'project-manager', label: 'Gestor de Proyectos y Operaciones' }],
+        targetSectors: ['consulting'],
+        preferredLocations: ['madrid'],
+        workModel: 'remote_total_legacy',
+        seniority: 'head_of_everything_legacy',
+        preferencesNotes: 'Mantener foco en transicion ordenada',
+      },
+    });
+
+    expect(parsed.objetivos.targetRoles).toEqual([
+      { slug: 'project-manager', label: 'Gestor de Proyectos y Operaciones' },
+    ]);
+    expect(parsed.objetivos.workModel).toBeNull();
+    expect(parsed.objetivos.seniority).toBeNull();
+    expect(parsed.objetivos.preferencesNotes).toBe('Mantener foco en transicion ordenada');
+  });
 });

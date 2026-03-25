@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { ZodError } from 'zod';
 import type { WizardStepSlug } from '../config/wizard-steps';
 import { getDbKeyBySlug, getStepOrderBySlug } from '../config/wizard-steps';
 import {
@@ -32,13 +33,36 @@ export async function saveOnboardingStep<TStep extends WizardStepSlug>(
   const now = new Date().toISOString();
   const markCompleted = options?.markCompleted ?? false;
 
-  const parsedPayload = {
+  const stepSchema = {
     militar: militarStepSchema,
     experiencia: experienciaStepSchema,
     competencias: competenciasStepSchema,
     objetivos: objetivosStepSchema,
     resumen: resumenStepSchema,
-  }[stepSlug].parse(payload);
+  }[stepSlug];
+
+  let parsedPayload: WizardPayloadBySlug[TStep];
+
+  try {
+    parsedPayload = stepSchema.parse(payload) as WizardPayloadBySlug[TStep];
+  } catch (error) {
+    if (error instanceof ZodError) {
+      const firstIssue = error.issues[0];
+      const hasCatalogValidationIssues = error.issues.some((issue) =>
+        issue.message.includes('catálogo'),
+      );
+
+      if (hasCatalogValidationIssues && error.issues.length > 1) {
+        throw new Error(
+          'No pudimos guardar este paso porque hay selecciones estructuradas inválidas. Revisa los campos marcados e intenta nuevamente.',
+        );
+      }
+
+      throw new Error(firstIssue?.message ?? 'No pudimos guardar este paso. Revisa los datos.');
+    }
+
+    throw error;
+  }
 
   const dbKey = getDbKeyBySlug(stepSlug);
   const stepOrder = getStepOrderBySlug(stepSlug);

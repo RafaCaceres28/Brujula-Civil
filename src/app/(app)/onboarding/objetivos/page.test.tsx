@@ -42,4 +42,16 @@ describe('/onboarding/objetivos guided controls', () => {
     expect(source).not.toContain('<Input id="workModel"');
     expect(source).not.toContain('<Input id="seniority"');
   });
+
+  it('shows actionable guidance when previous catalog selections become obsolete', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/app/(app)/onboarding/objetivos/page.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain(
+      'Si una seleccion guardada antes ya no aparece, elige la opcion mas cercana y detalla',
+    );
+    expect(source).toContain('el contexto en Notas de preferencias.');
+  });
 });

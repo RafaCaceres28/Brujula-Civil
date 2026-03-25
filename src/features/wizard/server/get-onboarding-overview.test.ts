@@ -440,4 +440,44 @@ describe('getOnboardingOverview', () => {
     );
     expect(result.employabilityFlow?.selectedRouteContext).toBeUndefined();
   });
+
+  it('moves obsolete legacy role labels to narrative fallback without breaking re-entry', async () => {
+    const state = {
+      user_id: 'user-1',
+      current_step: 'preferences',
+      last_completed_step: 'skills_tools',
+      completion_percent: 80,
+      is_completed: false,
+      aggregated_draft_jsonb: {
+        objetivos: {
+          targetRoles: ['Arquitecto de Soluciones Legacy'],
+          targetSectors: ['consulting'],
+          preferredLocations: ['madrid'],
+          workModel: 'hybrid',
+          seniority: 'manager',
+          preferencesNotes: null,
+        },
+      },
+      started_at: '2026-01-01T00:00:00.000Z',
+      last_saved_at: '2026-01-01T00:00:00.000Z',
+      completed_at: null,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+    } as UserWizardStateRow;
+
+    const { client } = createSupabaseMock({
+      stateResult: { data: state, error: null },
+      stepsResult: { data: [], error: null },
+    });
+
+    vi.mocked(createClient).mockResolvedValue(client as never);
+
+    const result = await getOnboardingOverview('user-1');
+
+    expect(result.draft.objetivos.targetRoles).toEqual([]);
+    expect(result.draft.objetivos.preferencesNotes).toBe(
+      'Rol objetivo legacy no disponible: Arquitecto de Soluciones Legacy',
+    );
+    expect(result.draft.objetivos.targetSectors).toEqual(['consulting']);
+  });
 });
