@@ -86,33 +86,102 @@ const targetSectorsSchema = createCatalogMultiSchema(TARGET_SECTOR_OPTIONS);
 const preferredLocationsSchema = createCatalogMultiSchema(LOCATION_OPTIONS);
 const workModelSchema = createCatalogSingleNullableSchema(WORK_MODEL_OPTIONS);
 const senioritySchema = createCatalogSingleNullableSchema(SENIORITY_OPTIONS);
+const rankCodeToLabel = new Map(
+  RANK_OPTIONS.map((option) => [option.value, option.label] as const),
+);
+const specialtyCodeToLabel = new Map(
+  SPECIALTY_OPTIONS.map((option) => [option.value, option.label] as const),
+);
+const targetRoleSlugToLabel = new Map(
+  TARGET_ROLE_OPTIONS.map((option) => [option.slug, option.label] as const),
+);
 
-const targetRoleSchema = z.object({
-  slug: z
-    .string()
-    .trim()
-    .min(1)
-    .refine(
-      (slug) => TARGET_ROLE_OPTIONS.some((option) => option.slug === slug),
-      'Selecciona un rol objetivo válido del catálogo',
-    ),
-  label: z.string().trim().min(1),
-});
+const targetRoleSchema = z
+  .object({
+    slug: z
+      .string()
+      .trim()
+      .min(1)
+      .refine(
+        (slug) => TARGET_ROLE_OPTIONS.some((option) => option.slug === slug),
+        'Selecciona un rol objetivo válido del catálogo',
+      ),
+    label: z.string().trim().min(1),
+  })
+  .superRefine((value, context) => {
+    const expectedLabel = targetRoleSlugToLabel.get(value.slug);
+
+    if (expectedLabel && value.label !== expectedLabel) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['label'],
+        message: 'Selecciona un rol objetivo válido del catálogo',
+      });
+    }
+  });
 
 const languageItemSchema = z.object({
   name: createCatalogValueSchema(LANGUAGE_OPTIONS),
   level: createCatalogValueSchema(LANGUAGE_LEVEL_OPTIONS),
 });
 
-const rankSchema = z.object({
-  code: createCatalogSingleNullableSchema(RANK_OPTIONS),
-  label: z.string().trim().nullable(),
-});
+const rankSchema = z
+  .object({
+    code: createCatalogSingleNullableSchema(RANK_OPTIONS),
+    label: z.string().trim().nullable(),
+  })
+  .superRefine((value, context) => {
+    if (value.code === null) {
+      if (value.label !== null) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['label'],
+          message: 'Selecciona un valor válido del catálogo',
+        });
+      }
 
-const specialtySchema = z.object({
-  code: createCatalogSingleNullableSchema(SPECIALTY_OPTIONS),
-  label: z.string().trim().nullable(),
-});
+      return;
+    }
+
+    const expectedLabel = rankCodeToLabel.get(value.code);
+
+    if (!expectedLabel || value.label !== expectedLabel) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['label'],
+        message: 'Selecciona un valor válido del catálogo',
+      });
+    }
+  });
+
+const specialtySchema = z
+  .object({
+    code: createCatalogSingleNullableSchema(SPECIALTY_OPTIONS),
+    label: z.string().trim().nullable(),
+  })
+  .superRefine((value, context) => {
+    if (value.code === null) {
+      if (value.label !== null) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['label'],
+          message: 'Selecciona un valor válido del catálogo',
+        });
+      }
+
+      return;
+    }
+
+    const expectedLabel = specialtyCodeToLabel.get(value.code);
+
+    if (!expectedLabel || value.label !== expectedLabel) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['label'],
+        message: 'Selecciona un valor válido del catálogo',
+      });
+    }
+  });
 
 export const militarStepSchema = z.object({
   branch: branchSchema,

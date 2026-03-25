@@ -143,8 +143,8 @@ describe('saveOnboardingStep', () => {
     const payload = {
       branch: 'army',
       corps: 'signals',
-      rank: { code: 'captain', label: 'Capitan' },
-      specialty: { code: 'communications', label: 'Comunicaciones' },
+      rank: { code: 'captain', label: 'Capitán' },
+      specialty: { code: 'communications', label: 'Comunicaciones / Sistemas' },
       serviceYears: 9,
       destinationContext: 'hq_staff',
       leadershipLevel: 'section_lead',
@@ -201,8 +201,8 @@ describe('saveOnboardingStep', () => {
         {
           branch: 'valor-libre',
           corps: 'signals',
-          rank: { code: 'captain', label: 'Capitan' },
-          specialty: { code: 'communications', label: 'Comunicaciones' },
+          rank: { code: 'captain', label: 'Capitán' },
+          specialty: { code: 'communications', label: 'Comunicaciones / Sistemas' },
           serviceYears: 9,
           destinationContext: 'hq_staff',
           leadershipLevel: 'section_lead',
@@ -213,6 +213,36 @@ describe('saveOnboardingStep', () => {
         { markCompleted: true },
       ),
     ).rejects.toThrow('Selecciona un valor válido del catálogo');
+
+    expect(calls.upsert).toBeUndefined();
+    expect(calls.updateDraft).toBeUndefined();
+  });
+
+  it('rejects manipulated structured labels before persistence', async () => {
+    const { client, calls } = createSupabaseMock();
+
+    vi.mocked(createClient).mockResolvedValue(client as never);
+
+    await expect(
+      saveOnboardingStep(
+        'user-1',
+        'objetivos',
+        {
+          targetRoles: [
+            {
+              slug: 'operations-coordinator',
+              label: 'Rol libre manipulado',
+            },
+          ],
+          targetSectors: ['logistics'],
+          preferredLocations: ['madrid'],
+          workModel: 'hybrid',
+          seniority: 'manager',
+          preferencesNotes: 'Narrativo permitido',
+        },
+        { markCompleted: true },
+      ),
+    ).rejects.toThrow('Selecciona un rol objetivo válido del catálogo');
 
     expect(calls.upsert).toBeUndefined();
     expect(calls.updateDraft).toBeUndefined();

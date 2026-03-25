@@ -17,8 +17,8 @@ const draftFixture = onboardingDraftSchema.parse({
   militar: {
     branch: 'army',
     corps: 'signals',
-    rank: { code: 'captain', label: 'Capitan' },
-    specialty: { code: 'communications', label: 'Comunicaciones' },
+    rank: { code: 'captain', label: 'Capitán' },
+    specialty: { code: 'communications', label: 'Comunicaciones / Sistemas' },
     serviceYears: 10,
     destinationContext: 'hq_staff',
     leadershipLevel: 'section_lead',
@@ -192,8 +192,8 @@ describe('projectWizardToProfiles', () => {
     expect(records.militaryUpdate).toMatchObject({
       branch: 'army',
       component: 'signals',
-      rank_text: 'Capitan',
-      specialty_text: 'Comunicaciones',
+      rank_text: 'Capitán',
+      specialty_text: 'Comunicaciones / Sistemas',
       service_years: 10,
     });
 

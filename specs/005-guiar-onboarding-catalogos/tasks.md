@@ -76,20 +76,20 @@
 
 ### Tests for US2
 
-- [ ] T030 [P] [US2] Extender test UI de militar para confirmar textarea/input libre solo en `unitName` y `notes` en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/militar/page.test.tsx`.
-- [ ] T031 [P] [US2] Extender test UI de experiencia para confirmar narrativos (`achievements`, `additionalContext`) y estructurados guiados en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/experiencia/page.test.tsx`.
-- [ ] T032 [P] [US2] Extender test UI de competencias para confirmar `extraTraining` libre y resto guiado en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/competencias/page.test.tsx`.
-- [ ] T033 [P] [US2] Extender test UI de objetivos para confirmar `preferencesNotes` libre y resto guiado en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/objetivos/page.test.tsx`.
-- [ ] T034 [P] [US2] Extender test de mapper para preservar narrativos sin reintroducir texto libre estructurado en `/home/svens/dev/brujula-civil/src/features/wizard/services/wizard-form.mapper.test.ts`.
+- [x] T030 [P] [US2] Extender test UI de militar para confirmar textarea/input libre solo en `unitName` y `notes` en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/militar/page.test.tsx`.
+- [x] T031 [P] [US2] Extender test UI de experiencia para confirmar narrativos (`achievements`, `additionalContext`) y estructurados guiados en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/experiencia/page.test.tsx`.
+- [x] T032 [P] [US2] Extender test UI de competencias para confirmar `extraTraining` libre y resto guiado en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/competencias/page.test.tsx`.
+- [x] T033 [P] [US2] Extender test UI de objetivos para confirmar `preferencesNotes` libre y resto guiado en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/objetivos/page.test.tsx`.
+- [x] T034 [P] [US2] Extender test de mapper para preservar narrativos sin reintroducir texto libre estructurado en `/home/svens/dev/brujula-civil/src/features/wizard/services/wizard-form.mapper.test.ts`.
 
 ### Implementation for US2
 
-- [ ] T035 [US2] Mantener textarea/input libre solo para narrativos permitidos del paso militar en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/militar/page.tsx`.
-- [ ] T036 [US2] Mantener textarea libre solo para narrativos permitidos del paso experiencia en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/experiencia/page.tsx`.
-- [ ] T037 [US2] Mantener textarea libre solo para narrativos permitidos del paso competencias en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/competencias/page.tsx`.
-- [ ] T038 [US2] Mantener textarea libre solo para narrativos permitidos del paso objetivos en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/objetivos/page.tsx`.
-- [ ] T039 [US2] Ajustar schema para reglas explicitas de texto libre unicamente en campos narrativos en `/home/svens/dev/brujula-civil/src/features/wizard/schemas/wizard.schema.ts`.
-- [ ] T040 [US2] Ajustar tipos de draft para separar explicitamente payload estructurado y narrativo en `/home/svens/dev/brujula-civil/src/features/wizard/types/wizard.types.ts`.
+- [x] T035 [US2] Mantener textarea/input libre solo para narrativos permitidos del paso militar en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/militar/page.tsx`.
+- [x] T036 [US2] Mantener textarea libre solo para narrativos permitidos del paso experiencia en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/experiencia/page.tsx`.
+- [x] T037 [US2] Mantener textarea libre solo para narrativos permitidos del paso competencias en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/competencias/page.tsx`.
+- [x] T038 [US2] Mantener textarea libre solo para narrativos permitidos del paso objetivos en `/home/svens/dev/brujula-civil/src/app/(app)/onboarding/objetivos/page.tsx`.
+- [x] T039 [US2] Ajustar schema para reglas explicitas de texto libre unicamente en campos narrativos en `/home/svens/dev/brujula-civil/src/features/wizard/schemas/wizard.schema.ts`.
+- [x] T040 [US2] Ajustar tipos de draft para separar explicitamente payload estructurado y narrativo en `/home/svens/dev/brujula-civil/src/features/wizard/types/wizard.types.ts`.
 
 ---
 

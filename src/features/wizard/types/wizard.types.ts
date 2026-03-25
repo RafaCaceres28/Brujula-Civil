@@ -60,6 +60,50 @@ export type OnboardingFieldControlMap = {
   narrative: Record<OnboardingNarrativeFieldPath, 'text' | 'textarea' | 'textarea-list'>;
 };
 
+export type OnboardingStructuredDraft = {
+  militar: Pick<
+    MilitarStepPayload,
+    | 'branch'
+    | 'corps'
+    | 'rank'
+    | 'specialty'
+    | 'serviceYears'
+    | 'destinationContext'
+    | 'leadershipLevel'
+    | 'teamSize'
+  >;
+  experiencia: Pick<
+    ExperienciaStepPayload,
+    'responsibilityAreas' | 'missionTypes' | 'functionTypes' | 'tools' | 'leadershipScopes'
+  >;
+  competencias: Pick<
+    CompetenciasStepPayload,
+    | 'technicalSkills'
+    | 'softSkills'
+    | 'certifications'
+    | 'drivingLicenses'
+    | 'languages'
+    | 'officeTools'
+  >;
+  objetivos: Pick<
+    ObjetivosStepPayload,
+    'targetRoles' | 'targetSectors' | 'preferredLocations' | 'workModel' | 'seniority'
+  >;
+};
+
+export type OnboardingNarrativeDraft = {
+  militar: Pick<MilitarStepPayload, 'unitName' | 'notes'>;
+  experiencia: Pick<ExperienciaStepPayload, 'achievements' | 'additionalContext'>;
+  competencias: Pick<CompetenciasStepPayload, 'extraTraining'>;
+  objetivos: Pick<ObjetivosStepPayload, 'preferencesNotes'>;
+};
+
+export type GuidedOnboardingDraft = {
+  structured: OnboardingStructuredDraft;
+  narrative: OnboardingNarrativeDraft;
+  resumen: ResumenStepPayload;
+};
+
 export type MilitarStepPayload = z.infer<typeof militarStepSchema>;
 export type ExperienciaStepPayload = z.infer<typeof experienciaStepSchema>;
 export type CompetenciasStepPayload = z.infer<typeof competenciasStepSchema>;

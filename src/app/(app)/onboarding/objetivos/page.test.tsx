@@ -21,4 +21,25 @@ describe('/onboarding/objetivos guided controls', () => {
     expect(source).not.toContain('<Textarea id="preferredLocations"');
     expect(source).toContain('name="preferencesNotes"');
   });
+
+  it('keeps free text only in preferencesNotes', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/app/(app)/onboarding/objetivos/page.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('id="preferencesNotes"');
+
+    expect(source).not.toContain('<Textarea id="targetRoles"');
+    expect(source).not.toContain('<Textarea id="targetSectors"');
+    expect(source).not.toContain('<Textarea id="preferredLocations"');
+    expect(source).not.toContain('<Textarea id="workModel"');
+    expect(source).not.toContain('<Textarea id="seniority"');
+
+    expect(source).not.toContain('<Input id="targetRoles"');
+    expect(source).not.toContain('<Input id="targetSectors"');
+    expect(source).not.toContain('<Input id="preferredLocations"');
+    expect(source).not.toContain('<Input id="workModel"');
+    expect(source).not.toContain('<Input id="seniority"');
+  });
 });

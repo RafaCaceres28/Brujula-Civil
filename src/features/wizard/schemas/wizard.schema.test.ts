@@ -66,4 +66,34 @@ describe('wizard.schema', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('rejects free text labels in structured rank and target role payload', () => {
+    const result = onboardingDraftSchema.safeParse({
+      militar: {
+        rank: {
+          code: 'captain',
+          label: 'Rango libre manipulado',
+        },
+      },
+      objetivos: {
+        targetRoles: [
+          {
+            slug: 'operations-coordinator',
+            label: 'Rol libre manipulado',
+          },
+        ],
+      },
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    const invalidPaths = result.error.issues.map((issue) => issue.path.join('.'));
+
+    expect(invalidPaths).toContain('militar.rank.label');
+    expect(invalidPaths).toContain('objetivos.targetRoles.0.label');
+  });
 });

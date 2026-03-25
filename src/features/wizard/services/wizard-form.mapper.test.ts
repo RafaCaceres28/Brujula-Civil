@@ -140,6 +140,73 @@ describe('wizard-form.mapper', () => {
     expect(parsed.workModel).toBe('hybrid');
   });
 
+  it('preserves narrative fields while filtering free text from structured fields', () => {
+    const militar = parseMilitarFormData(
+      createFormData({
+        branch: 'valor libre',
+        corps: 'signals',
+        rankCode: 'captain',
+        specialtyCode: 'especialidad inventada',
+        destinationContext: 'hq_staff',
+        leadershipLevel: 'sin catalogo',
+        teamSize: '6_15',
+        serviceYears: '11',
+        unitName: '  Unidad Legacy  ',
+        notes: '  Nota narrativa  ',
+      }),
+    );
+
+    const experiencia = parseExperienciaFormData(
+      createFormData({
+        responsibilityAreas: ['operations', 'area libre'],
+        missionTypes: ['tipo libre'],
+        functionTypes: ['coordination'],
+        tools: ['herramienta libre'],
+        leadershipScopes: ['team_supervision', 'scope libre'],
+        achievements: ['Logro narrativo'],
+        additionalContext: 'Contexto narrativo',
+      }),
+    );
+
+    const objetivos = parseObjetivosFormData(
+      createFormData({
+        targetRoles: ['operations-coordinator', 'rol libre'],
+        targetSectors: ['logistics', 'sector libre'],
+        preferredLocations: ['madrid', 'ubicacion libre'],
+        workModel: 'hybrid',
+        seniority: 'seniority libre',
+        preferencesNotes: 'Preferencias narrativas',
+      }),
+    );
+
+    expect(militar.branch).toBeNull();
+    expect(militar.specialty.code).toBeNull();
+    expect(militar.leadershipLevel).toBeNull();
+    expect(militar.corps).toBe('signals');
+    expect(militar.rank.code).toBe('captain');
+    expect(militar.destinationContext).toBe('hq_staff');
+    expect(militar.teamSize).toBe('6_15');
+    expect(militar.unitName).toBe('Unidad Legacy');
+    expect(militar.notes).toBe('Nota narrativa');
+
+    expect(experiencia.responsibilityAreas).toEqual(['operations']);
+    expect(experiencia.missionTypes).toEqual([]);
+    expect(experiencia.functionTypes).toEqual(['coordination']);
+    expect(experiencia.tools).toEqual([]);
+    expect(experiencia.leadershipScopes).toEqual(['team_supervision']);
+    expect(experiencia.achievements).toEqual(['Logro narrativo']);
+    expect(experiencia.additionalContext).toBe('Contexto narrativo');
+
+    expect(objetivos.targetRoles).toEqual([
+      { slug: 'operations-coordinator', label: 'Coordinador de Operaciones y Logística' },
+    ]);
+    expect(objetivos.targetSectors).toEqual(['logistics']);
+    expect(objetivos.preferredLocations).toEqual(['madrid']);
+    expect(objetivos.workModel).toBe('hybrid');
+    expect(objetivos.seniority).toBeNull();
+    expect(objetivos.preferencesNotes).toBe('Preferencias narrativas');
+  });
+
   it('keeps resumen defaults deterministic', () => {
     expect(getResumenStepDefaults({})).toEqual({ confirmed: false });
     expect(getResumenStepDefaults({ confirmed: true })).toEqual({ confirmed: true });

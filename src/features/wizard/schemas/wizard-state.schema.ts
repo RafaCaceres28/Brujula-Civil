@@ -152,6 +152,12 @@ const TARGET_ROLE_BY_SLUG = new Map(
 const TARGET_ROLE_BY_LABEL = new Map(
   TARGET_ROLE_OPTIONS.map((option) => [normalizeCatalogToken(option.label), option] as const),
 );
+const RANK_LABEL_BY_CODE = new Map(
+  RANK_OPTIONS.map((option) => [option.value, option.label] as const),
+);
+const SPECIALTY_LABEL_BY_CODE = new Map(
+  SPECIALTY_OPTIONS.map((option) => [option.value, option.label] as const),
+);
 
 function sanitizeOnboardingDraft(input: unknown) {
   if (!isRecord(input)) {
@@ -166,6 +172,8 @@ function sanitizeOnboardingDraft(input: unknown) {
 
   const rank = isRecord(militar.rank) ? militar.rank : {};
   const specialty = isRecord(militar.specialty) ? militar.specialty : {};
+  const rankCode = resolveCatalogValue(rank.code, RANK_RESOLVER);
+  const specialtyCode = resolveCatalogValue(specialty.code, SPECIALTY_RESOLVER);
 
   return {
     ...EMPTY_ONBOARDING_DRAFT,
@@ -174,12 +182,12 @@ function sanitizeOnboardingDraft(input: unknown) {
       branch: resolveCatalogValue(militar.branch, BRANCH_RESOLVER),
       corps: resolveCatalogValue(militar.corps, CORPS_RESOLVER),
       rank: {
-        code: resolveCatalogValue(rank.code, RANK_RESOLVER),
-        label: getNullableString(rank.label),
+        code: rankCode,
+        label: rankCode ? (RANK_LABEL_BY_CODE.get(rankCode) ?? null) : null,
       },
       specialty: {
-        code: resolveCatalogValue(specialty.code, SPECIALTY_RESOLVER),
-        label: getNullableString(specialty.label),
+        code: specialtyCode,
+        label: specialtyCode ? (SPECIALTY_LABEL_BY_CODE.get(specialtyCode) ?? null) : null,
       },
       serviceYears:
         typeof militar.serviceYears === 'number' && Number.isFinite(militar.serviceYears)

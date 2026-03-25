@@ -21,4 +21,19 @@ describe('/onboarding/competencias guided controls', () => {
     expect(source).not.toContain('<Textarea id="languages"');
     expect(source).toContain('name="extraTraining"');
   });
+
+  it('keeps free text only for extraTraining', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/app/(app)/onboarding/competencias/page.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('id="extraTraining"');
+    expect(source).not.toContain('<Textarea id="technicalSkills"');
+    expect(source).not.toContain('<Textarea id="softSkills"');
+    expect(source).not.toContain('<Textarea id="certifications"');
+    expect(source).not.toContain('<Textarea id="drivingLicenses"');
+    expect(source).not.toContain('<Textarea id="languages"');
+    expect(source).not.toContain('<Textarea id="officeTools"');
+  });
 });
