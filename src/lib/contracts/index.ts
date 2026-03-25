@@ -32,3 +32,22 @@ export {
   type ZodIssueDetail,
   type ZodSafeParseOptions,
 } from './zod-helpers';
+export {
+  recommendationInputSnapshotSchema,
+  recommendationOutputSchema,
+  recommendationRouteSchema,
+  recommendationSelectionSchema,
+  type RecommendationInputSnapshot,
+  type RecommendationOutput,
+  type RecommendationRoute,
+  type RecommendationSelection,
+} from '../../features/recommendations/schemas/recommendation.schema';
+export type {
+  RecommendationContractVersion,
+  RecommendationDomainError,
+  RecommendationDomainInput,
+  RecommendationDomainOutput,
+  RecommendationDomainResult,
+  RecommendationDomainRoute,
+  RecommendationDomainSelection,
+} from '../../features/recommendations/types/recommendation.types';

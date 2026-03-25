@@ -13,6 +13,7 @@ describe('profile -> translation contract', () => {
       sourceLanguage: 'es-ES',
       targetLanguage: 'en-US',
       tone: 'formal',
+      selectedRouteId: 'route-operations-coordinator-logistics-mid',
     });
 
     expect(result.ok).toBe(true);
@@ -23,5 +24,6 @@ describe('profile -> translation contract', () => {
     expect(result.data.blocks.length).toBeGreaterThan(0);
     expect(result.data.blocks[0]?.sourceRef).toBe(profileSnapshot.snapshotId);
     expect(result.data.sourceRefMap[result.data.blocks[0]!.id]).toBe(profileSnapshot.snapshotId);
+    expect(result.data.selectedRouteId).toBe('route-operations-coordinator-logistics-mid');
   });
 });

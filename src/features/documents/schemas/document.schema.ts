@@ -29,6 +29,7 @@ export const pdfGenerationInputSchema = z
     cvPreview: cvPreviewOutputSchema,
     format: pdfFormatSchema,
     locale: localeSchema,
+    selectedRouteId: domainIdSchema.optional(),
   })
   .strict();
 

@@ -1,0 +1,63 @@
+import type {
+  RecommendationInputSnapshot,
+  RecommendationOutput,
+} from '../../schemas/recommendation.schema';
+
+export const recommendationInputFixture: RecommendationInputSnapshot = {
+  userId: 'user-1',
+  locale: 'es-ES',
+  snapshotId: 'snapshot-1',
+  branch: 'army',
+  corps: 'signals',
+  rank: 'captain',
+  specialty: 'operations-planning',
+  destinationContext: 'transition',
+  leadership: true,
+  teamSize: 12,
+  responsibilityAreas: ['planning', 'coordination'],
+  missionTypes: ['operations'],
+  functionTypes: ['analysis'],
+  tools: ['excel', 'power-bi'],
+  technicalSkills: ['process-design', 'risk-analysis'],
+  softSkills: ['communication', 'decision-making'],
+  certifications: ['project-management'],
+  drivingLicenses: ['B'],
+  languages: ['es', 'en'],
+  officeTools: ['excel', 'word', 'powerpoint'],
+  targetRoleHints: ['operations-manager'],
+  targetSectorHints: ['logistics'],
+  seniorityHint: 'mid',
+  workModelHint: 'hybrid',
+};
+
+export const recommendationOutputFixture: RecommendationOutput = {
+  recommendationSetId: 'rec-set-1',
+  generatedAt: '2026-03-24T00:00:00.000Z',
+  sourceSnapshotId: 'snapshot-1',
+  routes: [
+    {
+      routeId: 'route-1',
+      roleId: 'operations-manager',
+      sectorId: 'logistics',
+      seniorityId: 'mid',
+      workModelId: 'hybrid',
+      locationId: 'santiago',
+      reasonSummary: 'Tu experiencia en coordinacion y liderazgo encaja con operaciones civiles.',
+      matchedSignals: ['leadership', 'planning', 'operations'],
+    },
+    {
+      routeId: 'route-2',
+      roleId: 'project-coordinator',
+      sectorId: 'services',
+      reasonSummary: 'Tu perfil muestra base transferible para coordinacion de proyectos.',
+      matchedSignals: ['coordination', 'communication'],
+    },
+    {
+      routeId: 'route-3',
+      roleId: 'risk-analyst',
+      sectorId: 'consulting',
+      reasonSummary: 'Tu experiencia en analisis operativo aporta valor en gestion de riesgos.',
+      matchedSignals: ['risk-analysis', 'decision-making'],
+    },
+  ],
+};

@@ -114,10 +114,15 @@ export async function POST(request: Request) {
       locale: parsedInput.data.locale,
       previewVersionId: parsedInput.data.previewVersionId,
       isUserEdited: parsedInput.data.isUserEdited,
+      ...(parsedInput.data.selectedRouteId
+        ? { selectedRouteId: parsedInput.data.selectedRouteId }
+        : {}),
       requestId,
     });
 
-    const traceTag = `preview:${parsedInput.data.previewVersionId}`;
+    const traceTag = parsedInput.data.selectedRouteId
+      ? `preview:${parsedInput.data.previewVersionId};route:${parsedInput.data.selectedRouteId}`
+      : `preview:${parsedInput.data.previewVersionId}`;
     return responseForResult(withMeta(result, meta), traceTag);
   } catch (error) {
     console.error('cv/pdf route error', { requestId, error });

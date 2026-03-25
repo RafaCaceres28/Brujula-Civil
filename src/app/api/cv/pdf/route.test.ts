@@ -10,6 +10,8 @@ vi.mock('next/server', () => ({
 
 describe('cv pdf route', () => {
   it('returns DomainResult success for valid input', async () => {
+    const exportSpy = vi.spyOn(exportCvPdfModule, 'exportCvPdf');
+
     const request = new Request('http://localhost/api/cv/pdf', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -34,6 +36,7 @@ describe('cv pdf route', () => {
         locale: 'es',
         previewVersionId: 'preview-v1',
         isUserEdited: true,
+        selectedRouteId: 'route-operations-coordinator-logistics-mid',
       }),
     });
 
@@ -45,7 +48,16 @@ describe('cv pdf route', () => {
     expect(body.data.status).toBe('queued');
     expect(body.data.storagePath).toContain('user-1');
     expect(body.meta.source).toBe('api.cv.pdf.route');
-    expect(response.headers.get('x-flow-trace')).toBe('preview:preview-v1');
+    expect(response.headers.get('x-flow-trace')).toBe(
+      'preview:preview-v1;route:route-operations-coordinator-logistics-mid',
+    );
+    expect(exportSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selectedRouteId: 'route-operations-coordinator-logistics-mid',
+      }),
+    );
+
+    exportSpy.mockRestore();
   });
 
   it('returns DomainResult validation error for invalid boundary input', async () => {

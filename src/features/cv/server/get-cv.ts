@@ -39,12 +39,21 @@ export async function getCvDraft(userId: string, requestId?: string) {
     const aggregatedDraft = isRecord(data?.aggregated_draft_jsonb)
       ? data.aggregated_draft_jsonb
       : {};
-    const employabilityFlowResult = employabilityFlowSchema.safeParse(
-      aggregatedDraft.employabilityFlow,
-    );
+    const rawEmployabilityFlow = isRecord(aggregatedDraft.employabilityFlow)
+      ? aggregatedDraft.employabilityFlow
+      : {};
+    const employabilityFlowResult = employabilityFlowSchema.safeParse(rawEmployabilityFlow);
 
     if (!employabilityFlowResult.success || !employabilityFlowResult.data.cvPreviewDraft) {
-      return domainSuccess<CvPreviewDraft | null>(null, meta);
+      const legacyDraftResult = employabilityFlowSchema.shape.cvPreviewDraft.safeParse(
+        rawEmployabilityFlow.cvPreviewDraft,
+      );
+
+      if (!legacyDraftResult.success || !legacyDraftResult.data) {
+        return domainSuccess<CvPreviewDraft | null>(null, meta);
+      }
+
+      return domainSuccess<CvPreviewDraft | null>(legacyDraftResult.data, meta);
     }
 
     return domainSuccess<CvPreviewDraft | null>(employabilityFlowResult.data.cvPreviewDraft, meta);

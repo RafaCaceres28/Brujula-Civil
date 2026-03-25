@@ -67,6 +67,7 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
       sourceLanguage: 'es-ES',
       targetLanguage: 'en-US',
       tone: 'neutral',
+      selectedRouteId: 'route-operations-coordinator-logistics-mid',
     } as const;
 
     const translationResult = await generateTranslation(translationInput);
@@ -78,6 +79,7 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
 
     const translationOutput = translationResult.data;
 
+    expect(translationOutput.selectedRouteId).toBe(translationInput.selectedRouteId);
     expect(translationOutput.sourceRefMap['translation-block-1']).toBe(profileSnapshot.snapshotId);
 
     const cvInput = mapTranslationOutputToCvInput({
@@ -96,6 +98,7 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
 
     const cvPreview = cvResult.data;
 
+    expect(cvPreview.selectedRouteId).toBe(translationInput.selectedRouteId);
     expect(cvPreview.sections[0]?.sourceBlockIds).toContain('translation-block-1');
 
     const editedCvPreview = {
@@ -132,6 +135,7 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
       locale: 'es-ES',
       previewVersionId: recoveredDraftResult.data.previewVersionId,
       isUserEdited: recoveredDraftResult.data.isUserEdited,
+      selectedRouteId: translationInput.selectedRouteId,
     });
 
     expect(pdfResult.ok).toBe(true);
@@ -141,7 +145,83 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
 
     expect(pdfResult.data.status).toBe('queued');
     expect(pdfResult.data.storagePath).toContain(`documents/${translationInput.userId}`);
+    expect(pdfResult.meta?.traceability?.selectedRouteId).toBe(translationInput.selectedRouteId);
+    expect(pdfResult.meta?.traceability?.previewVersionId).toBe(
+      recoveredDraftResult.data.previewVersionId,
+    );
+    expect(pdfResult.meta?.traceability?.documentId).toBe(pdfResult.data.documentId);
     expect(pdfResult.meta?.source).toBe('cv.server.export-cv-pdf');
+  });
+
+  it('keeps backward compatibility for legacy flow without selected route', async () => {
+    const profileSnapshot = mapProfileToTranslationSnapshot(profileDomainFixture);
+
+    const translationResult = await generateTranslation({
+      userId: profileDomainFixture.userId,
+      sourceProfile: profileSnapshot,
+      sourceLanguage: 'es-ES',
+      targetLanguage: 'en-US',
+      tone: 'neutral',
+    });
+
+    expect(translationResult.ok).toBe(true);
+    if (!translationResult.ok) {
+      throw new Error('Expected translation success');
+    }
+
+    expect(translationResult.data.selectedRouteId).toBeUndefined();
+
+    const cvResult = await generateCv(
+      mapTranslationOutputToCvInput({
+        userId: profileDomainFixture.userId,
+        profileSnapshotId: profileSnapshot.snapshotId,
+        translatedContent: translationResult.data,
+        templateKey: 'single-column',
+      }),
+    );
+
+    expect(cvResult.ok).toBe(true);
+    if (!cvResult.ok) {
+      throw new Error('Expected CV preview success');
+    }
+
+    const saveResult = await saveCvDraft({
+      userId: profileDomainFixture.userId,
+      cvPreview: cvResult.data,
+      profileSnapshotId: profileSnapshot.snapshotId,
+      previewVersionId: 'preview-legacy-v1',
+      isUserEdited: true,
+      sourceRefMap: translationResult.data.sourceRefMap,
+    });
+
+    expect(saveResult.ok).toBe(true);
+    if (!saveResult.ok) {
+      throw new Error('Expected CV draft persistence success');
+    }
+
+    const recoveredDraftResult = await getCvDraft(profileDomainFixture.userId);
+    expect(recoveredDraftResult.ok).toBe(true);
+    if (!recoveredDraftResult.ok || !recoveredDraftResult.data) {
+      throw new Error('Expected CV draft recovery success');
+    }
+
+    const pdfResult = await exportCvPdf({
+      userId: profileDomainFixture.userId,
+      cvPreview: recoveredDraftResult.data.cvPreview,
+      locale: 'es-ES',
+      previewVersionId: recoveredDraftResult.data.previewVersionId,
+      isUserEdited: recoveredDraftResult.data.isUserEdited,
+    });
+
+    expect(pdfResult.ok).toBe(true);
+    if (!pdfResult.ok) {
+      throw new Error('Expected PDF success');
+    }
+
+    expect(pdfResult.meta?.traceability?.selectedRouteId).toBeUndefined();
+    expect(pdfResult.meta?.traceability?.previewVersionId).toBe(
+      recoveredDraftResult.data.previewVersionId,
+    );
   });
 
   it('supports retry-safe export after a controlled PDF failure without losing draft', async () => {
@@ -153,6 +233,7 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
       sourceLanguage: 'es-ES',
       targetLanguage: 'en-US',
       tone: 'neutral',
+      selectedRouteId: 'route-project-manager-consulting-mid',
     });
 
     expect(translationResult.ok).toBe(true);
@@ -221,6 +302,7 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
       locale: 'es-ES',
       previewVersionId: 'preview-retry-v1',
       isUserEdited: true,
+      selectedRouteId: 'route-project-manager-consulting-mid',
     });
 
     expect(firstExport.ok).toBe(false);
@@ -244,6 +326,7 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
       locale: 'es-ES',
       previewVersionId: recoveredDraft.data.previewVersionId,
       isUserEdited: recoveredDraft.data.isUserEdited,
+      selectedRouteId: 'route-project-manager-consulting-mid',
     });
 
     expect(secondExport.ok).toBe(true);
@@ -251,6 +334,13 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
       throw new Error('Expected retry export success');
     }
     expect(secondExport.data.status).toBe('queued');
+    expect(secondExport.meta?.traceability?.selectedRouteId).toBe(
+      'route-project-manager-consulting-mid',
+    );
+    expect(secondExport.meta?.traceability?.previewVersionId).toBe(
+      recoveredDraft.data.previewVersionId,
+    );
+    expect(secondExport.meta?.traceability?.documentId).toBe(secondExport.data.documentId);
 
     generatePdfSpy.mockRestore();
   });

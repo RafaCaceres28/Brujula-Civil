@@ -6,6 +6,7 @@ type CvPreviewProps = {
   sections: CvDomainOutput['sections'];
   profileStage: CvFlowStage;
   translationStage: CvFlowStage;
+  selectedRouteId: string | null;
   previewStage: CvFlowStage;
   pdfStage: CvFlowStage;
   previewVersionId: string | null;
@@ -53,6 +54,9 @@ export function CvPreview(props: CvPreviewProps) {
         </li>
         <li>
           traduccion {'->'} {formatStage(props.translationStage)}
+        </li>
+        <li>
+          ruta elegida {'->'} {props.selectedRouteId ?? 'pendiente'}
         </li>
         <li>
           preview {'->'} {formatStage(props.previewStage)}
