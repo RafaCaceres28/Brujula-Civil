@@ -65,6 +65,13 @@ export function generateCareerRoutes(
 
     const routes = buildCareerRouteShortlist(parsedInput.data);
 
+    if (routes.length === 0) {
+      return domainFailure(
+        createValidationDomainError('No compatible career routes found for current profile'),
+        meta,
+      );
+    }
+
     if (routes.length < 3 || routes.length > 5) {
       return domainFailure(
         createValidationDomainError('Career route shortlist must contain between 3 and 5 entries', {

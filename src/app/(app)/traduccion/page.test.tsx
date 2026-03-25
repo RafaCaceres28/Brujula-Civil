@@ -117,4 +117,13 @@ describe('/traduccion page UI states', () => {
     expect(container?.textContent).toContain('project-manager');
     expect(container?.textContent).toContain('Seleccionada');
   });
+
+  it('renders actionable UX when recommendation shortlist is empty', () => {
+    renderNode(<CareerRouteShortlist recommendationSetId="recset-empty" routes={[]} />);
+
+    expect(container?.textContent).toContain('No hay rutas sugeridas disponibles en este momento.');
+    expect(container?.textContent).toContain(
+      'Completa tu perfil para volver a generar sugerencias.',
+    );
+  });
 });

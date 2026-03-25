@@ -118,7 +118,7 @@ describe('selectCareerRoute', () => {
   });
 
   it('rejects route that does not belong to recommendation set', async () => {
-    const { client } = createSupabaseMock();
+    const { client, calls } = createSupabaseMock();
     vi.mocked(createClient).mockResolvedValue(client as never);
 
     const result = await selectCareerRoute({
@@ -133,6 +133,10 @@ describe('selectCareerRoute', () => {
     }
 
     expect(result.error.code).toBe('VALIDATION_ERROR');
+    expect(result.error.message).toBe(
+      'Selected route does not belong to active recommendation set',
+    );
+    expect(calls.updateDraft).toBeUndefined();
   });
 
   it('rejects selection when there is no active recommendation shortlist', async () => {

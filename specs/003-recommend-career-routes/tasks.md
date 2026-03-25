@@ -113,15 +113,15 @@
 
 **Purpose**: Cubrir casos limite del MVP sin expandir alcance fuera de recomendaciones por reglas.
 
-- [ ] T044 [P] Agregar caso de perfil insuficiente con fallback seguro en `src/features/recommendations/server/generate-career-routes.test.ts`.
-- [ ] T045 [P] Agregar caso de shortlist vacia con UX accionable en `src/app/(app)/traduccion/page.test.tsx`.
-- [ ] T046 [P] Agregar caso de recomendacion invalida/no perteneciente al set en `src/features/recommendations/server/select-career-route.test.ts`.
-- [ ] T047 [P] Agregar caso de draft con translation/cv pero sin recomendacion en `src/features/cv/server/get-cv.test.ts`.
-- [ ] T048 [P] Agregar caso de compatibilidad del flujo previo sin seleccion en `src/features/translation/server/profile-translation-cv-pdf.contract.test.ts`.
-- [ ] T049 Implementar fallback seguro para perfil insuficiente o shortlist vacia en `src/features/recommendations/server/generate-career-routes.ts`.
-- [ ] T050 Implementar rechazo seguro de `routeId` invalido en `src/features/recommendations/server/select-career-route.ts`.
-- [ ] T051 Implementar recovery de draft parcial sin perder editabilidad en `src/features/cv/server/get-cv.ts`.
-- [ ] T052 Mantener compatibilidad backward del handler de traduccion sin seleccion en `src/app/api/translation/route.ts`.
+- [x] T044 [P] Agregar caso de perfil insuficiente con fallback seguro en `src/features/recommendations/server/generate-career-routes.test.ts`.
+- [x] T045 [P] Agregar caso de shortlist vacia con UX accionable en `src/app/(app)/traduccion/page.test.tsx`.
+- [x] T046 [P] Agregar caso de recomendacion invalida/no perteneciente al set en `src/features/recommendations/server/select-career-route.test.ts`.
+- [x] T047 [P] Agregar caso de draft con translation/cv pero sin recomendacion en `src/features/cv/server/get-cv.test.ts`.
+- [x] T048 [P] Agregar caso de compatibilidad del flujo previo sin seleccion en `src/features/translation/server/profile-translation-cv-pdf.contract.test.ts`.
+- [x] T049 Implementar fallback seguro para perfil insuficiente o shortlist vacia en `src/features/recommendations/server/generate-career-routes.ts`.
+- [x] T050 Implementar rechazo seguro de `routeId` invalido en `src/features/recommendations/server/select-career-route.ts`.
+- [x] T051 Implementar recovery de draft parcial sin perder editabilidad en `src/features/cv/server/get-cv.ts`.
+- [x] T052 Mantener compatibilidad backward del handler de traduccion sin seleccion en `src/app/api/translation/route.ts`.
 
 ---
 

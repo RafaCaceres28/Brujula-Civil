@@ -1,6 +1,5 @@
 import {
   createValidationDomainError,
-  domainIdSchema,
   domainFailure,
   domainSuccess,
   toInternalDomainError,
@@ -20,11 +19,7 @@ type TranslationRouteResult = DomainResult<TranslationOutput, TranslationDomainE
 
 const ROUTE_SOURCE = 'api.translation.route';
 
-const translationRouteInputSchema = translationInputSchema
-  .extend({
-    selectedRouteId: domainIdSchema,
-  })
-  .strict();
+const translationRouteInputSchema = translationInputSchema.strict();
 
 function resolveRequestId(request: Request): string {
   return request.headers.get('x-request-id')?.trim() || crypto.randomUUID();
@@ -48,6 +43,22 @@ function responseForResult(result: TranslationRouteResult, traceTag?: string) {
     status,
     ...(traceTag ? { headers: { 'x-flow-trace': traceTag } } : {}),
   });
+}
+
+function buildTraceTag(
+  sourceRef: string,
+  selectedRouteId: string | undefined,
+  supportsLegacyFlow: boolean,
+) {
+  if (selectedRouteId) {
+    return `profile:${sourceRef};route:${selectedRouteId}`;
+  }
+
+  if (supportsLegacyFlow) {
+    return `profile:${sourceRef};route:legacy-compatible`;
+  }
+
+  return `profile:${sourceRef}`;
 }
 
 export async function POST(request: Request) {
@@ -89,14 +100,15 @@ export async function POST(request: Request) {
       sourceProfile: parsedInput.data.sourceProfile,
       sourceLanguage: parsedInput.data.sourceLanguage,
       targetLanguage: parsedInput.data.targetLanguage,
-      selectedRouteId: parsedInput.data.selectedRouteId,
+      ...(parsedInput.data.selectedRouteId
+        ? { selectedRouteId: parsedInput.data.selectedRouteId }
+        : {}),
       ...(parsedInput.data.tone ? { tone: parsedInput.data.tone } : {}),
     });
 
-    return responseForResult(
-      withMeta(result, meta),
-      `profile:${sourceRef};route:${parsedInput.data.selectedRouteId}`,
-    );
+    const traceTag = buildTraceTag(sourceRef, parsedInput.data.selectedRouteId, true);
+
+    return responseForResult(withMeta(result, meta), traceTag);
   } catch (error) {
     const result = withMeta(
       domainFailure(toInternalDomainError(error, 'Failed to generate translation')),

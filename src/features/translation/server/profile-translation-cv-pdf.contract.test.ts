@@ -153,6 +153,77 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
     expect(pdfResult.meta?.source).toBe('cv.server.export-cv-pdf');
   });
 
+  it('keeps backward compatibility for legacy flow without selected route', async () => {
+    const profileSnapshot = mapProfileToTranslationSnapshot(profileDomainFixture);
+
+    const translationResult = await generateTranslation({
+      userId: profileDomainFixture.userId,
+      sourceProfile: profileSnapshot,
+      sourceLanguage: 'es-ES',
+      targetLanguage: 'en-US',
+      tone: 'neutral',
+    });
+
+    expect(translationResult.ok).toBe(true);
+    if (!translationResult.ok) {
+      throw new Error('Expected translation success');
+    }
+
+    expect(translationResult.data.selectedRouteId).toBeUndefined();
+
+    const cvResult = await generateCv(
+      mapTranslationOutputToCvInput({
+        userId: profileDomainFixture.userId,
+        profileSnapshotId: profileSnapshot.snapshotId,
+        translatedContent: translationResult.data,
+        templateKey: 'single-column',
+      }),
+    );
+
+    expect(cvResult.ok).toBe(true);
+    if (!cvResult.ok) {
+      throw new Error('Expected CV preview success');
+    }
+
+    const saveResult = await saveCvDraft({
+      userId: profileDomainFixture.userId,
+      cvPreview: cvResult.data,
+      profileSnapshotId: profileSnapshot.snapshotId,
+      previewVersionId: 'preview-legacy-v1',
+      isUserEdited: true,
+      sourceRefMap: translationResult.data.sourceRefMap,
+    });
+
+    expect(saveResult.ok).toBe(true);
+    if (!saveResult.ok) {
+      throw new Error('Expected CV draft persistence success');
+    }
+
+    const recoveredDraftResult = await getCvDraft(profileDomainFixture.userId);
+    expect(recoveredDraftResult.ok).toBe(true);
+    if (!recoveredDraftResult.ok || !recoveredDraftResult.data) {
+      throw new Error('Expected CV draft recovery success');
+    }
+
+    const pdfResult = await exportCvPdf({
+      userId: profileDomainFixture.userId,
+      cvPreview: recoveredDraftResult.data.cvPreview,
+      locale: 'es-ES',
+      previewVersionId: recoveredDraftResult.data.previewVersionId,
+      isUserEdited: recoveredDraftResult.data.isUserEdited,
+    });
+
+    expect(pdfResult.ok).toBe(true);
+    if (!pdfResult.ok) {
+      throw new Error('Expected PDF success');
+    }
+
+    expect(pdfResult.meta?.traceability?.selectedRouteId).toBeUndefined();
+    expect(pdfResult.meta?.traceability?.previewVersionId).toBe(
+      recoveredDraftResult.data.previewVersionId,
+    );
+  });
+
   it('supports retry-safe export after a controlled PDF failure without losing draft', async () => {
     const profileSnapshot = mapProfileToTranslationSnapshot(profileDomainFixture);
 

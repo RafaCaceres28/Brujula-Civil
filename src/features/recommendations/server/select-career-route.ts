@@ -65,9 +65,6 @@ function validateRouteSelection(
   if (!belongsToSet) {
     return createValidationDomainError(
       'Selected route does not belong to active recommendation set',
-      {
-        selectedRouteId: input.selectedRouteId,
-      },
     );
   }
 

@@ -37,9 +37,14 @@ export function CareerRouteShortlist(props: CareerRouteShortlistProps) {
       </header>
 
       {!hasRoutes ? (
-        <p className="text-sm text-slate-600">
-          No hay rutas sugeridas disponibles en este momento.
-        </p>
+        <div className="space-y-1">
+          <p className="text-sm text-slate-600">
+            No hay rutas sugeridas disponibles en este momento.
+          </p>
+          <p className="text-sm text-slate-600">
+            Completa tu perfil para volver a generar sugerencias.
+          </p>
+        </div>
       ) : (
         <ul className="space-y-2">
           {props.routes.map((route) => {
