@@ -65,6 +65,14 @@ describe('getCareerRoutesAction', () => {
             sectorId: 'logistics',
             reasonSummary: 'Your profile aligns with operational planning transferability.',
             matchedSignals: ['TARGET_ROLE_HINT'],
+            explanation: {
+              reasonSummary: 'Your profile aligns with operational planning transferability.',
+              fitLabel: 'alto',
+              fitScore: 89,
+              explanationKeywords: ['planning', 'leadership'],
+              decisionGuidance:
+                'Prioritize this route if you want near-term leadership continuity.',
+            },
           },
           {
             routeId: 'route-operations-coordinator-logistics-mid',
@@ -72,6 +80,14 @@ describe('getCareerRoutesAction', () => {
             sectorId: 'logistics',
             reasonSummary: 'Your profile aligns with coordination and logistics operations.',
             matchedSignals: ['TARGET_SECTOR_HINT'],
+            explanation: {
+              reasonSummary: 'Your profile aligns with coordination and logistics operations.',
+              fitLabel: 'medio',
+              fitScore: 67,
+              explanationKeywords: ['coordination', 'logistics'],
+              decisionGuidance:
+                'Compare it if you prefer execution-heavy operational coordination.',
+            },
           },
           {
             routeId: 'route-team-lead-technology-mid',
@@ -79,6 +95,14 @@ describe('getCareerRoutesAction', () => {
             sectorId: 'technology',
             reasonSummary: 'Your profile aligns with leadership and systems collaboration.',
             matchedSignals: ['LEADERSHIP_MATCH'],
+            explanation: {
+              reasonSummary: 'Your profile aligns with leadership and systems collaboration.',
+              fitLabel: 'medio',
+              fitScore: 61,
+              explanationKeywords: ['leadership', 'systems'],
+              decisionGuidance:
+                'Use this route if you want to move toward cross-functional tech teams.',
+            },
           },
         ],
       },

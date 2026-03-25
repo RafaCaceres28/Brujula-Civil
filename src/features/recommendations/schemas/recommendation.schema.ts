@@ -7,6 +7,17 @@ import {
 
 const recommendationReasonSchema = z.string().trim().min(8).max(240);
 const recommendationSignalSchema = z.string().trim().min(1).max(64);
+const recommendationFitLabelSchema = z.enum(['alto', 'medio', 'exploratorio']);
+
+export const recommendationExplanationSchema = z
+  .object({
+    reasonSummary: recommendationReasonSchema,
+    fitLabel: recommendationFitLabelSchema,
+    fitScore: z.number().int().min(0).max(100),
+    explanationKeywords: z.array(recommendationSignalSchema).min(1).max(6),
+    decisionGuidance: z.string().trim().min(8).max(240),
+  })
+  .strict();
 
 export const recommendationRouteSchema = z
   .object({
@@ -18,6 +29,7 @@ export const recommendationRouteSchema = z
     locationId: z.string().trim().min(1).max(64).optional(),
     reasonSummary: recommendationReasonSchema,
     matchedSignals: z.array(recommendationSignalSchema).min(1).max(12),
+    explanation: recommendationExplanationSchema.optional(),
   })
   .strict();
 
@@ -71,3 +83,5 @@ export type RecommendationRoute = z.infer<typeof recommendationRouteSchema>;
 export type RecommendationOutput = z.infer<typeof recommendationOutputSchema>;
 export type RecommendationSelection = z.infer<typeof recommendationSelectionSchema>;
 export type RecommendationInputSnapshot = z.infer<typeof recommendationInputSnapshotSchema>;
+export type RecommendationFitLabel = z.infer<typeof recommendationFitLabelSchema>;
+export type RecommendationExplanation = z.infer<typeof recommendationExplanationSchema>;

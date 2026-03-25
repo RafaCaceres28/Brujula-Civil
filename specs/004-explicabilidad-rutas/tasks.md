@@ -15,12 +15,12 @@
 
 **Purpose**: Alinear alcance, contratos y limites de 004 antes de tocar implementacion.
 
-- [ ] T001 Consolidar alcance FR/NFR de explicabilidad y no-alcance en `specs/004-explicabilidad-rutas/spec.md`.
-- [ ] T002 Mapear secuencia MVP-first y dependencias de entrega en `specs/004-explicabilidad-rutas/plan.md`.
-- [ ] T003 [P] Validar invariantes de `selectedRouteContext` y compatibilidad legacy en `specs/004-explicabilidad-rutas/data-model.md`.
-- [ ] T004 [P] Validar frontera recommendations->UI explicable en `specs/004-explicabilidad-rutas/contracts/recommendations-to-explanation-ui.md`.
-- [ ] T005 [P] Validar frontera seleccion->trazabilidad en `specs/004-explicabilidad-rutas/contracts/explanation-selection-to-traceability.md`.
-- [ ] T006 [P] Validar frontera de recuperacion de reingreso en `specs/004-explicabilidad-rutas/contracts/reentry-explanation-recovery.md`.
+- [x] T001 Consolidar alcance FR/NFR de explicabilidad y no-alcance en `specs/004-explicabilidad-rutas/spec.md`.
+- [x] T002 Mapear secuencia MVP-first y dependencias de entrega en `specs/004-explicabilidad-rutas/plan.md`.
+- [x] T003 [P] Validar invariantes de `selectedRouteContext` y compatibilidad legacy en `specs/004-explicabilidad-rutas/data-model.md`.
+- [x] T004 [P] Validar frontera recommendations->UI explicable en `specs/004-explicabilidad-rutas/contracts/recommendations-to-explanation-ui.md`.
+- [x] T005 [P] Validar frontera seleccion->trazabilidad en `specs/004-explicabilidad-rutas/contracts/explanation-selection-to-traceability.md`.
+- [x] T006 [P] Validar frontera de recuperacion de reingreso en `specs/004-explicabilidad-rutas/contracts/reentry-explanation-recovery.md`.
 
 ---
 
@@ -28,15 +28,15 @@
 
 **Purpose**: Definir cimientos contract-first y persistencia base que bloquean el resto de historias.
 
-- [ ] T007 Extender tipos de explicabilidad de ruta en `src/features/recommendations/types/recommendation.types.ts`.
-- [ ] T008 [P] Extender schema de explicabilidad (`fitLabel`, `fitScore`, `explanationKeywords`, `decisionGuidance`) en `src/features/recommendations/schemas/recommendation.schema.ts`.
+- [x] T007 Extender tipos de explicabilidad de ruta en `src/features/recommendations/types/recommendation.types.ts`.
+- [x] T008 [P] Extender schema de explicabilidad (`fitLabel`, `fitScore`, `explanationKeywords`, `decisionGuidance`) en `src/features/recommendations/schemas/recommendation.schema.ts`.
 - [ ] T009 [P] Extender tipos de `selectedRouteContext` en `src/features/wizard/types/wizard-state.types.ts`.
 - [ ] T010 Extender `employabilityFlowDraftSchema` con `selectedRouteContext` en `src/features/wizard/schemas/wizard-state.schema.ts`.
-- [ ] T011 [P] Agregar pruebas de tipos de metadata explicativa en `src/features/recommendations/types/recommendation.types.test.ts`.
-- [ ] T012 [P] Agregar pruebas de schema para metadata explicativa y labels permitidos en `src/features/recommendations/schemas/recommendation.schema.test.ts`.
+- [x] T011 [P] Agregar pruebas de tipos de metadata explicativa en `src/features/recommendations/types/recommendation.types.test.ts`.
+- [x] T012 [P] Agregar pruebas de schema para metadata explicativa y labels permitidos en `src/features/recommendations/schemas/recommendation.schema.test.ts`.
 - [ ] T013 [P] Agregar pruebas de schema para `selectedRouteContext` y compatibilidad legacy en `src/features/wizard/schemas/wizard-state.schema.test.ts`.
-- [ ] T014 Implementar servicio de explicabilidad basado en reason codes/senales en `src/features/recommendations/services/route-recommendation-rules.ts`.
-- [ ] T015 Agregar pruebas del servicio de explicabilidad por reason codes y desempate en `src/features/recommendations/services/route-recommendation-rules.test.ts`.
+- [x] T014 Implementar servicio de explicabilidad basado en reason codes/senales en `src/features/recommendations/services/route-recommendation-rules.ts`.
+- [x] T015 Agregar pruebas del servicio de explicabilidad por reason codes y desempate en `src/features/recommendations/services/route-recommendation-rules.test.ts`.
 
 **Checkpoint**: Foundation complete; US1/US2/US3 pueden avanzar por prioridad.
 

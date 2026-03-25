@@ -40,6 +40,13 @@ function renderShortlist(options?: {
             seniorityId: 'mid',
             reasonSummary: 'Se recomienda por coincidencias de logistica y coordinacion.',
             matchedSignals: ['TARGET_ROLE_HINT'],
+            explanation: {
+              reasonSummary: 'Se recomienda por coincidencias de logistica y coordinacion.',
+              fitLabel: 'alto',
+              fitScore: 90,
+              explanationKeywords: ['logistica', 'coordinacion'],
+              decisionGuidance: 'Priorizala si quieres continuidad operativa inmediata.',
+            },
           },
           {
             routeId: 'route-project-manager-consulting-mid',
@@ -48,6 +55,13 @@ function renderShortlist(options?: {
             seniorityId: 'mid',
             reasonSummary: 'Se recomienda por coincidencias de planificacion y liderazgo.',
             matchedSignals: ['TARGET_SECTOR_HINT'],
+            explanation: {
+              reasonSummary: 'Se recomienda por coincidencias de planificacion y liderazgo.',
+              fitLabel: 'medio',
+              fitScore: 68,
+              explanationKeywords: ['planificacion', 'liderazgo'],
+              decisionGuidance: 'Comparala si quieres equilibrio entre estrategia y ejecucion.',
+            },
           },
           {
             routeId: 'route-team-lead-technology-mid',
@@ -56,6 +70,13 @@ function renderShortlist(options?: {
             seniorityId: 'mid',
             reasonSummary: 'Se recomienda por supervision y comunicacion.',
             matchedSignals: ['LEADERSHIP_MATCH'],
+            explanation: {
+              reasonSummary: 'Se recomienda por supervision y comunicacion.',
+              fitLabel: 'medio',
+              fitScore: 62,
+              explanationKeywords: ['supervision', 'comunicacion'],
+              decisionGuidance: 'Usala para evaluar un rol de liderazgo tecnico.',
+            },
           },
         ]}
         selectedRouteId={options?.selectedRouteId}

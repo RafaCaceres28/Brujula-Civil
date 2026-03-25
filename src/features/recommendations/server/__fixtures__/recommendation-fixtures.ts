@@ -44,6 +44,13 @@ export const recommendationOutputFixture: RecommendationOutput = {
       locationId: 'santiago',
       reasonSummary: 'Tu experiencia en coordinacion y liderazgo encaja con operaciones civiles.',
       matchedSignals: ['leadership', 'planning', 'operations'],
+      explanation: {
+        reasonSummary: 'Tu experiencia en coordinacion y liderazgo encaja con operaciones civiles.',
+        fitLabel: 'alto',
+        fitScore: 90,
+        explanationKeywords: ['leadership', 'planning', 'operations'],
+        decisionGuidance: 'Elige esta ruta si quieres continuidad operativa en equipos grandes.',
+      },
     },
     {
       routeId: 'route-2',
@@ -51,6 +58,13 @@ export const recommendationOutputFixture: RecommendationOutput = {
       sectorId: 'services',
       reasonSummary: 'Tu perfil muestra base transferible para coordinacion de proyectos.',
       matchedSignals: ['coordination', 'communication'],
+      explanation: {
+        reasonSummary: 'Tu perfil muestra base transferible para coordinacion de proyectos.',
+        fitLabel: 'medio',
+        fitScore: 68,
+        explanationKeywords: ['coordination', 'communication'],
+        decisionGuidance: 'Comparala si prefieres balance entre planificacion y ejecucion diaria.',
+      },
     },
     {
       routeId: 'route-3',
@@ -58,6 +72,13 @@ export const recommendationOutputFixture: RecommendationOutput = {
       sectorId: 'consulting',
       reasonSummary: 'Tu experiencia en analisis operativo aporta valor en gestion de riesgos.',
       matchedSignals: ['risk-analysis', 'decision-making'],
+      explanation: {
+        reasonSummary: 'Tu experiencia en analisis operativo aporta valor en gestion de riesgos.',
+        fitLabel: 'medio',
+        fitScore: 62,
+        explanationKeywords: ['risk-analysis', 'decision-making'],
+        decisionGuidance: 'Usa esta ruta si buscas foco analitico y progresion consultiva.',
+      },
     },
   ],
 };
