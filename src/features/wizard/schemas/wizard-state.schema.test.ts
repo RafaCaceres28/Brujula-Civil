@@ -116,4 +116,40 @@ describe('wizard-state.schema', () => {
       'route-project-manager-consulting-mid',
     );
   });
+
+  it('normalizes mixed legacy and guided draft formats without breaking shape', () => {
+    const parsed = onboardingDraftStateSchema.parse({
+      militar: {
+        branch: 'Cuerpos Comunes de las FAS',
+        rank: { code: 'Capitán', label: 'Capitán' },
+        specialty: { code: 'Comunicaciones / Sistemas', label: 'legacy' },
+      },
+      experiencia: {
+        missionTypes: [
+          'Misión Internacional: Seguridad y Estabilidad',
+          'peace_support',
+          'legacy-invalid',
+        ],
+      },
+      objetivos: {
+        targetRoles: [
+          { slug: 'project-manager', label: 'Label manipulada' },
+          'Coordinador de Operaciones y Logística',
+          'legacy-invalid-role',
+        ],
+      },
+    });
+
+    expect(parsed.militar.branch).toBe('common_corps');
+    expect(parsed.militar.rank).toEqual({ code: 'captain', label: 'Capitán' });
+    expect(parsed.militar.specialty).toEqual({
+      code: 'communications',
+      label: 'Comunicaciones / Sistemas',
+    });
+    expect(parsed.experiencia.missionTypes).toEqual(['intl_stability']);
+    expect(parsed.objetivos.targetRoles).toEqual([
+      { slug: 'project-manager', label: 'Gestor de Proyectos y Operaciones' },
+      { slug: 'operations-coordinator', label: 'Coordinador de Operaciones y Logística' },
+    ]);
+  });
 });

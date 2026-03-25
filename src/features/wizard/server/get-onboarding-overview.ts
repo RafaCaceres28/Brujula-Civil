@@ -42,13 +42,44 @@ function parseEmployabilityFlow(input: unknown) {
   const parsedFlow = employabilityFlowDraftSchema.safeParse(input);
 
   if (parsedFlow.success) {
-    if (parsedFlow.data.selectedRoute || !parsedFlow.data.selectedRecommendation) {
-      return parsedFlow.data;
+    const normalizedFlow =
+      parsedFlow.data.selectedRoute || !parsedFlow.data.selectedRecommendation
+        ? parsedFlow.data
+        : {
+            ...parsedFlow.data,
+            selectedRoute: parsedFlow.data.selectedRecommendation,
+          };
+
+    if (!normalizedFlow.selectedRouteContext) {
+      return normalizedFlow;
+    }
+
+    const selectedRoute = normalizedFlow.selectedRoute ?? normalizedFlow.selectedRecommendation;
+
+    if (
+      !selectedRoute ||
+      !isSameSelectedRoute(selectedRoute, normalizedFlow.selectedRouteContext)
+    ) {
+      return {
+        ...normalizedFlow,
+        selectedRouteContext: undefined,
+      };
+    }
+
+    const parsedSelectedRouteContext = selectedRouteContextSchema.safeParse(
+      normalizedFlow.selectedRouteContext,
+    );
+
+    if (!parsedSelectedRouteContext.success) {
+      return {
+        ...normalizedFlow,
+        selectedRouteContext: undefined,
+      };
     }
 
     return {
-      ...parsedFlow.data,
-      selectedRoute: parsedFlow.data.selectedRecommendation,
+      ...normalizedFlow,
+      selectedRouteContext: parsedSelectedRouteContext.data,
     };
   }
 

@@ -247,4 +247,51 @@ describe('saveOnboardingStep', () => {
     expect(calls.upsert).toBeUndefined();
     expect(calls.updateDraft).toBeUndefined();
   });
+
+  it('keeps legacy employabilityFlow payload intact during defensive draft merge', async () => {
+    const { client, calls } = createSupabaseMock();
+
+    vi.mocked(createClient).mockResolvedValue(client as never);
+    vi.mocked(recalculateOnboardingState).mockResolvedValue({
+      currentStep: 'skills_tools',
+      lastCompletedStep: 'missions_achievements',
+      completionPercent: 60,
+      isCompleted: false,
+    });
+
+    await saveOnboardingStep(
+      'user-1',
+      'objetivos',
+      {
+        targetRoles: [{ slug: 'project-manager', label: 'Gestor de Proyectos y Operaciones' }],
+        targetSectors: ['consulting'],
+        preferredLocations: ['madrid'],
+        workModel: 'hybrid',
+        seniority: 'manager',
+        preferencesNotes: 'Priorizar continuidad de liderazgo.',
+      },
+      { markCompleted: true },
+    );
+
+    const mergedDraft = calls.updateDraft?.aggregated_draft_jsonb as Record<string, unknown>;
+    const mergedFlow = mergedDraft.employabilityFlow as Record<string, unknown>;
+
+    expect(mergedFlow).toMatchObject({
+      recommendations: {
+        recommendationSetId: 'recset-snapshot-1-20260324010101',
+      },
+      selectedRoute: {
+        selectedRouteId: 'route-operations-coordinator-logistics-mid',
+      },
+      selectedRouteContext: {
+        selectedRouteId: 'route-operations-coordinator-logistics-mid',
+        fitLabelSnapshot: 'alto',
+      },
+      cvPreviewDraft: {
+        previewVersionId: 'preview-v1',
+      },
+      lastOnboardingStep: 'objetivos',
+    });
+    expect(typeof mergedFlow.lastUpdatedAt).toBe('string');
+  });
 });

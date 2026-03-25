@@ -100,19 +100,19 @@
 
 ### Tests for US3
 
-- [ ] T041 [P] [US3] Extender test de reingreso para draft legacy + guided con fallback seguro en `/home/svens/dev/brujula-civil/src/features/wizard/server/get-onboarding-overview.test.ts`.
-- [ ] T042 [P] [US3] Extender test de guardado para merge defensivo con `employabilityFlow` intacto en `/home/svens/dev/brujula-civil/src/features/wizard/server/save-onboarding-step.test.ts`.
-- [ ] T043 [P] [US3] Extender test de schema de estado para compatibilidad de formato legacy/guided en `/home/svens/dev/brujula-civil/src/features/wizard/schemas/wizard-state.schema.test.ts`.
-- [ ] T044 [P] [US3] Agregar test de consistencia downstream con inputs catalogados en `/home/svens/dev/brujula-civil/src/features/recommendations/services/build-recommendation-input.test.ts`.
-- [ ] T045 [P] [US3] Agregar test de integracion recommendation/explainability/translation con draft guiado reingresado en `/home/svens/dev/brujula-civil/src/features/translation/server/profile-translation-cv-pdf.contract.test.ts`.
+- [x] T041 [P] [US3] Extender test de reingreso para draft legacy + guided con fallback seguro en `/home/svens/dev/brujula-civil/src/features/wizard/server/get-onboarding-overview.test.ts`.
+- [x] T042 [P] [US3] Extender test de guardado para merge defensivo con `employabilityFlow` intacto en `/home/svens/dev/brujula-civil/src/features/wizard/server/save-onboarding-step.test.ts`.
+- [x] T043 [P] [US3] Extender test de schema de estado para compatibilidad de formato legacy/guided en `/home/svens/dev/brujula-civil/src/features/wizard/schemas/wizard-state.schema.test.ts`.
+- [x] T044 [P] [US3] Agregar test de consistencia downstream con inputs catalogados en `/home/svens/dev/brujula-civil/src/features/recommendations/services/build-recommendation-input.test.ts`.
+- [x] T045 [P] [US3] Agregar test de integracion recommendation/explainability/translation con draft guiado reingresado en `/home/svens/dev/brujula-civil/src/features/translation/server/profile-translation-cv-pdf.contract.test.ts`.
 
 ### Implementation for US3
 
-- [ ] T046 [US3] Implementar recuperacion tolerante de drafts legacy con degradacion segura de campos estructurados invalidos en `/home/svens/dev/brujula-civil/src/features/wizard/server/get-onboarding-overview.ts`.
-- [ ] T047 [US3] Adaptar persistencia para merge incremental reversible del draft guiado sin perder `employabilityFlow` en `/home/svens/dev/brujula-civil/src/features/wizard/server/save-onboarding-step.ts`.
-- [ ] T048 [US3] Endurecer parser de estado para reingreso mixto legacy/guided en `/home/svens/dev/brujula-civil/src/features/wizard/schemas/wizard-state.schema.ts`.
-- [ ] T049 [US3] Ajustar normalizacion downstream para consumir ids catalogados sin refactor global en `/home/svens/dev/brujula-civil/src/features/recommendations/services/build-recommendation-input.ts`.
-- [ ] T050 [US3] Verificar continuidad de proyeccion de wizard hacia perfiles con shape compatible en `/home/svens/dev/brujula-civil/src/features/profile/server/project-wizard-to-profiles.ts`.
+- [x] T046 [US3] Implementar recuperacion tolerante de drafts legacy con degradacion segura de campos estructurados invalidos en `/home/svens/dev/brujula-civil/src/features/wizard/server/get-onboarding-overview.ts`.
+- [x] T047 [US3] Adaptar persistencia para merge incremental reversible del draft guiado sin perder `employabilityFlow` en `/home/svens/dev/brujula-civil/src/features/wizard/server/save-onboarding-step.ts`.
+- [x] T048 [US3] Endurecer parser de estado para reingreso mixto legacy/guided en `/home/svens/dev/brujula-civil/src/features/wizard/schemas/wizard-state.schema.ts`.
+- [x] T049 [US3] Ajustar normalizacion downstream para consumir ids catalogados sin refactor global en `/home/svens/dev/brujula-civil/src/features/recommendations/services/build-recommendation-input.ts`.
+- [x] T050 [US3] Verificar continuidad de proyeccion de wizard hacia perfiles con shape compatible en `/home/svens/dev/brujula-civil/src/features/profile/server/project-wizard-to-profiles.ts`.
 
 ---
 

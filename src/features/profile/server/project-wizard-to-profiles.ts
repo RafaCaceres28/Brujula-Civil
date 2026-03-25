@@ -1,4 +1,5 @@
 import { onboardingDraftSchema } from '../../wizard/schemas/wizard.schema';
+import { onboardingDraftStateSchema } from '../../wizard/schemas/wizard-state.schema';
 import type {
   CivilProfileInsert,
   CivilProfileUpdate,
@@ -83,7 +84,7 @@ export async function projectWizardToProfiles(userId: string) {
     throw new Error(`Error loading wizard draft: ${wizardStateError.message}`);
   }
 
-  const draft = onboardingDraftSchema.parse(wizardState?.aggregated_draft_jsonb ?? {});
+  const draft = onboardingDraftStateSchema.parse(wizardState?.aggregated_draft_jsonb ?? {});
   const sourceText = buildSourceText(draft);
 
   const { data: currentMilitaryProfile, error: currentMilitaryProfileError } = await supabase
