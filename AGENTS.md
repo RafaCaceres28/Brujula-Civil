@@ -163,6 +163,8 @@ Si aparecen esos archivos, actualizar este AGENTS.md de inmediato.
 
 ## Active Technologies
 
+- Supabase Postgres (`user_wizard_state`, `wizard_step_states`, perfiles proyectados) (005-guiar-onboarding-catalogos)
+
 - Supabase Postgres (`user_wizard_state.aggregated_draft_jsonb.employabilityFlow`) (004-explicabilidad-rutas)
 
 - Supabase Postgres (`user_wizard_state.aggregated_draft_jsonb`) (003-recommend-career-routes)
