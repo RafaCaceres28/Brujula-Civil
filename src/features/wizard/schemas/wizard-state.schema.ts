@@ -51,6 +51,7 @@ export const cvPreviewTraceSchema = z
 export const pdfExportTraceSchema = z
   .object({
     requestId: domainIdSchema,
+    selectedRouteId: domainIdSchema.optional(),
     previewVersionId: domainIdSchema,
     documentId: domainIdSchema.nullable(),
     status: pdfGenerationStatusSchema,

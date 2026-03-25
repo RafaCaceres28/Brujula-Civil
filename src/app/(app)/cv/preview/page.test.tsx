@@ -243,11 +243,13 @@ describe('cv preview editable boundary', () => {
     expect(textarea).not.toBeNull();
   });
 
-  it('renders visible profile-translation-preview-pdf traceability', async () => {
+  it('renders selected route traceability without blocking manual edits', async () => {
     const { textarea, prepareButton, exportButton } = await setupPage();
 
     await changeTextareaValue(textarea, 'Traceability check content');
+    expect(exportButton.disabled).toBe(true);
     await click(prepareButton);
+    expect(exportButton.disabled).toBe(false);
     await click(exportButton);
 
     const traceability = container?.querySelector<HTMLElement>(
@@ -256,6 +258,9 @@ describe('cv preview editable boundary', () => {
 
     expect(traceability?.textContent).toContain('perfil -> listo');
     expect(traceability?.textContent).toContain('traduccion -> listo');
+    expect(traceability?.textContent).toContain(
+      'ruta elegida -> route-operations-coordinator-logistics-mid',
+    );
     expect(traceability?.textContent).toContain('preview -> listo');
     expect(traceability?.textContent).toContain('pdf -> listo');
     expect(traceability?.textContent).toContain('version preview -> preview-');

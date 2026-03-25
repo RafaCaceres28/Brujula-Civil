@@ -53,6 +53,7 @@ export const translationInputSchema = z
     sourceLanguage: localeSchema,
     targetLanguage: localeSchema,
     tone: translationToneSchema.optional(),
+    selectedRouteId: domainIdSchema.optional(),
   })
   .strict();
 
@@ -75,6 +76,7 @@ export const translationOutputSchema = z
     blocks: z.array(translatedBlockSchema).min(1),
     sourceRefMap: z.record(domainIdSchema, domainIdSchema),
     qualityFlags: z.array(translationQualityFlagSchema),
+    selectedRouteId: domainIdSchema.optional(),
   })
   .strict();
 

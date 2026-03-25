@@ -45,6 +45,7 @@ const buildCvPreviewOutput = (input: CvDomainInput): CvDomainOutput => {
   }
 
   const hasCoverageGaps = input.translatedContent.qualityFlags.includes('MISSING_CONTEXT');
+  const selectedRouteId = input.selectedRouteId ?? input.translatedContent.selectedRouteId;
 
   return cvPreviewOutputSchema.parse({
     sections,
@@ -53,6 +54,7 @@ const buildCvPreviewOutput = (input: CvDomainInput): CvDomainOutput => {
       columns: input.templateKey === 'single-column' ? 1 : 2,
     },
     completeness: hasCoverageGaps ? 'needs_review' : 'complete',
+    ...(selectedRouteId ? { selectedRouteId } : {}),
   });
 };
 

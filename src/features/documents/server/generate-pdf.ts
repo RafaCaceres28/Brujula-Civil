@@ -11,6 +11,7 @@ type CvPreviewToPdfInput = {
   userId: string;
   cvPreview: CvDomainOutput;
   locale: string;
+  selectedRouteId?: string;
 };
 
 const buildPdfGenerationOutput = (input: DocumentsDomainInput): DocumentsDomainOutput => {
@@ -38,6 +39,7 @@ export function mapCvPreviewToPdfGenerationInput(input: CvPreviewToPdfInput): Do
     cvPreview: input.cvPreview,
     format: 'pdf',
     locale: input.locale,
+    ...(input.selectedRouteId ? { selectedRouteId: input.selectedRouteId } : {}),
   });
 }
 

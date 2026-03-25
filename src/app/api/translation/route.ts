@@ -89,6 +89,7 @@ export async function POST(request: Request) {
       sourceProfile: parsedInput.data.sourceProfile,
       sourceLanguage: parsedInput.data.sourceLanguage,
       targetLanguage: parsedInput.data.targetLanguage,
+      selectedRouteId: parsedInput.data.selectedRouteId,
       ...(parsedInput.data.tone ? { tone: parsedInput.data.tone } : {}),
     });
 

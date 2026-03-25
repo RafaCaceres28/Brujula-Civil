@@ -31,6 +31,7 @@ export const cvPreviewInputSchema = z
     profileSnapshotId: domainIdSchema,
     translatedContent: translationOutputSchema,
     templateKey: cvLayoutTemplateSchema,
+    selectedRouteId: domainIdSchema.optional(),
   })
   .strict();
 
@@ -39,6 +40,7 @@ export const cvPreviewOutputSchema = z
     sections: z.array(cvSectionSchema).min(1),
     layout: cvLayoutConfigSchema,
     completeness: cvCompletenessStatusSchema,
+    selectedRouteId: domainIdSchema.optional(),
   })
   .strict();
 

@@ -11,6 +11,7 @@ function createPreviewVersionId() {
 }
 
 const PREVIEW_DRAFT_STORAGE_KEY = 'cv-preview-draft-v1';
+const SELECTED_ROUTE_ID = 'route-operations-coordinator-logistics-mid';
 
 type PersistedPreviewDraft = {
   sections: CvDomainOutput['sections'];
@@ -203,6 +204,7 @@ export default function CvPreviewPage() {
         locale: 'es-ES',
         previewVersionId,
         isUserEdited,
+        selectedRouteId: SELECTED_ROUTE_ID,
       });
     } catch {
       setErrorMessage('No pudimos iniciar la exportacion. Reintenta sin perder tu borrador.');
@@ -367,6 +369,7 @@ export default function CvPreviewPage() {
           sections={sections}
           profileStage="ready"
           translationStage={sections.length > 0 ? 'ready' : 'pending'}
+          selectedRouteId={SELECTED_ROUTE_ID}
           previewStage={confirmedPreviewSnapshot ? 'ready' : 'pending'}
           pdfStage={pdfExportPayload ? 'ready' : errorMessage ? 'error' : 'pending'}
           previewVersionId={previewVersionId}

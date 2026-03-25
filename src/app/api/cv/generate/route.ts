@@ -43,6 +43,15 @@ function responseForResult(result: CvGenerateRouteResult, traceTag?: string) {
   });
 }
 
+function resolveFlowTraceTag(input: {
+  profileSnapshotId: string;
+  selectedRouteId?: string;
+}): string {
+  return input.selectedRouteId
+    ? `profile:${input.profileSnapshotId};route:${input.selectedRouteId}`
+    : `profile:${input.profileSnapshotId}`;
+}
+
 export async function POST(request: Request) {
   const requestId = resolveRequestId(request);
   const meta = createMeta(requestId);
@@ -73,7 +82,12 @@ export async function POST(request: Request) {
 
   try {
     const result = await generateCv(parsedInput.data);
-    const traceTag = `profile:${parsedInput.data.profileSnapshotId}`;
+    const traceTag = resolveFlowTraceTag({
+      profileSnapshotId: parsedInput.data.profileSnapshotId,
+      selectedRouteId: result.ok
+        ? result.data.selectedRouteId
+        : (parsedInput.data.selectedRouteId ?? parsedInput.data.translatedContent.selectedRouteId),
+    });
     return responseForResult(withMeta(result, meta), traceTag);
   } catch (error) {
     const result = withMeta(

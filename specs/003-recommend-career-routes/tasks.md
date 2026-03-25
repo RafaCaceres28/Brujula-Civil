@@ -93,19 +93,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T034 [P] [US3] Extender contrato translation con `selectedRouteId` en `src/features/translation/server/profile-to-translation.contract.test.ts`.
-- [ ] T035 [P] [US3] Extender test de integracion de slice con cadena completa de trazabilidad en `src/features/translation/server/profile-translation-cv-pdf.contract.test.ts`.
-- [ ] T036 [P] [US3] Extender test de handler CV generate para metadata de ruta elegida en `src/app/api/cv/generate/route.test.ts`.
-- [ ] T037 [P] [US3] Extender test de handler PDF para checkpoint + route traceability en `src/app/api/cv/pdf/route.test.ts`.
-- [ ] T038 [P] [US3] Extender regresion de editabilidad con ruta elegida en `src/app/(app)/cv/preview/page.test.tsx`.
+- [x] T034 [P] [US3] Extender contrato translation con `selectedRouteId` en `src/features/translation/server/profile-to-translation.contract.test.ts`.
+- [x] T035 [P] [US3] Extender test de integracion de slice con cadena completa de trazabilidad en `src/features/translation/server/profile-translation-cv-pdf.contract.test.ts`.
+- [x] T036 [P] [US3] Extender test de handler CV generate para metadata de ruta elegida en `src/app/api/cv/generate/route.test.ts`.
+- [x] T037 [P] [US3] Extender test de handler PDF para checkpoint + route traceability en `src/app/api/cv/pdf/route.test.ts`.
+- [x] T038 [P] [US3] Extender regresion de editabilidad con ruta elegida en `src/app/(app)/cv/preview/page.test.tsx`.
 
 ### Implementation for User Story 3
 
-- [ ] T039 [US3] Inyectar contexto de ruta elegida en generacion de traduccion en `src/features/translation/server/generate-translation.ts`.
-- [ ] T040 [US3] Propagar metadata de ruta elegida al preview CV en `src/features/cv/server/generate-cv.ts`.
-- [ ] T041 [US3] Persistir traza `selectedRouteId -> previewVersionId -> documentId` en `src/features/cv/server/export-cv-pdf.ts`.
-- [ ] T042 [US3] Incluir metadata de ruta elegida en payload de PDF en `src/features/documents/server/generate-pdf.ts`.
-- [ ] T043 [US3] Mostrar trazabilidad de ruta en preview sin bloquear edicion en `src/features/cv/components/cv-preview.tsx`.
+- [x] T039 [US3] Inyectar contexto de ruta elegida en generacion de traduccion en `src/features/translation/server/generate-translation.ts`.
+- [x] T040 [US3] Propagar metadata de ruta elegida al preview CV en `src/features/cv/server/generate-cv.ts`.
+- [x] T041 [US3] Persistir traza `selectedRouteId -> previewVersionId -> documentId` en `src/features/cv/server/export-cv-pdf.ts`.
+- [x] T042 [US3] Incluir metadata de ruta elegida en payload de PDF en `src/features/documents/server/generate-pdf.ts`.
+- [x] T043 [US3] Mostrar trazabilidad de ruta en preview sin bloquear edicion en `src/features/cv/components/cv-preview.tsx`.
 
 ---
 
