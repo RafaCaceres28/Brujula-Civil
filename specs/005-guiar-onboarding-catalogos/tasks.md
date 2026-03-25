@@ -131,10 +131,10 @@
 
 ## Final Phase Polish
 
-- [ ] T057 Ejecutar `pnpm lint` y corregir issues del alcance 005 en `/home/svens/dev/brujula-civil`.
-- [ ] T058 Ejecutar `pnpm typecheck` y corregir issues del alcance 005 en `/home/svens/dev/brujula-civil`.
-- [ ] T059 Ejecutar `pnpm test:run` y corregir fallas del alcance 005 en `/home/svens/dev/brujula-civil`.
-- [ ] T060 Actualizar checklist final de rollout/cierre y cumplimiento de no-alcance en `/home/svens/dev/brujula-civil/specs/005-guiar-onboarding-catalogos/quickstart.md`.
+- [x] T057 Ejecutar `pnpm lint` y corregir issues del alcance 005 en `/home/svens/dev/brujula-civil`.
+- [x] T058 Ejecutar `pnpm typecheck` y corregir issues del alcance 005 en `/home/svens/dev/brujula-civil`.
+- [x] T059 Ejecutar `pnpm test:run` y corregir fallas del alcance 005 en `/home/svens/dev/brujula-civil`.
+- [x] T060 Actualizar checklist final de rollout/cierre y cumplimiento de no-alcance en `/home/svens/dev/brujula-civil/specs/005-guiar-onboarding-catalogos/quickstart.md`.
 
 ---
 
