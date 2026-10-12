@@ -1,9 +1,10 @@
 // Devuelve el usuario autenticado actual o null.
 
-import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
+import type { User } from '@supabase/supabase-js';
 
 type AuthErrorLike = {
+  name?: string;
   status?: number;
   code?: string;
 };
@@ -22,6 +23,9 @@ function isExpectedAuthAbsenceError(error: unknown): boolean {
 
   const authError = error as AuthErrorLike;
 
+  if (authError.name === 'AuthSessionMissingError') {
+    return true;
+  }
   if (authError.status === 401 || authError.status === 403) {
     return true;
   }
