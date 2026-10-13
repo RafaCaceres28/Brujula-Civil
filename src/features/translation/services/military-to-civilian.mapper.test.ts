@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FUNCTION_TYPE_OPTIONS, TOOL_OPTIONS } from '../../wizard/config/wizard-catalogs';
+import type { StructuredExperience } from '../schemas/structured-experience.schema';
 import {
   mapMilitaryToCivilianCompetencies,
   type MilitaryToCivilianInput,
@@ -212,5 +213,189 @@ describe('mapMilitaryToCivilianCompetencies', () => {
         experiencia: { tools: ['radio_comms'], functionTypes: ['Mantenimiento y Puesta a Punto'] },
       }),
     ).toStrictEqual([RADIO_USAGE]);
+  });
+});
+
+const EXPLICIT_RADIO_EXPERIENCE: StructuredExperience = {
+  id: 'experience-radio-01',
+  activity: 'op_maintenance',
+  equipment: 'radio_comms',
+};
+
+const EXPLICIT_RADIO_MAINTENANCE = {
+  id: 'radio-equipment-maintenance',
+  label: 'Mantenimiento de equipos de radiocomunicaciones',
+  basis: 'direct_declaration',
+  requiresReview: true,
+  evidence: [
+    {
+      experienceId: 'experience-radio-01',
+      field: 'structuredExperiences.activity',
+      value: 'op_maintenance',
+    },
+    {
+      experienceId: 'experience-radio-01',
+      field: 'structuredExperiences.equipment',
+      value: 'radio_comms',
+    },
+  ],
+};
+
+describe('mapMilitaryToCivilianCompetencies with structured experiences', () => {
+  it('maps explicit radio maintenance with review and no automatic radio usage', () => {
+    expect(
+      mapMilitaryToCivilianCompetencies({ structuredExperiences: [EXPLICIT_RADIO_EXPERIENCE] }),
+    ).toStrictEqual([EXPLICIT_RADIO_MAINTENANCE]);
+  });
+
+  it('ignores maintenance on a real non-radio equipment code', () => {
+    expect(TOOL_OPTIONS.some(({ value }) => value === 'maintenance_tools')).toBe(true);
+    expect(
+      mapMilitaryToCivilianCompetencies({
+        structuredExperiences: [{ ...EXPLICIT_RADIO_EXPERIENCE, equipment: 'maintenance_tools' }],
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it('does not join activity and equipment from different structured records', () => {
+    expect(
+      mapMilitaryToCivilianCompetencies({
+        structuredExperiences: [
+          { ...EXPLICIT_RADIO_EXPERIENCE, equipment: 'maintenance_tools' },
+          {
+            ...EXPLICIT_RADIO_EXPERIENCE,
+            id: 'experience-radio-02',
+            activity: 'equipment_operation',
+          },
+        ],
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it('distinguishes legacy inferred maintenance from explicit declared maintenance', () => {
+    const legacy = mapMilitaryToCivilianCompetencies({
+      experiencia: { tools: ['radio_comms'], functionTypes: ['op_maintenance'] },
+    });
+    const explicit = mapMilitaryToCivilianCompetencies({
+      structuredExperiences: [EXPLICIT_RADIO_EXPERIENCE],
+    });
+    expect(legacy).toStrictEqual([RADIO_USAGE, RADIO_MAINTENANCE]);
+    expect(explicit).toStrictEqual([EXPLICIT_RADIO_MAINTENANCE]);
+  });
+
+  it('prioritizes explicit maintenance over inference without duplicate candidates or mixed evidence', () => {
+    expect(
+      mapMilitaryToCivilianCompetencies({
+        experiencia: { tools: ['radio_comms', 'radio_comms'], functionTypes: ['op_maintenance'] },
+        structuredExperiences: [EXPLICIT_RADIO_EXPERIENCE],
+      }),
+    ).toStrictEqual([RADIO_USAGE, EXPLICIT_RADIO_MAINTENANCE]);
+  });
+
+  it('retains declared wizard usage alongside explicit maintenance without wizard maintenance', () => {
+    expect(
+      mapMilitaryToCivilianCompetencies({
+        experiencia: { tools: ['radio_comms'] },
+        structuredExperiences: [EXPLICIT_RADIO_EXPERIENCE],
+      }),
+    ).toStrictEqual([RADIO_USAGE, EXPLICIT_RADIO_MAINTENANCE]);
+  });
+
+  it('traces evidence to the exact stable record id and its actual activity and equipment', () => {
+    const record = { ...EXPLICIT_RADIO_EXPERIENCE, id: 'maintenance:radio-42' };
+    expect(mapMilitaryToCivilianCompetencies({ structuredExperiences: [record] })).toStrictEqual([
+      {
+        ...EXPLICIT_RADIO_MAINTENANCE,
+        evidence: [
+          {
+            experienceId: record.id,
+            field: 'structuredExperiences.activity',
+            value: record.activity,
+          },
+          {
+            experienceId: record.id,
+            field: 'structuredExperiences.equipment',
+            value: record.equipment,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('chooses the smallest stable id across multiple radio records regardless of array order', () => {
+    const records = [
+      { ...EXPLICIT_RADIO_EXPERIENCE, id: 'experience-radio-20' },
+      { ...EXPLICIT_RADIO_EXPERIENCE, id: 'experience-other', equipment: 'maintenance_tools' },
+      EXPLICIT_RADIO_EXPERIENCE,
+      { ...EXPLICIT_RADIO_EXPERIENCE, id: 'experience-radio-10' },
+    ];
+    for (const structuredExperiences of [
+      records,
+      [...records].reverse(),
+      [...records.slice(2), ...records.slice(0, 2)],
+    ]) {
+      expect(mapMilitaryToCivilianCompetencies({ structuredExperiences })).toStrictEqual([
+        EXPLICIT_RADIO_MAINTENANCE,
+      ]);
+    }
+  });
+
+  it('ignores narrative radio signals and cannot upgrade legacy inference using non-radio maintenance', () => {
+    const structuredExperiences = [
+      {
+        ...EXPLICIT_RADIO_EXPERIENCE,
+        equipment: 'maintenance_tools',
+        context: 'radio_comms op_maintenance',
+        result: 'Mantenimiento de radio, liderazgo, certificados y 20 anos de experiencia',
+      },
+    ];
+    expect(mapMilitaryToCivilianCompetencies({ structuredExperiences })).toStrictEqual([]);
+    expect(
+      mapMilitaryToCivilianCompetencies({
+        experiencia: { tools: ['radio_comms'], functionTypes: ['op_maintenance'] },
+        structuredExperiences,
+      }),
+    ).toStrictEqual([RADIO_USAGE, RADIO_MAINTENANCE]);
+  });
+
+  it('does not mutate frozen structured records, arrays or legacy selections', () => {
+    const input = {
+      experiencia: { tools: ['radio_comms'], functionTypes: ['op_maintenance'] },
+      structuredExperiences: [
+        { ...EXPLICIT_RADIO_EXPERIENCE, id: 'experience-radio-20' },
+        { ...EXPLICIT_RADIO_EXPERIENCE },
+      ],
+    };
+    const original = structuredClone(input);
+    input.structuredExperiences.forEach(Object.freeze);
+    Object.freeze(input.structuredExperiences);
+    Object.freeze(input.experiencia.tools);
+    Object.freeze(input.experiencia.functionTypes);
+    Object.freeze(input.experiencia);
+    Object.freeze(input);
+    expect(mapMilitaryToCivilianCompetencies(input)).toStrictEqual([
+      RADIO_USAGE,
+      EXPLICIT_RADIO_MAINTENANCE,
+    ]);
+    expect(input).toStrictEqual(original);
+  });
+
+  it('produces identical results for equivalent cloned data and repeated calls', () => {
+    const input = { structuredExperiences: [EXPLICIT_RADIO_EXPERIENCE] };
+    const output = mapMilitaryToCivilianCompetencies(input);
+    expect(output).toStrictEqual([EXPLICIT_RADIO_MAINTENANCE]);
+    expect(mapMilitaryToCivilianCompetencies(structuredClone(input))).toStrictEqual(output);
+    expect(mapMilitaryToCivilianCompetencies(input)).toStrictEqual(output);
+  });
+
+  it('preserves exact legacy output with absent or empty structured experiences', () => {
+    const input = { experiencia: { tools: ['radio_comms'], functionTypes: ['op_maintenance'] } };
+    expect(mapMilitaryToCivilianCompetencies(input)).toStrictEqual([
+      RADIO_USAGE,
+      RADIO_MAINTENANCE,
+    ]);
+    expect(
+      mapMilitaryToCivilianCompetencies({ ...input, structuredExperiences: [] }),
+    ).toStrictEqual([RADIO_USAGE, RADIO_MAINTENANCE]);
   });
 });
