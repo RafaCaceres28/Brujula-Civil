@@ -242,6 +242,74 @@ const EXPLICIT_RADIO_MAINTENANCE = {
 };
 
 describe('mapMilitaryToCivilianCompetencies with structured experiences', () => {
+  it('returns no candidates for any catalog activity without equipment', () => {
+    for (const { value: activity } of FUNCTION_TYPE_OPTIONS) {
+      expect(
+        mapMilitaryToCivilianCompetencies({
+          structuredExperiences: [{ id: 'experience-without-equipment', activity }],
+        }),
+      ).toStrictEqual([]);
+    }
+  });
+
+  it('does not join maintenance without equipment to radio in another record', () => {
+    expect(
+      mapMilitaryToCivilianCompetencies({
+        structuredExperiences: [
+          { id: 'experience-maintenance-01', activity: 'op_maintenance' },
+          { ...EXPLICIT_RADIO_EXPERIENCE, activity: 'equipment_operation' },
+        ],
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it('does not fabricate explicit maintenance or upgrade legacy inference without equipment', () => {
+    const structuredExperiences = [{ id: 'experience-maintenance-01', activity: 'op_maintenance' }];
+    expect(
+      mapMilitaryToCivilianCompetencies({
+        experiencia: { tools: ['radio_comms'] },
+        structuredExperiences,
+      }),
+    ).toStrictEqual([RADIO_USAGE]);
+    expect(
+      mapMilitaryToCivilianCompetencies({
+        experiencia: { tools: ['radio_comms'], functionTypes: ['op_maintenance'] },
+        structuredExperiences,
+      }),
+    ).toStrictEqual([RADIO_USAGE, RADIO_MAINTENANCE]);
+  });
+
+  it('preserves explicit priority and stable evidence with frozen mixed records in any order', () => {
+    const input = {
+      experiencia: { tools: ['radio_comms'], functionTypes: ['op_maintenance'] },
+      structuredExperiences: [
+        { id: 'experience-00', activity: 'op_maintenance' },
+        { ...EXPLICIT_RADIO_EXPERIENCE, id: 'experience-radio-20' },
+        { ...EXPLICIT_RADIO_EXPERIENCE },
+      ],
+    };
+    const original = structuredClone(input);
+    input.structuredExperiences.forEach(Object.freeze);
+    Object.freeze(input.structuredExperiences);
+    Object.freeze(input.experiencia.tools);
+    Object.freeze(input.experiencia.functionTypes);
+    Object.freeze(input.experiencia);
+    Object.freeze(input);
+
+    for (const variant of [
+      input,
+      structuredClone(input),
+      { ...input, structuredExperiences: [...input.structuredExperiences].reverse() },
+      input,
+    ]) {
+      expect(mapMilitaryToCivilianCompetencies(variant)).toStrictEqual([
+        RADIO_USAGE,
+        EXPLICIT_RADIO_MAINTENANCE,
+      ]);
+    }
+    expect(input).toStrictEqual(original);
+  });
+
   it('maps explicit radio maintenance with review and no automatic radio usage', () => {
     expect(
       mapMilitaryToCivilianCompetencies({ structuredExperiences: [EXPLICIT_RADIO_EXPERIENCE] }),

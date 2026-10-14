@@ -18,7 +18,8 @@ export const structuredExperienceSchema = z
       .refine(
         (value) => TOOL_OPTIONS.some((option) => option.value === value),
         'Select a valid equipment catalog code',
-      ),
+      )
+      .optional(),
     context: optionalNarrativeSchema,
     result: optionalNarrativeSchema,
   })

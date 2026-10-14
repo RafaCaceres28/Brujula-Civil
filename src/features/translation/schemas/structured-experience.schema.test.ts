@@ -31,11 +31,25 @@ describe('structuredExperienceSchema', () => {
     }
   });
 
-  it('requires all three identifying fields without generating an id', () => {
-    for (const field of ['id', 'activity', 'equipment'] as const) {
+  it('requires id and activity without generating an id', () => {
+    for (const field of ['id', 'activity'] as const) {
       const input: Partial<typeof EXPERIENCE> = { ...EXPERIENCE };
       delete input[field];
       expect(structuredExperienceSchema.safeParse(input).success).toBe(false);
+    }
+  });
+
+  it('accepts omitted equipment without adding a default or sentinel', () => {
+    const input = { id: EXPERIENCE.id, activity: EXPERIENCE.activity };
+    expect(structuredExperienceSchema.parse(input)).toStrictEqual(input);
+    expect(structuredExperienceSchema.safeParse({ ...input, years: 20 }).success).toBe(false);
+  });
+
+  it('rejects null, sentinel and empty equipment when supplied', () => {
+    for (const equipment of [null, 'none', 'unknown', '', '   ']) {
+      expect(structuredExperienceSchema.safeParse({ ...EXPERIENCE, equipment }).success).toBe(
+        false,
+      );
     }
   });
 
@@ -96,6 +110,24 @@ describe('structuredExperienceSchema', () => {
 });
 
 describe('structuredExperiencesSchema', () => {
+  it('accepts mixed records with and without equipment unchanged', () => {
+    const input = [EXPERIENCE, { id: 'experience-maintenance-02', activity: 'op_maintenance' }];
+    expect(structuredExperiencesSchema.parse(input)).toStrictEqual(input);
+  });
+
+  it('rejects duplicate ids when equipment is omitted', () => {
+    const parsed = structuredExperiencesSchema.safeParse([
+      EXPERIENCE,
+      { id: ` ${EXPERIENCE.id} `, activity: EXPERIENCE.activity },
+    ]);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues).toContainEqual(
+        expect.objectContaining({ code: 'custom', path: [1, 'id'] }),
+      );
+    }
+  });
+
   it('accepts empty collections and repeated activities with distinct stable ids', () => {
     expect(structuredExperiencesSchema.parse([])).toStrictEqual([]);
     const input = [EXPERIENCE, { ...EXPERIENCE, id: 'experience-radio-02' }];
