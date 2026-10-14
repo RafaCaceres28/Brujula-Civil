@@ -7,6 +7,11 @@ const optionalNarrativeSchema = z.string().trim().min(1).max(500).optional();
 export const structuredExperienceSchema = z
   .object({
     id: domainIdSchema,
+    stageIds: z
+      .array(domainIdSchema)
+      .min(1)
+      .refine((ids) => new Set(ids).size === ids.length, 'Stage references must be unique')
+      .optional(),
     activity: z
       .string()
       .refine(

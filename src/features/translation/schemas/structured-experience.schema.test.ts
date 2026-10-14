@@ -12,6 +12,65 @@ const EXPERIENCE = {
 };
 
 describe('structuredExperienceSchema', () => {
+  it('preserves absent stage references in legacy records without defaults', () => {
+    const parsed = structuredExperienceSchema.parse(EXPERIENCE);
+    expect(parsed).toStrictEqual(EXPERIENCE);
+    expect(parsed).not.toHaveProperty('stageIds');
+  });
+
+  it('normalizes multiple stage references while preserving order and existing metadata', () => {
+    const input = {
+      ...EXPERIENCE,
+      context: 'Taller',
+      result: 'Equipo operativo',
+      durationRange: 'not_sure',
+      frequency: 'by_periods',
+      autonomy: 'supervised',
+      participation: ['assisted', 'instructed'],
+      stageIds: [' stage:technical_01 ', 'stage-instruction'],
+    };
+    expect(structuredExperienceSchema.parse(input)).toStrictEqual({
+      ...input,
+      stageIds: ['stage:technical_01', 'stage-instruction'],
+    });
+    for (const invalid of [
+      { activity: 'technical' },
+      { equipment: null },
+      { durationRange: 'unknown' },
+      { frequency: null },
+      { autonomy: 'unknown' },
+      { participation: ['performed', 'performed'] },
+      { context: '' },
+      { result: 'x'.repeat(501) },
+      { focus: 'technical' },
+    ]) {
+      expect(structuredExperienceSchema.safeParse({ ...input, ...invalid }).success).toBe(false);
+    }
+  });
+
+  it('rejects empty, duplicate normalized, null and invalid domain stage references', () => {
+    for (const stageIds of [
+      [],
+      ['stage-01', 'stage-01'],
+      ['stage-01', ' stage-01 '],
+      null,
+      'stage-01',
+      [''],
+      ['   '],
+      ['invalid/id'],
+      ['id with spaces'],
+      ['x'.repeat(129)],
+      [null],
+      [42],
+    ]) {
+      const parsed = structuredExperienceSchema.safeParse({ ...EXPERIENCE, stageIds });
+      expect(parsed.success).toBe(false);
+      if (!parsed.success) {
+        expect(parsed.error.issues.some(({ path }) => path[0] === 'stageIds')).toBe(true);
+      }
+    }
+  });
+
   it.each(['supervised', 'partially_autonomous', 'autonomous', 'not_sure'])(
     'preserves declared autonomy %s independently of career duration',
     (autonomy) => {
