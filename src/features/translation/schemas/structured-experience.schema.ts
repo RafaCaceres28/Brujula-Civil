@@ -22,6 +22,21 @@ export const structuredExperienceSchema = z
       .optional(),
     context: optionalNarrativeSchema,
     result: optionalNarrativeSchema,
+    // Approximate career span, not full-time years or continuous service.
+    // Omitted means uninformed; not_sure explicitly means not remembered.
+    durationRange: z
+      .enum(['less_than_1_year', 'one_to_five_years', 'more_than_5_years', 'not_sure'])
+      .optional(),
+    // by_periods means seasonal periods without quantified intensity.
+    frequency: z
+      .enum([
+        'daily_or_almost_daily',
+        'several_times_per_week',
+        'by_periods',
+        'occasional',
+        'not_sure',
+      ])
+      .optional(),
   })
   .strict();
 

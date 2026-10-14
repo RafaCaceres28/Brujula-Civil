@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FUNCTION_TYPE_OPTIONS, TOOL_OPTIONS } from '../../wizard/config/wizard-catalogs';
 import type { StructuredExperience } from '../schemas/structured-experience.schema';
+import { structuredExperiencesSchema } from '../schemas/structured-experience.schema';
 import {
   mapMilitaryToCivilianCompetencies,
   type MilitaryToCivilianInput,
@@ -242,6 +243,91 @@ const EXPLICIT_RADIO_MAINTENANCE = {
 };
 
 describe('mapMilitaryToCivilianCompetencies with structured experiences', () => {
+  it('keeps exact output and explicit priority across metadata, stable ids and frozen reorderings', () => {
+    const legacy = {
+      experiencia: { tools: ['radio_comms'], functionTypes: ['op_maintenance'] },
+      structuredExperiences: [
+        { id: 'experience-00', activity: 'op_maintenance' },
+        { ...EXPLICIT_RADIO_EXPERIENCE, id: 'experience-radio-20' },
+        { ...EXPLICIT_RADIO_EXPERIENCE },
+      ],
+    };
+    const expected = [RADIO_USAGE, EXPLICIT_RADIO_MAINTENANCE];
+    expect(mapMilitaryToCivilianCompetencies(legacy)).toStrictEqual(expected);
+
+    for (const metadata of [
+      { durationRange: 'less_than_1_year', frequency: 'daily_or_almost_daily' },
+      { durationRange: 'one_to_five_years', frequency: 'several_times_per_week' },
+      { durationRange: 'more_than_5_years', frequency: 'by_periods' },
+      { durationRange: 'not_sure', frequency: 'occasional' },
+      { durationRange: 'not_sure', frequency: 'not_sure' },
+    ]) {
+      const input = {
+        ...structuredClone(legacy),
+        structuredExperiences: structuredExperiencesSchema.parse(
+          legacy.structuredExperiences.map((record, index) => ({
+            ...record,
+            ...metadata,
+            ...(index === 2 ? { durationRange: 'less_than_1_year', frequency: 'occasional' } : {}),
+          })),
+        ),
+      };
+      const original = structuredClone(input);
+      input.structuredExperiences.forEach(Object.freeze);
+      Object.freeze(input.structuredExperiences);
+      Object.freeze(input.experiencia.tools);
+      Object.freeze(input.experiencia.functionTypes);
+      Object.freeze(input.experiencia);
+      Object.freeze(input);
+
+      for (const variant of [
+        input,
+        structuredClone(input),
+        { ...input, structuredExperiences: [...input.structuredExperiences].reverse() },
+        input,
+      ]) {
+        expect(mapMilitaryToCivilianCompetencies(variant)).toStrictEqual(expected);
+        expect(mapMilitaryToCivilianCompetencies(variant)).toStrictEqual(
+          mapMilitaryToCivilianCompetencies(legacy),
+        );
+      }
+      expect(input).toStrictEqual(original);
+    }
+  });
+
+  it('does not create competencies, join records or upgrade legacy evidence from metadata', () => {
+    for (const records of [
+      [{ id: 'experience-maintenance-01', activity: 'op_maintenance' }],
+      [{ ...EXPLICIT_RADIO_EXPERIENCE, equipment: 'maintenance_tools' }],
+      [
+        { id: 'experience-maintenance-01', activity: 'op_maintenance' },
+        { ...EXPLICIT_RADIO_EXPERIENCE, activity: 'equipment_operation' },
+      ],
+    ]) {
+      const structuredExperiences = structuredExperiencesSchema.parse(
+        records.map((record) => ({
+          ...record,
+          durationRange: 'more_than_5_years',
+          frequency: 'daily_or_almost_daily',
+        })),
+      );
+      expect(mapMilitaryToCivilianCompetencies({ structuredExperiences })).toStrictEqual([]);
+      for (const experiencia of [
+        { tools: ['radio_comms'] },
+        { tools: ['radio_comms'], functionTypes: ['op_maintenance'] },
+      ]) {
+        const legacy = { experiencia, structuredExperiences: records };
+        const expected = experiencia.functionTypes
+          ? [RADIO_USAGE, RADIO_MAINTENANCE]
+          : [RADIO_USAGE];
+        expect(mapMilitaryToCivilianCompetencies(legacy)).toStrictEqual(expected);
+        expect(
+          mapMilitaryToCivilianCompetencies({ experiencia, structuredExperiences }),
+        ).toStrictEqual(mapMilitaryToCivilianCompetencies(legacy));
+      }
+    }
+  });
+
   it('returns no candidates for any catalog activity without equipment', () => {
     for (const { value: activity } of FUNCTION_TYPE_OPTIONS) {
       expect(

@@ -12,6 +12,72 @@ const EXPERIENCE = {
 };
 
 describe('structuredExperienceSchema', () => {
+  it.each(['less_than_1_year', 'one_to_five_years', 'more_than_5_years', 'not_sure'])(
+    'preserves durationRange %s without requiring frequency',
+    (durationRange) => {
+      const input = { ...EXPERIENCE, durationRange };
+      expect(structuredExperienceSchema.parse(input)).toStrictEqual(input);
+    },
+  );
+
+  it.each([
+    'daily_or_almost_daily',
+    'several_times_per_week',
+    'by_periods',
+    'occasional',
+    'not_sure',
+  ])('preserves frequency %s without requiring durationRange', (frequency) => {
+    const input = { ...EXPERIENCE, frequency };
+    expect(structuredExperienceSchema.parse(input)).toStrictEqual(input);
+  });
+
+  it('leaves uninformed metadata absent without defaults', () => {
+    const parsed = structuredExperienceSchema.parse(EXPERIENCE);
+    expect(parsed).toStrictEqual(EXPERIENCE);
+    expect(parsed).not.toHaveProperty('durationRange');
+    expect(parsed).not.toHaveProperty('frequency');
+  });
+
+  it('preserves both explicit not_sure answers without requiring equipment', () => {
+    const input = {
+      id: EXPERIENCE.id,
+      activity: EXPERIENCE.activity,
+      durationRange: 'not_sure',
+      frequency: 'not_sure',
+      context: 'Taller de mantenimiento',
+      result: 'Equipo operativo',
+    };
+    expect(structuredExperienceSchema.parse(input)).toStrictEqual(input);
+  });
+
+  it.each(['durationRange', 'frequency'])(
+    'rejects invalid supplied %s rather than coercing or defaulting',
+    (field) => {
+      for (const value of ['unknown', '', '   ', null, 42, [], {}]) {
+        const parsed = structuredExperienceSchema.safeParse({ ...EXPERIENCE, [field]: value });
+        expect(parsed.success).toBe(false);
+        if (!parsed.success) {
+          expect(parsed.error.issues).toContainEqual(expect.objectContaining({ path: [field] }));
+        }
+      }
+    },
+  );
+
+  it('keeps enriched records strict and validates all existing fields', () => {
+    const input = { ...EXPERIENCE, durationRange: 'more_than_5_years', frequency: 'by_periods' };
+    expect(structuredExperienceSchema.parse(input)).toStrictEqual(input);
+    for (const invalid of [
+      { years: 20 },
+      { id: 'invalid/id' },
+      { activity: 'unknown' },
+      { equipment: null },
+      { context: '' },
+      { result: 'x'.repeat(501) },
+    ]) {
+      expect(structuredExperienceSchema.safeParse({ ...input, ...invalid }).success).toBe(false);
+    }
+  });
+
   it('accepts an experience without optional narratives and preserves its stable id', () => {
     expect(structuredExperienceSchema.parse(EXPERIENCE)).toStrictEqual(EXPERIENCE);
     expect(structuredExperienceSchema.parse(EXPERIENCE)).toStrictEqual(EXPERIENCE);
@@ -110,6 +176,38 @@ describe('structuredExperienceSchema', () => {
 });
 
 describe('structuredExperiencesSchema', () => {
+  it('preserves mixed old and enriched records with optional equipment', () => {
+    const input = [
+      EXPERIENCE,
+      {
+        id: 'experience-maintenance-02',
+        activity: 'op_maintenance',
+        durationRange: 'one_to_five_years',
+        frequency: 'by_periods',
+      },
+      { ...EXPERIENCE, id: 'experience-radio-03', frequency: 'not_sure' },
+    ];
+    expect(structuredExperiencesSchema.parse(input)).toStrictEqual(input);
+  });
+
+  it('rejects duplicate trimmed ids across old and enriched records', () => {
+    const parsed = structuredExperiencesSchema.safeParse([
+      EXPERIENCE,
+      {
+        ...EXPERIENCE,
+        id: ` ${EXPERIENCE.id} `,
+        durationRange: 'less_than_1_year',
+        frequency: 'occasional',
+      },
+    ]);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues).toContainEqual(
+        expect.objectContaining({ code: 'custom', path: [1, 'id'] }),
+      );
+    }
+  });
+
   it('accepts mixed records with and without equipment unchanged', () => {
     const input = [EXPERIENCE, { id: 'experience-maintenance-02', activity: 'op_maintenance' }];
     expect(structuredExperiencesSchema.parse(input)).toStrictEqual(input);
