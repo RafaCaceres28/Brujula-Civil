@@ -27,6 +27,11 @@ export const structuredExperienceSchema = z
       .optional(),
     context: optionalNarrativeSchema,
     result: optionalNarrativeSchema,
+    // Assignment context, not frequency/duration; absence means undeclared.
+    // Replacement implies no formal appointment, higher position or replaced person's rank.
+    assignmentContext: z
+      .enum(['regular_duties', 'temporary_assignment', 'acting_replacement', 'not_sure'])
+      .optional(),
     // Approximate career span, not full-time years or continuous service.
     // Omitted means uninformed; not_sure explicitly means not remembered.
     durationRange: z

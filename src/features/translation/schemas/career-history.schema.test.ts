@@ -8,6 +8,85 @@ const STAGES = [
 const EXPERIENCE = { id: 'experience-01', activity: 'op_maintenance' };
 
 describe('careerHistorySchema', () => {
+  it('preserves mixed assignment contexts and existing metadata through the aggregate', () => {
+    const input = {
+      stages: STAGES,
+      experiences: [
+        EXPERIENCE,
+        ...['regular_duties', 'temporary_assignment', 'acting_replacement', 'not_sure'].map(
+          (assignmentContext, index) => ({
+            ...EXPERIENCE,
+            id: `experience-context-${index}`,
+            assignmentContext,
+            stageIds: ['stage-instruction', 'stage-technical'],
+            context: 'Taller',
+            result: 'Equipo operativo',
+            autonomy: 'supervised',
+            participation: ['assisted', 'coordinated'],
+            durationRange: 'not_sure',
+            frequency: 'occasional',
+          }),
+        ),
+      ],
+    };
+    const parsed: CareerHistory = careerHistorySchema.parse(input);
+    expect(parsed).toStrictEqual(input);
+    expect(parsed.experiences[0]).not.toHaveProperty('assignmentContext');
+  });
+
+  it('retains reference, uniqueness, id and strict guards with assignment context', () => {
+    const experience = {
+      ...EXPERIENCE,
+      assignmentContext: 'acting_replacement',
+      stageIds: ['stage-technical'],
+    };
+    expect(careerHistorySchema.parse({ stages: STAGES, experiences: [experience] })).toStrictEqual({
+      stages: STAGES,
+      experiences: [experience],
+    });
+    for (const [input, path] of [
+      [{ experiences: [experience] }, ['experiences', 0, 'stageIds', 0]],
+      [
+        { stages: STAGES, experiences: [{ ...experience, stageIds: ['missing'] }] },
+        ['experiences', 0, 'stageIds', 0],
+      ],
+      [
+        { stages: STAGES, experiences: [experience, { ...experience, id: ' experience-01 ' }] },
+        ['experiences', 1, 'id'],
+      ],
+      [
+        {
+          stages: [STAGES[0], { ...STAGES[0], id: ' stage-technical ' }],
+          experiences: [experience],
+        },
+        ['stages', 1, 'id'],
+      ],
+      [
+        {
+          stages: STAGES,
+          experiences: [{ ...experience, stageIds: ['stage-technical', ' stage-technical '] }],
+        },
+        ['experiences', 0, 'stageIds'],
+      ],
+      [
+        { stages: STAGES, experiences: [{ ...experience, id: 'invalid/id' }] },
+        ['experiences', 0, 'id'],
+      ],
+      [{ stages: STAGES, experiences: [{ ...experience, rank: 'commander' }] }, ['experiences', 0]],
+      [
+        { stages: STAGES, experiences: [{ ...experience, assignmentContext: null }] },
+        ['experiences', 0, 'assignmentContext'],
+      ],
+      [{ stages: STAGES, experiences: [experience], rank: 'commander' }, []],
+    ] as const) {
+      const parsed = careerHistorySchema.safeParse(input);
+      expect(parsed.success).toBe(false);
+      if (!parsed.success) {
+        expect(parsed.error.issues).toContainEqual(expect.objectContaining({ path }));
+      }
+    }
+  });
+
   it('preserves omitted stages and legacy experiences without adding defaults', () => {
     for (const input of [
       { experiences: [] },

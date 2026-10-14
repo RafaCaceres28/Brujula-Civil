@@ -12,6 +12,81 @@ const EXPERIENCE = {
 };
 
 describe('structuredExperienceSchema', () => {
+  it.each(['regular_duties', 'temporary_assignment', 'acting_replacement', 'not_sure'])(
+    'preserves assignmentContext %s for every catalog activity with or without equipment',
+    (assignmentContext) => {
+      for (const { value: activity } of FUNCTION_TYPE_OPTIONS) {
+        for (const equipment of [undefined, EXPERIENCE.equipment]) {
+          const input = {
+            id: EXPERIENCE.id,
+            activity,
+            ...(equipment === undefined ? {} : { equipment }),
+            assignmentContext,
+          };
+          expect(structuredExperienceSchema.parse(input)).toStrictEqual(input);
+        }
+      }
+    },
+  );
+
+  it('leaves undeclared assignment context absent without defaults', () => {
+    for (const input of [EXPERIENCE, { id: EXPERIENCE.id, activity: EXPERIENCE.activity }]) {
+      const parsed = structuredExperienceSchema.parse(input);
+      expect(parsed).toStrictEqual(input);
+      expect(parsed).not.toHaveProperty('assignmentContext');
+    }
+  });
+
+  it('rejects invalid assignment context without trimming, coercion or defaults', () => {
+    for (const assignmentContext of [null, '', '   ', 'unknown', ' regular_duties ', 42, [], {}]) {
+      const parsed = structuredExperienceSchema.safeParse({ ...EXPERIENCE, assignmentContext });
+      expect(parsed.success).toBe(false);
+      if (!parsed.success) {
+        expect(parsed.error.issues).toContainEqual(
+          expect.objectContaining({ path: ['assignmentContext'] }),
+        );
+      }
+    }
+  });
+
+  it('keeps assignment context independent of metadata and preserves strict id and uniqueness guards', () => {
+    const input = {
+      ...EXPERIENCE,
+      assignmentContext: 'acting_replacement',
+      context: 'Taller',
+      result: 'Equipo operativo',
+      autonomy: 'supervised',
+      participation: ['assisted', 'instructed'],
+      durationRange: 'more_than_5_years',
+      frequency: 'daily_or_almost_daily',
+      stageIds: ['stage-technical', 'stage-instruction'],
+    };
+    expect(structuredExperienceSchema.parse(input)).toStrictEqual(input);
+    for (const invalid of [
+      { id: 'invalid/id' },
+      { rank: 'commander' },
+      { activity: 'unknown' },
+      { equipment: null },
+      { context: '' },
+      { result: 'x'.repeat(501) },
+      { autonomy: 'unknown' },
+      { participation: ['performed', 'performed'] },
+      { durationRange: 'unknown' },
+      { frequency: null },
+      { stageIds: ['stage-technical', ' stage-technical '] },
+    ]) {
+      expect(structuredExperienceSchema.safeParse({ ...input, ...invalid }).success).toBe(false);
+    }
+    const duplicated = structuredExperiencesSchema.safeParse([
+      input,
+      { ...input, id: ` ${input.id} `, assignmentContext: 'regular_duties' },
+    ]);
+    expect(duplicated.success).toBe(false);
+    if (!duplicated.success) {
+      expect(duplicated.error.issues).toContainEqual(expect.objectContaining({ path: [1, 'id'] }));
+    }
+  });
+
   it('preserves absent stage references in legacy records without defaults', () => {
     const parsed = structuredExperienceSchema.parse(EXPERIENCE);
     expect(parsed).toStrictEqual(EXPERIENCE);

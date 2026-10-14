@@ -244,6 +244,108 @@ const EXPLICIT_RADIO_MAINTENANCE = {
 };
 
 describe('mapMilitaryToCivilianCompetencies with structured experiences', () => {
+  it('keeps exact output and explicit priority for every assignment context with frozen reorderings', () => {
+    const records = [
+      { id: 'experience-00', activity: 'op_maintenance' },
+      { ...EXPLICIT_RADIO_EXPERIENCE, id: 'experience-radio-20' },
+      { ...EXPLICIT_RADIO_EXPERIENCE },
+    ];
+    for (const assignmentContext of [
+      'regular_duties',
+      'temporary_assignment',
+      'acting_replacement',
+      'not_sure',
+    ]) {
+      const enriched = structuredExperiencesSchema.parse(
+        records.map((record) => ({
+          ...record,
+          assignmentContext,
+          stageIds: ['stage-technical', 'stage-instruction'],
+          context: 'Taller',
+          result: 'Equipo operativo',
+          autonomy: 'supervised',
+          participation: ['assisted', 'instructed'],
+          durationRange: 'more_than_5_years',
+          frequency: 'occasional',
+        })),
+      );
+      for (const experiencia of [
+        undefined,
+        { tools: ['radio_comms'] },
+        { tools: ['radio_comms'], functionTypes: ['op_maintenance'] },
+      ]) {
+        const expected = experiencia
+          ? [RADIO_USAGE, EXPLICIT_RADIO_MAINTENANCE]
+          : [EXPLICIT_RADIO_MAINTENANCE];
+        expect(
+          mapMilitaryToCivilianCompetencies({ experiencia, structuredExperiences: records }),
+        ).toStrictEqual(expected);
+        for (const ordered of [enriched, [...enriched].reverse()]) {
+          const input = {
+            experiencia: structuredClone(experiencia),
+            structuredExperiences: ordered,
+          };
+          const original = structuredClone(input);
+          input.structuredExperiences.forEach((record) => {
+            Object.freeze(record.stageIds);
+            Object.freeze(record.participation);
+            Object.freeze(record);
+          });
+          Object.freeze(input.structuredExperiences);
+          Object.freeze(input.experiencia?.tools);
+          Object.freeze(input.experiencia?.functionTypes);
+          Object.freeze(input.experiencia);
+          Object.freeze(input);
+          for (const variant of [input, structuredClone(input), input]) {
+            expect(mapMilitaryToCivilianCompetencies(variant)).toStrictEqual(expected);
+          }
+          expect(input).toStrictEqual(original);
+        }
+      }
+    }
+  });
+
+  it('does not create competencies, join records or upgrade legacy evidence from any assignment context', () => {
+    for (const assignmentContext of [
+      'regular_duties',
+      'temporary_assignment',
+      'acting_replacement',
+      'not_sure',
+    ]) {
+      for (const records of [
+        ...FUNCTION_TYPE_OPTIONS.map(({ value: activity }) => [
+          { id: 'experience-no-equipment', activity },
+        ]),
+        [{ ...EXPLICIT_RADIO_EXPERIENCE, equipment: 'maintenance_tools' }],
+        [
+          { id: 'experience-no-equipment', activity: 'op_maintenance' },
+          { ...EXPLICIT_RADIO_EXPERIENCE, activity: 'equipment_operation' },
+        ],
+      ]) {
+        const structuredExperiences = structuredExperiencesSchema.parse(
+          records.map((record) => ({ ...record, assignmentContext })),
+        );
+        for (const experiencia of [
+          undefined,
+          { tools: ['radio_comms'] },
+          { tools: ['radio_comms'], functionTypes: ['op_maintenance'] },
+        ]) {
+          const expected = experiencia
+            ? experiencia.functionTypes
+              ? [RADIO_USAGE, RADIO_MAINTENANCE]
+              : [RADIO_USAGE]
+            : [];
+          expect(
+            mapMilitaryToCivilianCompetencies({ experiencia, structuredExperiences: records }),
+          ).toStrictEqual(expected);
+          expect(
+            mapMilitaryToCivilianCompetencies({ experiencia, structuredExperiences }),
+          ).toStrictEqual(expected);
+        }
+      }
+    }
+  });
+
   it('keeps exact output, priority and determinism with stage references and frozen reorderings', () => {
     const records = [
       { id: 'experience-00', activity: 'op_maintenance' },
