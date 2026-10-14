@@ -243,6 +243,103 @@ const EXPLICIT_RADIO_MAINTENANCE = {
 };
 
 describe('mapMilitaryToCivilianCompetencies with structured experiences', () => {
+  it('keeps exact evidence and explicit priority across autonomy, participation and frozen reorderings', () => {
+    const legacy = {
+      experiencia: { tools: ['radio_comms'], functionTypes: ['op_maintenance'] },
+      structuredExperiences: [
+        { id: 'experience-00', activity: 'op_maintenance' },
+        { ...EXPLICIT_RADIO_EXPERIENCE, id: 'experience-radio-20' },
+        { ...EXPLICIT_RADIO_EXPERIENCE },
+      ],
+    };
+    const expected = [RADIO_USAGE, EXPLICIT_RADIO_MAINTENANCE];
+    expect(mapMilitaryToCivilianCompetencies(legacy)).toStrictEqual(expected);
+    for (const autonomy of ['supervised', 'partially_autonomous', 'autonomous', 'not_sure']) {
+      const input = {
+        ...structuredClone(legacy),
+        structuredExperiences: structuredExperiencesSchema.parse(
+          legacy.structuredExperiences.map((record, index) => ({
+            ...record,
+            autonomy: index === 2 ? 'supervised' : autonomy,
+            participation: index === 2 ? ['assisted'] : ['instructed', 'performed', 'coordinated'],
+            durationRange: 'more_than_5_years',
+            frequency: 'by_periods',
+          })),
+        ),
+      };
+      const original = structuredClone(input);
+      input.structuredExperiences.forEach((record) => {
+        Object.freeze(record.participation);
+        Object.freeze(record);
+      });
+      Object.freeze(input.structuredExperiences);
+      Object.freeze(input.experiencia.tools);
+      Object.freeze(input.experiencia.functionTypes);
+      Object.freeze(input.experiencia);
+      Object.freeze(input);
+      const reordered = {
+        ...input,
+        structuredExperiences: [...input.structuredExperiences].reverse().map((record) => ({
+          ...record,
+          participation: record.participation ? [...record.participation].reverse() : undefined,
+        })),
+      };
+      const reorderedOriginal = structuredClone(reordered);
+      reordered.structuredExperiences.forEach((record) => {
+        Object.freeze(record.participation);
+        Object.freeze(record);
+      });
+      Object.freeze(reordered.structuredExperiences);
+      Object.freeze(reordered);
+      for (const variant of [input, reordered, structuredClone(input), input]) {
+        expect(mapMilitaryToCivilianCompetencies(variant)).toStrictEqual(expected);
+        expect(mapMilitaryToCivilianCompetencies(variant)).toStrictEqual(
+          mapMilitaryToCivilianCompetencies(legacy),
+        );
+      }
+      expect(input).toStrictEqual(original);
+      expect(reordered).toStrictEqual(reorderedOriginal);
+    }
+  });
+
+  it('does not invent competencies or promote legacy evidence from coordination or instruction', () => {
+    for (const records of [
+      [{ id: 'experience-no-equipment', activity: 'op_maintenance' }],
+      [{ ...EXPLICIT_RADIO_EXPERIENCE, equipment: 'maintenance_tools' }],
+      [
+        { id: 'experience-no-equipment', activity: 'op_maintenance' },
+        { ...EXPLICIT_RADIO_EXPERIENCE, activity: 'equipment_operation' },
+      ],
+    ]) {
+      const structuredExperiences = structuredExperiencesSchema.parse(
+        records.map((record) => ({
+          ...record,
+          autonomy: 'autonomous',
+          participation: ['coordinated', 'instructed'],
+        })),
+      );
+      expect(mapMilitaryToCivilianCompetencies({ structuredExperiences: records })).toStrictEqual(
+        [],
+      );
+      expect(mapMilitaryToCivilianCompetencies({ structuredExperiences })).toStrictEqual([]);
+      for (const experiencia of [
+        { tools: ['radio_comms'] },
+        { tools: ['radio_comms'], functionTypes: ['op_maintenance'] },
+      ]) {
+        const previous = mapMilitaryToCivilianCompetencies({
+          experiencia,
+          structuredExperiences: records,
+        });
+        expect(previous).toStrictEqual(
+          experiencia.functionTypes ? [RADIO_USAGE, RADIO_MAINTENANCE] : [RADIO_USAGE],
+        );
+        expect(
+          mapMilitaryToCivilianCompetencies({ experiencia, structuredExperiences }),
+        ).toStrictEqual(previous);
+      }
+    }
+  });
+
   it('keeps exact output and explicit priority across metadata, stable ids and frozen reorderings', () => {
     const legacy = {
       experiencia: { tools: ['radio_comms'], functionTypes: ['op_maintenance'] },

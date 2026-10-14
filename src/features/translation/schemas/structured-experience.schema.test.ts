@@ -12,6 +12,98 @@ const EXPERIENCE = {
 };
 
 describe('structuredExperienceSchema', () => {
+  it.each(['supervised', 'partially_autonomous', 'autonomous', 'not_sure'])(
+    'preserves declared autonomy %s independently of career duration',
+    (autonomy) => {
+      for (const durationRange of ['less_than_1_year', 'more_than_5_years', 'not_sure']) {
+        const input = { ...EXPERIENCE, autonomy, durationRange };
+        expect(structuredExperienceSchema.parse(input)).toStrictEqual(input);
+      }
+    },
+  );
+
+  it.each(['assisted', 'performed', 'coordinated', 'instructed'])(
+    'preserves single participation %s without requiring autonomy',
+    (participation) => {
+      const input = { ...EXPERIENCE, participation: [participation] };
+      expect(structuredExperienceSchema.parse(input)).toStrictEqual(input);
+    },
+  );
+
+  it('preserves simultaneous participation in the supplied order', () => {
+    for (const participation of [
+      ['instructed', 'assisted', 'coordinated', 'performed'],
+      ['performed', 'coordinated'],
+    ]) {
+      const input = { ...EXPERIENCE, autonomy: 'supervised', participation };
+      expect(structuredExperienceSchema.parse(input)).toStrictEqual(input);
+    }
+  });
+
+  it('keeps autonomy and participation absent in legacy records without equipment or defaults', () => {
+    for (const input of [EXPERIENCE, { id: EXPERIENCE.id, activity: EXPERIENCE.activity }]) {
+      const parsed = structuredExperienceSchema.parse(input);
+      expect(parsed).toStrictEqual(input);
+      expect(parsed).not.toHaveProperty('autonomy');
+      expect(parsed).not.toHaveProperty('participation');
+    }
+  });
+
+  it('rejects invalid autonomy without coercion or defaults', () => {
+    for (const autonomy of ['unknown', '', '   ', null, [], 42]) {
+      const parsed = structuredExperienceSchema.safeParse({ ...EXPERIENCE, autonomy });
+      expect(parsed.success).toBe(false);
+      if (!parsed.success) {
+        expect(parsed.error.issues).toContainEqual(expect.objectContaining({ path: ['autonomy'] }));
+      }
+    }
+  });
+
+  it('rejects empty, repeated, null and unknown participation without deduplication', () => {
+    for (const participation of [
+      [],
+      ['performed', 'performed'],
+      ['assisted', 'coordinated', 'assisted'],
+      null,
+      ['unknown'],
+      [''],
+      ['   '],
+      [null],
+      ['performed', 'unknown'],
+      'performed',
+    ]) {
+      expect(structuredExperienceSchema.safeParse({ ...EXPERIENCE, participation }).success).toBe(
+        false,
+      );
+    }
+  });
+
+  it('keeps all existing validations and metadata compatible without equipment', () => {
+    const input = {
+      id: EXPERIENCE.id,
+      activity: EXPERIENCE.activity,
+      context: 'Taller',
+      result: 'Equipo operativo',
+      durationRange: 'one_to_five_years',
+      frequency: 'by_periods',
+      autonomy: 'partially_autonomous',
+      participation: ['coordinated', 'instructed'],
+    };
+    expect(structuredExperienceSchema.parse(input)).toStrictEqual(input);
+    for (const invalid of [
+      { rank: 'commander' },
+      { id: 'invalid/id' },
+      { activity: 'unknown' },
+      { equipment: null },
+      { context: '' },
+      { result: 'x'.repeat(501) },
+      { durationRange: 'unknown' },
+      { frequency: null },
+    ]) {
+      expect(structuredExperienceSchema.safeParse({ ...input, ...invalid }).success).toBe(false);
+    }
+  });
+
   it.each(['less_than_1_year', 'one_to_five_years', 'more_than_5_years', 'not_sure'])(
     'preserves durationRange %s without requiring frequency',
     (durationRange) => {
@@ -176,6 +268,39 @@ describe('structuredExperienceSchema', () => {
 });
 
 describe('structuredExperiencesSchema', () => {
+  it('preserves mixed legacy and participation records with unique ids and omitted equipment', () => {
+    const input = [
+      EXPERIENCE,
+      {
+        id: 'experience-no-equipment',
+        activity: 'op_maintenance',
+        autonomy: 'not_sure',
+        participation: ['instructed', 'coordinated'],
+        durationRange: 'more_than_5_years',
+        frequency: 'occasional',
+      },
+    ];
+    expect(structuredExperiencesSchema.parse(input)).toStrictEqual(input);
+  });
+
+  it('still rejects duplicate trimmed ids with autonomy and participation', () => {
+    const parsed = structuredExperiencesSchema.safeParse([
+      EXPERIENCE,
+      {
+        id: ` ${EXPERIENCE.id} `,
+        activity: 'op_maintenance',
+        autonomy: 'autonomous',
+        participation: ['performed'],
+      },
+    ]);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues).toContainEqual(
+        expect.objectContaining({ code: 'custom', path: [1, 'id'] }),
+      );
+    }
+  });
+
   it('preserves mixed old and enriched records with optional equipment', () => {
     const input = [
       EXPERIENCE,

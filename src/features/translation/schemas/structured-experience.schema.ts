@@ -37,6 +37,17 @@ export const structuredExperienceSchema = z
         'not_sure',
       ])
       .optional(),
+    // Declared usual autonomy, not inferred from rank or career duration.
+    autonomy: z.enum(['supervised', 'partially_autonomous', 'autonomous', 'not_sure']).optional(),
+    // Coordination/instruction does not establish formal command or teaching qualifications.
+    participation: z
+      .array(z.enum(['assisted', 'performed', 'coordinated', 'instructed']))
+      .min(1)
+      .refine(
+        (values) => new Set(values).size === values.length,
+        'Participation values must be unique',
+      )
+      .optional(),
   })
   .strict();
 
