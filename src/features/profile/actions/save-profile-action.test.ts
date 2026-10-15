@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProfileActionError } from '../types/profile.types';
 import { saveDraftAction, saveProfileAction } from './save-profile-action';
+import { requireUser } from '../../auth/server/require-user';
 
 const { saveProfileMock } = vi.hoisted(() => ({
   saveProfileMock: vi.fn(),
+}));
+
+vi.mock('../../auth/server/require-user', () => ({
+  requireUser: vi.fn().mockResolvedValue({ id: 'user-1' }),
 }));
 
 vi.mock('../server/save-profile', () => ({
@@ -105,6 +110,29 @@ describe('saveDraftAction contract', () => {
       message: 'Invalid profile draft input',
     });
 
+    expect(saveProfileMock).not.toHaveBeenCalled();
+  });
+
+  it('uses server identity rather than a supplied user id for history writes', async () => {
+    saveProfileMock.mockResolvedValueOnce({ status: 'draft' });
+    await saveDraftAction({
+      ...validDraftPayload,
+      userId: 'other-user',
+      careerHistory: { experiences: [] },
+    });
+    expect(saveProfileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        careerHistory: { experiences: [] },
+      }),
+    );
+  });
+
+  it('does not persist history when the existing authentication guard rejects', async () => {
+    vi.mocked(requireUser).mockRejectedValueOnce(new Error('Authentication required'));
+    await expect(
+      saveDraftAction({ ...validDraftPayload, careerHistory: { experiences: [] } }),
+    ).rejects.toThrow('Authentication required');
     expect(saveProfileMock).not.toHaveBeenCalled();
   });
 

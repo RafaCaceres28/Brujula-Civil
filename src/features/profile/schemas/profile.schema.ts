@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { careerHistorySchema } from '../../translation/schemas/career-history.schema';
 
 const MAX_NAME_LENGTH = 120;
 const MAX_PHONE_LENGTH = 16;
@@ -85,6 +86,7 @@ const profileInputBaseSchema = z.object({
   profile: profileFormValuesSchema,
   militaryBackground: militaryBackgroundSchema,
   civilianTarget: civilianTargetSchema,
+  careerHistory: careerHistorySchema.optional(),
 });
 
 export const saveDraftInputSchema = profileInputBaseSchema;
@@ -130,6 +132,7 @@ export const profileReadOutputSchema = z.object({
   profile: profileFormValuesSchema,
   militaryBackground: militaryBackgroundSchema,
   civilianTarget: civilianTargetSchema,
+  careerHistory: careerHistorySchema.optional(),
 });
 
 export type ProfileFormValuesSchemaInput = z.infer<typeof profileFormValuesSchema>;

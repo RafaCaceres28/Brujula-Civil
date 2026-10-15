@@ -1,5 +1,6 @@
 import { mapProfileWriteToDb } from '../services/profile.mapper';
 import { saveDraftInputSchema } from '../schemas/profile.schema';
+import { mergeProfileJson, militaryProfileJsonSchema } from '../services/profile-json';
 import type {
   ProfileWritePayload,
   SaveDraftInput,
@@ -131,14 +132,15 @@ async function saveMilitaryProfile(
   supabase: SupabaseClient,
   userId: string,
   payload: ProfileWritePayload,
+  prepared: Awaited<ReturnType<typeof prepareMilitaryProfile>>,
   retryCount = 0,
 ): Promise<{ id: string; mode: 'created' | 'updated' }> {
-  const currentProfile = await loadCurrentMilitaryProfile(supabase, userId);
+  const { currentProfile, fields } = prepared;
 
   if (currentProfile) {
     const { error } = await supabase
       .from('user_military_profiles')
-      .update(payload.military)
+      .update(fields)
       .eq('id', currentProfile.id);
 
     if (error) {
@@ -167,7 +169,13 @@ async function saveMilitaryProfile(
 
   if (error) {
     if (isUniqueViolation(error) && retryCount < MAX_RETRY_ON_CONFLICT) {
-      return saveMilitaryProfile(supabase, userId, payload, retryCount + 1);
+      return saveMilitaryProfile(
+        supabase,
+        userId,
+        payload,
+        await prepareMilitaryProfile(supabase, userId, payload),
+        retryCount + 1,
+      );
     }
 
     throw formatSaveProfileError(
@@ -188,17 +196,17 @@ async function saveCivilProfile(
   userId: string,
   militaryProfileId: string,
   payload: ProfileWritePayload,
+  prepared: Awaited<ReturnType<typeof prepareCivilProfile>>,
   retryCount = 0,
 ): Promise<{ id: string; mode: 'created' | 'updated' }> {
-  const currentOrFallback = await loadCurrentCivilProfile(supabase, userId);
+  const { currentOrFallback, fields } = prepared;
 
   if (currentOrFallback?.is_current) {
     const { error } = await supabase
       .from('user_civil_profiles')
       .update({
         military_profile_id: militaryProfileId,
-        ...payload.civil,
-        status: 'draft',
+        ...fields,
       })
       .eq('id', currentOrFallback.id);
 
@@ -221,15 +229,21 @@ async function saveCivilProfile(
       military_profile_id: militaryProfileId,
       version_no: nextVersionNo,
       is_current: true,
-      ...payload.civil,
-      status: 'draft',
+      ...fields,
     })
     .select('id')
     .single();
 
   if (error) {
     if (isUniqueViolation(error) && retryCount < MAX_RETRY_ON_CONFLICT) {
-      return saveCivilProfile(supabase, userId, militaryProfileId, payload, retryCount + 1);
+      return saveCivilProfile(
+        supabase,
+        userId,
+        militaryProfileId,
+        payload,
+        await prepareCivilProfile(supabase, userId, payload),
+        retryCount + 1,
+      );
     }
 
     throw formatSaveProfileError('user_civil_profiles', 'insert current civil profile', error);
@@ -245,15 +259,69 @@ export function buildProfileWritePayload(input: SaveDraftInput): ProfileWritePay
   return mapProfileWriteToDb(input);
 }
 
+async function prepareMilitaryProfile(
+  supabase: SupabaseClient,
+  userId: string,
+  payload: ProfileWritePayload,
+) {
+  const currentProfile = await loadCurrentMilitaryProfile(supabase, userId);
+  const existingRaw = militaryProfileJsonSchema.parse(
+    currentProfile ? currentProfile.raw_profile_jsonb : {},
+  );
+  const { raw_profile_jsonb: rawPatch, ...militaryFields } = payload.military;
+  return {
+    currentProfile,
+    fields: {
+      ...militaryFields,
+      // Validate existing history even on replacement; omission never rewrites raw JSON.
+      ...(rawPatch.careerHistory !== undefined
+        ? { raw_profile_jsonb: { ...existingRaw, ...rawPatch } }
+        : {}),
+    },
+  };
+}
+
+async function prepareCivilProfile(
+  supabase: SupabaseClient,
+  userId: string,
+  payload: ProfileWritePayload,
+) {
+  const currentOrFallback = await loadCurrentCivilProfile(supabase, userId);
+  return {
+    currentOrFallback,
+    fields: {
+      ...payload.civil,
+      structured_profile_jsonb: mergeProfileJson(
+        currentOrFallback ? currentOrFallback.structured_profile_jsonb : {},
+        payload.civil.structured_profile_jsonb,
+      ),
+      status: 'draft' as const,
+    },
+  };
+}
+
 export async function saveProfile(input: SaveDraftInput): Promise<SaveProfileResult> {
   const parsedInput = saveDraftInputSchema.parse(input);
   const supabase = await createClient();
   const payload = buildProfileWritePayload(parsedInput);
+  const preparedMilitary = await prepareMilitaryProfile(supabase, parsedInput.userId, payload);
+  const preparedCivil = await prepareCivilProfile(supabase, parsedInput.userId, payload);
 
   await saveBaseProfile(supabase, payload);
 
-  const military = await saveMilitaryProfile(supabase, parsedInput.userId, payload);
-  const civil = await saveCivilProfile(supabase, parsedInput.userId, military.id, payload);
+  const military = await saveMilitaryProfile(
+    supabase,
+    parsedInput.userId,
+    payload,
+    preparedMilitary,
+  );
+  const civil = await saveCivilProfile(
+    supabase,
+    parsedInput.userId,
+    military.id,
+    payload,
+    preparedCivil,
+  );
 
   return {
     status: 'draft',

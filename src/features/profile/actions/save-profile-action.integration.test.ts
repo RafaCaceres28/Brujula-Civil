@@ -6,6 +6,10 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }));
 
+vi.mock('../../auth/server/require-user', () => ({
+  requireUser: vi.fn().mockResolvedValue({ id: 'user-1' }),
+}));
+
 type TableName = 'app_user_profiles' | 'user_military_profiles' | 'user_civil_profiles';
 
 type QueryState = {

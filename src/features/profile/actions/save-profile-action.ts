@@ -9,6 +9,7 @@ import {
 import { saveDraftInputSchema } from '../schemas/profile.schema';
 import { ProfileActionError, type SaveDraftActionResult } from '../types/profile.types';
 import { saveProfile } from '../server/save-profile';
+import { requireUser } from '../../auth/server/require-user';
 
 export async function saveDraftAction(rawInput: unknown): Promise<SaveDraftActionResult> {
   const parsedInput = saveDraftInputSchema.safeParse(rawInput);
@@ -25,8 +26,10 @@ export async function saveDraftAction(rawInput: unknown): Promise<SaveDraftActio
     });
   }
 
+  const user = await requireUser();
+
   try {
-    const result = domainSuccess(await saveProfile(parsedInput.data));
+    const result = domainSuccess(await saveProfile({ ...parsedInput.data, userId: user.id }));
     return result.data;
   } catch (error) {
     const result = domainFailure(toInternalDomainError(error, 'Failed to save profile draft'));

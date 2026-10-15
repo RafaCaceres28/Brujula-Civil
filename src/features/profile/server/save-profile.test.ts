@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveProfile } from './save-profile';
 import { updateProfile } from './update-profile';
+import { getProfile } from './get-profile';
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -215,7 +216,8 @@ function createSupabaseMock(scenario: MockScenario = {}) {
     };
   }
 
-  const client = {
+  const operations: string[] = [];
+  const rawClient = {
     from(table: TableName) {
       return {
         select() {
@@ -237,6 +239,10 @@ function createSupabaseMock(scenario: MockScenario = {}) {
             async limit(value: number) {
               queryState.limitValue = value;
               return runSelect(table, queryState);
+            },
+            async maybeSingle() {
+              const result = runSelect(table, queryState);
+              return { data: result.data[0] ?? null, error: result.error };
             },
           };
 
@@ -392,9 +398,27 @@ function createSupabaseMock(scenario: MockScenario = {}) {
     },
   };
 
+  const client = {
+    from(table: TableName) {
+      return new Proxy(rawClient.from(table), {
+        get(target, property, receiver) {
+          const method = Reflect.get(target, property, receiver);
+          if (['select', 'upsert', 'insert', 'update', 'delete'].includes(String(property))) {
+            return (...args: unknown[]) => {
+              operations.push(`${table}.${String(property)}`);
+              return Reflect.apply(method, target, args);
+            };
+          }
+          return method;
+        },
+      });
+    },
+  };
+
   return {
     client,
     state,
+    operations,
   };
 }
 
@@ -419,9 +443,244 @@ const validDraftInput = {
   },
 };
 
+const history = {
+  stages: [{ id: 'stage-technical', focus: 'technical' as const }],
+  experiences: [
+    { id: 'legacy-01', activity: 'op_maintenance', equipment: 'radio_comms' },
+    {
+      id: 'experience-02',
+      activity: 'op_maintenance',
+      stageIds: ['stage-technical'],
+      context: 'Taller',
+      result: 'Equipo operativo',
+      assignmentContext: 'acting_replacement' as const,
+      durationRange: 'one_to_five_years' as const,
+      frequency: 'by_periods' as const,
+      autonomy: 'partially_autonomous' as const,
+      participation: ['performed' as const, 'instructed' as const],
+    },
+  ],
+};
+
 describe('saveProfile draft contract', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('round trips the full aggregate and preserves it and unrelated JSON on ordinary edits', async () => {
+    const mock = createSupabaseMock();
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+    await saveProfile({ ...validDraftInput, careerHistory: history });
+    expect(mock.state.militaryRows[0].raw_profile_jsonb).toStrictEqual({ careerHistory: history });
+    mock.state.militaryRows[0].raw_profile_jsonb.metadata = { revision: 3 };
+    const previousRaw = mock.state.militaryRows[0].raw_profile_jsonb;
+    mock.state.civilRows[0].structured_profile_jsonb = {
+      metadata: { revision: 4 },
+      target: { preferredLocations: ['Remote'], workModel: 'hybrid', metadata: { keep: true } },
+      skills: { technicalSkills: ['operations_management'] },
+    };
+
+    await saveProfile({
+      ...validDraftInput,
+      profile: { ...validDraftInput.profile, fullName: 'Ada' },
+    });
+    expect(mock.state.militaryRows[0].raw_profile_jsonb).toBe(previousRaw);
+    expect(mock.state.militaryRows[0].raw_profile_jsonb).toStrictEqual({
+      careerHistory: history,
+      metadata: { revision: 3 },
+    });
+    expect(mock.state.civilRows[0].structured_profile_jsonb).toStrictEqual({
+      metadata: { revision: 4 },
+      target: { preferredLocations: ['Remote'], workModel: 'hybrid', metadata: { keep: true } },
+      skills: { technicalSkills: ['operations_management'] },
+    });
+    const recovered = await getProfile('user-1');
+    expect(recovered?.careerHistory).toStrictEqual(history);
+
+    const replacement = { experiences: [history.experiences[0]] };
+    await saveProfile({ ...validDraftInput, careerHistory: replacement });
+    expect(mock.state.militaryRows[0].raw_profile_jsonb).toStrictEqual({
+      careerHistory: replacement,
+      metadata: { revision: 3 },
+    });
+
+    await saveProfile({ ...validDraftInput, careerHistory: { experiences: [] } });
+    expect(mock.state.militaryRows[0].raw_profile_jsonb).toStrictEqual({
+      careerHistory: { experiences: [] },
+      metadata: { revision: 3 },
+    });
+    expect((await getProfile('user-1'))?.careerHistory).toStrictEqual({ experiences: [] });
+  });
+
+  it('normalizes ids and narratives on the actual write and read boundaries', async () => {
+    const mock = createSupabaseMock();
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+    await saveProfile({
+      ...validDraftInput,
+      careerHistory: {
+        stages: [{ id: ' stage-1 ', focus: 'technical' }],
+        experiences: [
+          {
+            id: ' exp-1 ',
+            activity: 'op_maintenance',
+            stageIds: [' stage-1 '],
+            context: ' Taller ',
+          },
+        ],
+      },
+    });
+    const normalized = {
+      stages: [{ id: 'stage-1', focus: 'technical' }],
+      experiences: [
+        { id: 'exp-1', activity: 'op_maintenance', stageIds: ['stage-1'], context: 'Taller' },
+      ],
+    };
+    expect(mock.state.militaryRows[0].raw_profile_jsonb.careerHistory).toStrictEqual(normalized);
+    expect((await getProfile('user-1'))?.careerHistory).toStrictEqual(normalized);
+  });
+
+  it.each([
+    { experiences: [{ ...history.experiences[1], stageIds: ['missing'] }] },
+    { experiences: [history.experiences[0], history.experiences[0]] },
+    { stages: [history.stages[0], history.stages[0]], experiences: [] },
+    { experiences: [{ ...history.experiences[0], activity: 'invalid' }] },
+    { experiences: [{ ...history.experiences[0], rank: 'commander' }] },
+    null,
+  ])('rejects invalid aggregate writes before persistence: %j', async (careerHistory) => {
+    const mock = createSupabaseMock();
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+    await expect(saveProfile({ ...validDraftInput, careerHistory } as never)).rejects.toThrow();
+    expect(createClient).not.toHaveBeenCalled();
+    expect(mock.operations).toStrictEqual([]);
+  });
+
+  it.each([undefined, history, { experiences: [] }])(
+    'blocks all writes on corrupt stored history even with replacement %j',
+    async (careerHistory) => {
+      const corrupt = {
+        experiences: [{ id: 'exp-1', activity: 'op_maintenance', stageIds: ['missing'] }],
+      };
+      const mock = createSupabaseMock({
+        state: {
+          appRows: [buildAppRow({})],
+          militaryRows: [
+            buildMilitaryRow({ raw_profile_jsonb: { careerHistory: corrupt, keep: true } }),
+          ],
+        },
+      });
+      vi.mocked(createClient).mockResolvedValue(mock.client as never);
+      await expect(getProfile('user-1')).rejects.toThrow();
+      expect(mock.operations.filter((operation) => !operation.endsWith('.select'))).toStrictEqual(
+        [],
+      );
+      await expect(saveProfile({ ...validDraftInput, careerHistory })).rejects.toThrow();
+      expect(mock.operations.filter((operation) => !operation.endsWith('.select'))).toStrictEqual(
+        [],
+      );
+      expect(mock.state.militaryRows[0].raw_profile_jsonb).toStrictEqual({
+        careerHistory: corrupt,
+        keep: true,
+      });
+    },
+  );
+
+  it.each([true, false])(
+    'preflights invalid civil JSON before any write (current=%s)',
+    async (is_current) => {
+      const mock = createSupabaseMock({
+        state: {
+          civilRows: [buildCivilRow({ is_current, structured_profile_jsonb: [] as never })],
+        },
+      });
+      vi.mocked(createClient).mockResolvedValue(mock.client as never);
+      await expect(saveProfile(validDraftInput)).rejects.toThrow();
+      expect(mock.operations.filter((operation) => !operation.endsWith('.select'))).toStrictEqual(
+        [],
+      );
+    },
+  );
+
+  it('rejects a non-object military snapshot before writing any table', async () => {
+    const mock = createSupabaseMock({
+      state: { militaryRows: [buildMilitaryRow({ raw_profile_jsonb: [] as never })] },
+    });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+    await expect(saveProfile(validDraftInput)).rejects.toThrow();
+    expect(mock.operations.filter((operation) => !operation.endsWith('.select'))).toStrictEqual([]);
+  });
+
+  it.each(['user_military_profiles.select', 'user_civil_profiles.select'] as const)(
+    'does not write when preflight read fails: %s',
+    async (operation) => {
+      const mock = createSupabaseMock({ errors: { [operation]: { message: 'read failed' } } });
+      vi.mocked(createClient).mockResolvedValue(mock.client as never);
+      await expect(saveProfile(validDraftInput)).rejects.toThrow('error de persistencia');
+      expect(mock.operations.filter((operation) => !operation.endsWith('.select'))).toStrictEqual(
+        [],
+      );
+    },
+  );
+
+  it('reads legacy rows without inventing a history or associations', async () => {
+    const mock = createSupabaseMock();
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+    await saveProfile(validDraftInput);
+    expect(await getProfile('user-1')).not.toHaveProperty('careerHistory');
+  });
+
+  it('validates and normalizes persisted ids before resolving references on reads', async () => {
+    const mock = createSupabaseMock({
+      state: {
+        appRows: [buildAppRow({})],
+        militaryRows: [
+          buildMilitaryRow({
+            raw_profile_jsonb: {
+              careerHistory: {
+                stages: [{ id: ' stage-1 ', focus: 'technical' }],
+                experiences: [
+                  {
+                    id: ' exp-1 ',
+                    activity: 'op_maintenance',
+                    stageIds: [' stage-1 '],
+                    result: ' Listo ',
+                  },
+                ],
+              },
+            },
+          }),
+        ],
+      },
+    });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+    expect((await getProfile('user-1'))?.careerHistory).toStrictEqual({
+      stages: [{ id: 'stage-1', focus: 'technical' }],
+      experiences: [
+        { id: 'exp-1', activity: 'op_maintenance', stageIds: ['stage-1'], result: 'Listo' },
+      ],
+    });
+  });
+
+  it.each([
+    { experiences: [history.experiences[0], history.experiences[0]] },
+    { stages: [history.stages[0], history.stages[0]], experiences: [] },
+    {
+      stages: history.stages,
+      experiences: [
+        { ...history.experiences[1], stageIds: ['stage-technical', ' stage-technical '] },
+      ],
+    },
+    { experiences: [{ ...history.experiences[0], id: 'invalid/id' }] },
+    { experiences: [], unexpected: true },
+    null,
+  ])('rejects corrupt persisted aggregates on reads: %j', async (careerHistory) => {
+    const mock = createSupabaseMock({
+      state: {
+        appRows: [buildAppRow({})],
+        militaryRows: [buildMilitaryRow({ raw_profile_jsonb: { careerHistory } })],
+      },
+    });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+    await expect(getProfile('user-1')).rejects.toThrow();
   });
 
   it('rejects tampered direct invocation before touching persistence', async () => {
@@ -473,6 +732,14 @@ describe('saveProfile draft contract', () => {
       version_no: 1,
       status: 'draft',
     });
+    expect(mock.operations).toStrictEqual([
+      'user_military_profiles.select',
+      'user_civil_profiles.select',
+      'user_civil_profiles.select',
+      'app_user_profiles.upsert',
+      'user_military_profiles.insert',
+      'user_civil_profiles.insert',
+    ]);
   });
 
   it('is idempotent and updates current rows without duplicates', async () => {

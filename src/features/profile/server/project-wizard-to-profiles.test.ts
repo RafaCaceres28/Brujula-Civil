@@ -55,10 +55,19 @@ const draftFixture = onboardingDraftSchema.parse({
 });
 
 function createSupabaseMock(options: {
-  currentMilitaryProfile: { id: string } | null;
-  currentCivilProfile: { id: string; version_no: number } | null;
+  currentMilitaryProfile: { id: string; raw_profile_jsonb?: Record<string, unknown> } | null;
+  currentCivilProfile: {
+    id: string;
+    version_no: number;
+    structured_profile_jsonb?: Record<string, unknown>;
+  } | null;
   latestVersions?: Array<{ version_no: number }>;
   wizardDraft?: unknown;
+  readError?:
+    | 'user_wizard_state'
+    | 'user_military_profiles'
+    | 'user_civil_profiles'
+    | 'latestVersion';
 }) {
   const records: {
     militaryUpdate?: MilitaryProfileUpdate;
@@ -67,7 +76,10 @@ function createSupabaseMock(options: {
     civilInsert?: CivilProfileInsert;
   } = {};
 
-  const client = {
+  const operations: string[] = [];
+  const readError = (table: typeof options.readError) =>
+    options.readError === table ? { message: 'read failed' } : null;
+  const rawClient = {
     from(table: string) {
       if (table === 'user_wizard_state') {
         return {
@@ -77,7 +89,7 @@ function createSupabaseMock(options: {
                 return {
                   maybeSingle: async () => ({
                     data: { aggregated_draft_jsonb: options.wizardDraft ?? draftFixture },
-                    error: null,
+                    error: readError('user_wizard_state'),
                   }),
                 };
               },
@@ -95,8 +107,10 @@ function createSupabaseMock(options: {
                   eq() {
                     return {
                       maybeSingle: async () => ({
-                        data: options.currentMilitaryProfile,
-                        error: null,
+                        data: options.currentMilitaryProfile
+                          ? { raw_profile_jsonb: {}, ...options.currentMilitaryProfile }
+                          : null,
+                        error: readError('user_military_profiles'),
                       }),
                     };
                   },
@@ -126,15 +140,17 @@ function createSupabaseMock(options: {
       if (table === 'user_civil_profiles') {
         return {
           select(columns: string) {
-            if (columns === 'id, version_no') {
+            if (columns.startsWith('id, version_no')) {
               return {
                 eq() {
                   return {
                     eq() {
                       return {
                         maybeSingle: async () => ({
-                          data: options.currentCivilProfile,
-                          error: null,
+                          data: options.currentCivilProfile
+                            ? { structured_profile_jsonb: {}, ...options.currentCivilProfile }
+                            : null,
+                          error: readError('user_civil_profiles'),
                         }),
                       };
                     },
@@ -149,7 +165,10 @@ function createSupabaseMock(options: {
                   return {
                     order() {
                       return {
-                        limit: async () => ({ data: options.latestVersions ?? [], error: null }),
+                        limit: async () => ({
+                          data: options.latestVersions ?? [],
+                          error: readError('latestVersion'),
+                        }),
                       };
                     },
                   };
@@ -176,10 +195,119 @@ function createSupabaseMock(options: {
     },
   };
 
-  return { client, records };
+  const client = {
+    from(table: string) {
+      return new Proxy(rawClient.from(table), {
+        get(target, property, receiver) {
+          const method = Reflect.get(target, property, receiver);
+          if (['select', 'upsert', 'insert', 'update', 'delete'].includes(String(property))) {
+            return (...args: unknown[]) => {
+              operations.push(`${table}.${String(property)}`);
+              return Reflect.apply(method, target, args);
+            };
+          }
+          return method;
+        },
+      });
+    },
+  };
+  return { client, records, operations };
 }
 
 describe('projectWizardToProfiles', () => {
+  it.each([{ experiences: [{ id: 'exp-1', activity: 'op_maintenance' }] }, { experiences: [] }])(
+    'preserves canonical history %j and unrelated JSON while refreshing the wizard snapshot',
+    async (careerHistory) => {
+      const { client, records } = createSupabaseMock({
+        currentMilitaryProfile: {
+          id: 'mil-1',
+          raw_profile_jsonb: {
+            careerHistory,
+            metadata: { keep: true },
+            militar: { notes: 'old', metadata: { keep: true } },
+          },
+        },
+        currentCivilProfile: {
+          id: 'civ-1',
+          version_no: 1,
+          structured_profile_jsonb: {
+            metadata: { keep: true },
+            target: { metadata: { keep: true } },
+          },
+        },
+        wizardDraft: { ...draftFixture, careerHistory: { experiences: [] } },
+      });
+      vi.mocked(createClient).mockResolvedValue(client as never);
+      await projectWizardToProfiles('user-1');
+      expect(records.militaryUpdate?.raw_profile_jsonb).toMatchObject({
+        careerHistory,
+        metadata: { keep: true },
+        militar: { notes: null, metadata: { keep: true } },
+      });
+      expect(records.civilUpdate?.structured_profile_jsonb).toMatchObject({
+        metadata: { keep: true },
+        target: { metadata: { keep: true }, preferredLocations: ['madrid'] },
+      });
+      expect(records.civilUpdate?.structured_profile_jsonb).not.toHaveProperty('careerHistory');
+    },
+  );
+
+  it('does not replace corrupt canonical history with a wizard snapshot', async () => {
+    const { client, records, operations } = createSupabaseMock({
+      currentMilitaryProfile: {
+        id: 'mil-1',
+        raw_profile_jsonb: {
+          careerHistory: { experiences: [{ id: 'exp-1', activity: 'invalid' }] },
+        },
+      },
+      currentCivilProfile: null,
+    });
+    vi.mocked(createClient).mockResolvedValue(client as never);
+    await expect(projectWizardToProfiles('user-1')).rejects.toThrow();
+    expect(records).toStrictEqual({});
+    expect(operations.filter((operation) => !operation.endsWith('.select'))).toStrictEqual([]);
+  });
+
+  it.each([null, { id: 'mil-1' }])(
+    'rejects corrupt civil snapshot before military insert or update: %j',
+    async (currentMilitaryProfile) => {
+      const { client, operations } = createSupabaseMock({
+        currentMilitaryProfile,
+        currentCivilProfile: { id: 'civ-1', version_no: 1, structured_profile_jsonb: [] as never },
+      });
+      vi.mocked(createClient).mockResolvedValue(client as never);
+      await expect(projectWizardToProfiles('user-1')).rejects.toThrow();
+      expect(operations.filter((operation) => !operation.endsWith('.select'))).toStrictEqual([]);
+    },
+  );
+
+  it.each([
+    'user_wizard_state',
+    'user_military_profiles',
+    'user_civil_profiles',
+    'latestVersion',
+  ] as const)('does not write when preflight read fails: %s', async (readError) => {
+    const { client, operations } = createSupabaseMock({
+      currentMilitaryProfile: null,
+      currentCivilProfile: null,
+      readError,
+    });
+    vi.mocked(createClient).mockResolvedValue(client as never);
+    await expect(projectWizardToProfiles('user-1')).rejects.toThrow('read failed');
+    expect(operations.filter((operation) => !operation.endsWith('.select'))).toStrictEqual([]);
+  });
+
+  it('rejects an invalid normalized wizard payload without writing', async () => {
+    const { client, operations } = createSupabaseMock({
+      currentMilitaryProfile: null,
+      currentCivilProfile: null,
+      wizardDraft: { ...draftFixture, militar: { ...draftFixture.militar, serviceYears: -1 } },
+    });
+    vi.mocked(createClient).mockResolvedValue(client as never);
+    await expect(projectWizardToProfiles('user-1')).rejects.toThrow();
+    expect(operations.filter((operation) => !operation.endsWith('.select'))).toStrictEqual([]);
+  });
+
   it('updates current military and civil profiles when they exist', async () => {
     const { client, records } = createSupabaseMock({
       currentMilitaryProfile: { id: 'mil-1' },
@@ -207,7 +335,7 @@ describe('projectWizardToProfiles', () => {
   });
 
   it('inserts profiles when current rows do not exist', async () => {
-    const { client, records } = createSupabaseMock({
+    const { client, records, operations } = createSupabaseMock({
       currentMilitaryProfile: null,
       currentCivilProfile: null,
       latestVersions: [{ version_no: 2 }],
@@ -232,6 +360,15 @@ describe('projectWizardToProfiles', () => {
       target_sector: 'logistics',
       is_current: true,
     });
+    expect(operations).toStrictEqual([
+      'user_wizard_state.select',
+      'user_military_profiles.select',
+      'user_civil_profiles.select',
+      'user_civil_profiles.select',
+      'user_military_profiles.insert',
+      'user_civil_profiles.insert',
+    ]);
+    expect(records.militaryInsert?.raw_profile_jsonb).not.toHaveProperty('careerHistory');
   });
 
   it('keeps compatibility with mixed legacy-guided wizard drafts on projection', async () => {

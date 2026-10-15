@@ -10,6 +10,7 @@ import {
   type ProfileSnapshot,
 } from '../../translation/schemas/translation.schema';
 import { profileReadOutputSchema } from '../schemas/profile.schema';
+import { militaryProfileJsonSchema } from './profile-json';
 
 const DEFAULT_PROFILE_FULL_NAME = 'Unknown user';
 const DEFAULT_PROFILE_EMAIL = 'unknown@example.com';
@@ -73,6 +74,9 @@ export function mapDbToDomainProfile(
   userId: string,
   shape: ProfileSupabaseShape,
 ): ProfileDomainModel {
+  const raw = militaryProfileJsonSchema.parse(
+    shape.military ? shape.military.raw_profile_jsonb : {},
+  );
   return profileReadOutputSchema.parse({
     userId,
     profile: {
@@ -92,6 +96,7 @@ export function mapDbToDomainProfile(
       targetSector: shape.civil?.target_sector ?? null,
       locationPreference: getFirstPreferredLocation(shape.civil?.structured_profile_jsonb) ?? null,
     },
+    ...(raw.careerHistory !== undefined ? { careerHistory: raw.careerHistory } : {}),
   });
 }
 
@@ -148,7 +153,8 @@ export function mapProfileWriteToDb(profile: ProfileDomainModel): ProfileWritePa
       latest_unit: null,
       latest_role_title: parsed.militaryBackground.rank,
       source_text: parsed.militaryBackground.summary,
-      raw_profile_jsonb: {},
+      raw_profile_jsonb:
+        parsed.careerHistory !== undefined ? { careerHistory: parsed.careerHistory } : {},
     },
     civil: {
       status: 'draft',

@@ -7,6 +7,7 @@ import type {
   MilitaryProfileUpdate,
 } from '@/features/profile/types/profile.types';
 import { createClient } from '@/lib/supabase/server';
+import { mergeProfileJson, militaryProfileJsonSchema } from '../services/profile-json';
 
 function buildSourceText(draft: ReturnType<typeof onboardingDraftSchema.parse>) {
   const { militar, experiencia, competencias, objetivos } = draft;
@@ -89,7 +90,7 @@ export async function projectWizardToProfiles(userId: string) {
 
   const { data: currentMilitaryProfile, error: currentMilitaryProfileError } = await supabase
     .from('user_military_profiles')
-    .select('id')
+    .select('id, raw_profile_jsonb')
     .eq('user_id', userId)
     .eq('is_current', true)
     .maybeSingle();
@@ -99,6 +100,49 @@ export async function projectWizardToProfiles(userId: string) {
       `Error checking current user_military_profiles: ${currentMilitaryProfileError.message}`,
     );
   }
+
+  const { data: currentCivilProfile, error: currentCivilProfileError } = await supabase
+    .from('user_civil_profiles')
+    .select('id, version_no, structured_profile_jsonb')
+    .eq('user_id', userId)
+    .eq('is_current', true)
+    .maybeSingle();
+
+  if (currentCivilProfileError) {
+    throw new Error(
+      `Error checking current user_civil_profiles: ${currentCivilProfileError.message}`,
+    );
+  }
+
+  let nextVersion = 1;
+  if (!currentCivilProfile) {
+    const { data: latestVersions, error: latestVersionError } = await supabase
+      .from('user_civil_profiles')
+      .select('version_no')
+      .eq('user_id', userId)
+      .order('version_no', { ascending: false })
+      .limit(1);
+
+    if (latestVersionError) {
+      throw new Error(`Error loading latest civil profile version: ${latestVersionError.message}`);
+    }
+
+    nextVersion = (latestVersions?.[0]?.version_no ?? 0) + 1;
+  }
+
+  // Complete snapshot validation and merges before either profile can be written.
+  const militaryRaw = currentMilitaryProfile
+    ? mergeProfileJson(
+        militaryProfileJsonSchema.parse(currentMilitaryProfile.raw_profile_jsonb),
+        draft,
+      )
+    : draft;
+  const structuredCivilProfile = mergeProfileJson(
+    currentCivilProfile ? currentCivilProfile.structured_profile_jsonb : {},
+    { target: draft.objetivos, skills: draft.competencias, experience: draft.experiencia },
+  );
+  const civilHeadline = buildCivilHeadline(draft);
+  const civilSummary = buildCivilSummary(draft);
 
   let militaryProfileId: string;
 
@@ -112,7 +156,7 @@ export async function projectWizardToProfiles(userId: string) {
       latest_unit: draft.militar.destinationContext,
       latest_role_title: draft.militar.rank.label,
       source_text: sourceText || null,
-      raw_profile_jsonb: draft,
+      raw_profile_jsonb: militaryRaw,
     };
 
     const { error: updateMilitaryError } = await supabase
@@ -137,7 +181,7 @@ export async function projectWizardToProfiles(userId: string) {
       latest_unit: draft.militar.destinationContext,
       latest_role_title: draft.militar.rank.label,
       source_text: sourceText || null,
-      raw_profile_jsonb: draft,
+      raw_profile_jsonb: militaryRaw,
     };
 
     const { data: insertedMilitaryProfile, error: insertMilitaryError } = await supabase
@@ -155,28 +199,8 @@ export async function projectWizardToProfiles(userId: string) {
     militaryProfileId = insertedMilitaryProfile.id;
   }
 
-  const structuredCivilProfile = {
-    target: draft.objetivos,
-    skills: draft.competencias,
-    experience: draft.experiencia,
-    sourceMilitaryProfileId: militaryProfileId,
-  };
-
-  const civilHeadline = buildCivilHeadline(draft);
-  const civilSummary = buildCivilSummary(draft);
-
-  const { data: currentCivilProfile, error: currentCivilProfileError } = await supabase
-    .from('user_civil_profiles')
-    .select('id, version_no')
-    .eq('user_id', userId)
-    .eq('is_current', true)
-    .maybeSingle();
-
-  if (currentCivilProfileError) {
-    throw new Error(
-      `Error checking current user_civil_profiles: ${currentCivilProfileError.message}`,
-    );
-  }
+  // Only the database-generated reference remains to be attached after military insert.
+  structuredCivilProfile.sourceMilitaryProfileId = militaryProfileId;
 
   if (currentCivilProfile) {
     const civilUpdatePayload: CivilProfileUpdate = {
@@ -203,19 +227,6 @@ export async function projectWizardToProfiles(userId: string) {
 
     return;
   }
-
-  const { data: latestVersions, error: latestVersionError } = await supabase
-    .from('user_civil_profiles')
-    .select('version_no')
-    .eq('user_id', userId)
-    .order('version_no', { ascending: false })
-    .limit(1);
-
-  if (latestVersionError) {
-    throw new Error(`Error loading latest civil profile version: ${latestVersionError.message}`);
-  }
-
-  const nextVersion = (latestVersions?.[0]?.version_no ?? 0) + 1;
 
   const civilInsertPayload: CivilProfileInsert = {
     user_id: userId,
