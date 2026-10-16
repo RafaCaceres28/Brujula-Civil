@@ -119,6 +119,7 @@ describe('saveDraftAction contract', () => {
       ...validDraftPayload,
       userId: 'other-user',
       careerHistory: { experiences: [] },
+      expectedCareerHistory: null,
     });
     expect(saveProfileMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -131,7 +132,11 @@ describe('saveDraftAction contract', () => {
   it('does not persist history when the existing authentication guard rejects', async () => {
     vi.mocked(requireUser).mockRejectedValueOnce(new Error('Authentication required'));
     await expect(
-      saveDraftAction({ ...validDraftPayload, careerHistory: { experiences: [] } }),
+      saveDraftAction({
+        ...validDraftPayload,
+        careerHistory: { experiences: [] },
+        expectedCareerHistory: null,
+      }),
     ).rejects.toThrow('Authentication required');
     expect(saveProfileMock).not.toHaveBeenCalled();
   });

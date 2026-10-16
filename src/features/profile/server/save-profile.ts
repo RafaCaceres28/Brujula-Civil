@@ -1,3 +1,6 @@
+import { isDeepStrictEqual } from 'node:util';
+import { createDomainError } from '../../../lib/contracts/domain-error';
+import { updateMilitarySnapshot } from './update-military-snapshot';
 import { mapProfileWriteToDb } from '../services/profile.mapper';
 import { saveDraftInputSchema } from '../schemas/profile.schema';
 import { mergeProfileJson, militaryProfileJsonSchema } from '../services/profile-json';
@@ -138,18 +141,7 @@ async function saveMilitaryProfile(
   const { currentProfile, fields } = prepared;
 
   if (currentProfile) {
-    const { error } = await supabase
-      .from('user_military_profiles')
-      .update(fields)
-      .eq('id', currentProfile.id);
-
-    if (error) {
-      throw formatSaveProfileError(
-        'user_military_profiles',
-        'update current military profile',
-        error,
-      );
-    }
+    await updateMilitarySnapshot(supabase, userId, currentProfile, fields);
 
     return {
       id: currentProfile.id,
@@ -173,7 +165,7 @@ async function saveMilitaryProfile(
         supabase,
         userId,
         payload,
-        await prepareMilitaryProfile(supabase, userId, payload),
+        await prepareMilitaryProfile(supabase, userId, payload, prepared.expectedCareerHistory),
         retryCount + 1,
       );
     }
@@ -263,19 +255,30 @@ async function prepareMilitaryProfile(
   supabase: SupabaseClient,
   userId: string,
   payload: ProfileWritePayload,
+  expectedCareerHistory: SaveDraftInput['expectedCareerHistory'],
 ) {
   const currentProfile = await loadCurrentMilitaryProfile(supabase, userId);
   const existingRaw = militaryProfileJsonSchema.parse(
     currentProfile ? currentProfile.raw_profile_jsonb : {},
   );
   const { raw_profile_jsonb: rawPatch, ...militaryFields } = payload.military;
+  if (
+    rawPatch.careerHistory !== undefined &&
+    !isDeepStrictEqual(existingRaw.careerHistory ?? null, expectedCareerHistory)
+  ) {
+    throw createDomainError({
+      code: 'CONFLICT',
+      message: 'El historial ha cambiado; recarga antes de reemplazarlo',
+    });
+  }
   return {
     currentProfile,
+    expectedCareerHistory,
     fields: {
       ...militaryFields,
       // Validate existing history even on replacement; omission never rewrites raw JSON.
       ...(rawPatch.careerHistory !== undefined
-        ? { raw_profile_jsonb: { ...existingRaw, ...rawPatch } }
+        ? { raw_profile_jsonb: { ...currentProfile?.raw_profile_jsonb, ...rawPatch } }
         : {}),
     },
   };
@@ -304,7 +307,12 @@ export async function saveProfile(input: SaveDraftInput): Promise<SaveProfileRes
   const parsedInput = saveDraftInputSchema.parse(input);
   const supabase = await createClient();
   const payload = buildProfileWritePayload(parsedInput);
-  const preparedMilitary = await prepareMilitaryProfile(supabase, parsedInput.userId, payload);
+  const preparedMilitary = await prepareMilitaryProfile(
+    supabase,
+    parsedInput.userId,
+    payload,
+    parsedInput.expectedCareerHistory,
+  );
   const preparedCivil = await prepareCivilProfile(supabase, parsedInput.userId, payload);
 
   await saveBaseProfile(supabase, payload);

@@ -119,10 +119,29 @@ function createSupabaseMock(options: {
             };
           },
           update(payload: MilitaryProfileUpdate) {
-            records.militaryUpdate = payload;
-            return {
-              eq: async () => ({ error: null }),
+            const filters: Record<string, unknown> = {};
+            let rawGuard: unknown;
+            const builder = {
+              eq(column: string, value: unknown) {
+                filters[column] = value;
+                return builder;
+              },
+              filter(_column: string, _operator: string, value: string) {
+                rawGuard = JSON.parse(value);
+                return builder;
+              },
+              async select() {
+                const matches =
+                  filters.id === options.currentMilitaryProfile?.id &&
+                  filters.user_id === 'user-1' &&
+                  filters.is_current === true &&
+                  JSON.stringify(rawGuard) ===
+                    JSON.stringify(options.currentMilitaryProfile?.raw_profile_jsonb ?? {});
+                if (matches) records.militaryUpdate = payload;
+                return { data: matches ? [{ id: filters.id }] : [], error: null };
+              },
             };
+            return builder;
           },
           insert(payload: MilitaryProfileInsert) {
             records.militaryInsert = payload;

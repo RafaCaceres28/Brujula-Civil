@@ -8,6 +8,7 @@ import type {
 } from '@/features/profile/types/profile.types';
 import { createClient } from '@/lib/supabase/server';
 import { mergeProfileJson, militaryProfileJsonSchema } from '../services/profile-json';
+import { updateMilitarySnapshot } from './update-military-snapshot';
 
 function buildSourceText(draft: ReturnType<typeof onboardingDraftSchema.parse>) {
   const { militar, experiencia, competencias, objetivos } = draft;
@@ -131,11 +132,11 @@ export async function projectWizardToProfiles(userId: string) {
   }
 
   // Complete snapshot validation and merges before either profile can be written.
+  if (currentMilitaryProfile) {
+    militaryProfileJsonSchema.parse(currentMilitaryProfile.raw_profile_jsonb);
+  }
   const militaryRaw = currentMilitaryProfile
-    ? mergeProfileJson(
-        militaryProfileJsonSchema.parse(currentMilitaryProfile.raw_profile_jsonb),
-        draft,
-      )
+    ? mergeProfileJson(currentMilitaryProfile.raw_profile_jsonb, draft)
     : draft;
   const structuredCivilProfile = mergeProfileJson(
     currentCivilProfile ? currentCivilProfile.structured_profile_jsonb : {},
@@ -159,14 +160,7 @@ export async function projectWizardToProfiles(userId: string) {
       raw_profile_jsonb: militaryRaw,
     };
 
-    const { error: updateMilitaryError } = await supabase
-      .from('user_military_profiles')
-      .update(militaryUpdatePayload)
-      .eq('id', currentMilitaryProfile.id);
-
-    if (updateMilitaryError) {
-      throw new Error(`Error updating user_military_profiles: ${updateMilitaryError.message}`);
-    }
+    await updateMilitarySnapshot(supabase, userId, currentMilitaryProfile, militaryUpdatePayload);
 
     militaryProfileId = currentMilitaryProfile.id;
   } else {

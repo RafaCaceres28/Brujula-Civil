@@ -280,31 +280,33 @@ function createSupabaseMock(scenario: MockScenario = {}) {
         },
         update(payload: Record<string, unknown>) {
           const filterState: Record<string, unknown> = {};
-
+          let rawGuard: unknown;
+          const execute = async () => {
+            const error = getOperationError(table, 'update');
+            if (error) return { data: null, error };
+            const matched = getRows(table).filter(
+              (row) =>
+                Object.entries(filterState).every(([key, value]) => row[key] === value) &&
+                (rawGuard === undefined ||
+                  JSON.stringify(row.raw_profile_jsonb) === JSON.stringify(rawGuard)),
+            );
+            matched.forEach((row) =>
+              Object.assign(row, payload, { updated_at: '2026-01-02T00:00:00.000Z' }),
+            );
+            return { data: matched.map((row) => ({ id: row.id })), error: null };
+          };
           const updateBuilder = {
-            async eq(column: string, value: unknown) {
+            eq(column: string, value: unknown) {
               filterState[column] = value;
-
-              const error = getOperationError(table, 'update');
-              if (error) {
-                return { error };
-              }
-
-              if (table === 'user_military_profiles') {
-                const row = state.militaryRows.find((candidate) => candidate.id === filterState.id);
-                if (row) {
-                  Object.assign(row, payload, { updated_at: '2026-01-02T00:00:00.000Z' });
-                }
-              }
-
-              if (table === 'user_civil_profiles') {
-                const row = state.civilRows.find((candidate) => candidate.id === filterState.id);
-                if (row) {
-                  Object.assign(row, payload, { updated_at: '2026-01-02T00:00:00.000Z' });
-                }
-              }
-
-              return { error: null };
+              return updateBuilder;
+            },
+            filter(_column: string, _operator: string, value: string) {
+              rawGuard = JSON.parse(value);
+              return updateBuilder;
+            },
+            select: execute,
+            then(resolve: (value: Awaited<ReturnType<typeof execute>>) => unknown) {
+              return execute().then(resolve);
             },
           };
 
@@ -470,7 +472,7 @@ describe('saveProfile draft contract', () => {
   it('round trips the full aggregate and preserves it and unrelated JSON on ordinary edits', async () => {
     const mock = createSupabaseMock();
     vi.mocked(createClient).mockResolvedValue(mock.client as never);
-    await saveProfile({ ...validDraftInput, careerHistory: history });
+    await saveProfile({ ...validDraftInput, careerHistory: history, expectedCareerHistory: null });
     expect(mock.state.militaryRows[0].raw_profile_jsonb).toStrictEqual({ careerHistory: history });
     mock.state.militaryRows[0].raw_profile_jsonb.metadata = { revision: 3 };
     const previousRaw = mock.state.militaryRows[0].raw_profile_jsonb;
@@ -498,13 +500,21 @@ describe('saveProfile draft contract', () => {
     expect(recovered?.careerHistory).toStrictEqual(history);
 
     const replacement = { experiences: [history.experiences[0]] };
-    await saveProfile({ ...validDraftInput, careerHistory: replacement });
+    await saveProfile({
+      ...validDraftInput,
+      careerHistory: replacement,
+      expectedCareerHistory: history,
+    });
     expect(mock.state.militaryRows[0].raw_profile_jsonb).toStrictEqual({
       careerHistory: replacement,
       metadata: { revision: 3 },
     });
 
-    await saveProfile({ ...validDraftInput, careerHistory: { experiences: [] } });
+    await saveProfile({
+      ...validDraftInput,
+      careerHistory: { experiences: [] },
+      expectedCareerHistory: replacement,
+    });
     expect(mock.state.militaryRows[0].raw_profile_jsonb).toStrictEqual({
       careerHistory: { experiences: [] },
       metadata: { revision: 3 },
@@ -517,6 +527,7 @@ describe('saveProfile draft contract', () => {
     vi.mocked(createClient).mockResolvedValue(mock.client as never);
     await saveProfile({
       ...validDraftInput,
+      expectedCareerHistory: null,
       careerHistory: {
         stages: [{ id: ' stage-1 ', focus: 'technical' }],
         experiences: [
@@ -573,7 +584,9 @@ describe('saveProfile draft contract', () => {
       expect(mock.operations.filter((operation) => !operation.endsWith('.select'))).toStrictEqual(
         [],
       );
-      await expect(saveProfile({ ...validDraftInput, careerHistory })).rejects.toThrow();
+      await expect(
+        saveProfile({ ...validDraftInput, careerHistory, expectedCareerHistory: null }),
+      ).rejects.toThrow();
       expect(mock.operations.filter((operation) => !operation.endsWith('.select'))).toStrictEqual(
         [],
       );

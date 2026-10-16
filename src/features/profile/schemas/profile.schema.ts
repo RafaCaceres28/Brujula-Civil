@@ -89,7 +89,20 @@ const profileInputBaseSchema = z.object({
   careerHistory: careerHistorySchema.optional(),
 });
 
-export const saveDraftInputSchema = profileInputBaseSchema;
+export const saveDraftInputSchema = profileInputBaseSchema
+  .extend({
+    // Command metadata only: null means history was absent, not an empty aggregate.
+    expectedCareerHistory: careerHistorySchema.nullable().optional(),
+  })
+  .superRefine((input, context) => {
+    if (input.careerHistory !== undefined && input.expectedCareerHistory === undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['expectedCareerHistory'],
+        message: 'History replacement requires a baseline',
+      });
+    }
+  });
 
 export const submitProfileInputSchema = profileInputBaseSchema.superRefine((value, ctx) => {
   if (!value.militaryBackground.rank) {

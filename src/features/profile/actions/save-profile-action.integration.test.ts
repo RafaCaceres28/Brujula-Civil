@@ -95,12 +95,35 @@ function createDraftIntegrationClientMock() {
           return { error: null };
         },
         update() {
-          return {
-            async eq() {
-              writes.update += 1;
-              return { error: null };
+          const filters: Record<string, unknown> = {};
+          let rawGuard: unknown;
+          const execute = async () => {
+            writes.update += 1;
+            const matched = state[
+              table === 'user_military_profiles' ? 'militaryRows' : 'civilRows'
+            ].filter(
+              (row) =>
+                Object.entries(filters).every(([key, value]) => row[key] === value) &&
+                (rawGuard === undefined ||
+                  JSON.stringify(row.raw_profile_jsonb) === JSON.stringify(rawGuard)),
+            );
+            return { data: matched.map((row) => ({ id: row.id })), error: null };
+          };
+          const builder = {
+            eq(column: string, value: unknown) {
+              filters[column] = value;
+              return builder;
+            },
+            filter(_column: string, _operator: string, value: string) {
+              rawGuard = JSON.parse(value);
+              return builder;
+            },
+            select: execute,
+            then(resolve: (value: Awaited<ReturnType<typeof execute>>) => unknown) {
+              return execute().then(resolve);
             },
           };
+          return builder;
         },
         insert(payload: Record<string, unknown>) {
           return {
