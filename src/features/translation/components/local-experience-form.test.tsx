@@ -5,7 +5,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { domainIdSchema } from '../../../lib/contracts/shared.schema';
 import { FUNCTION_TYPE_OPTIONS } from '../../wizard/config/wizard-catalogs';
 import { structuredExperienceSchema } from '../schemas/structured-experience.schema';
+import type { StructuredExperience } from '../schemas/structured-experience.schema';
 import { LocalExperienceForm } from './local-experience-form';
+
+const mocks = vi.hoisted(() => ({ create: vi.fn(), edit: vi.fn() }));
+vi.mock('@/features/profile/actions/save-experience-action', () => ({
+  createExperienceAction: mocks.create,
+  editExperienceAction: mocks.edit,
+}));
 
 let container: HTMLDivElement;
 let root: Root;
@@ -14,13 +21,14 @@ afterEach(() => {
   act(() => root?.unmount());
   container?.remove();
   vi.unstubAllGlobals();
+  vi.resetAllMocks();
 });
 
-function setup() {
+function setup(onSaved?: () => void) {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
-  act(() => root.render(<LocalExperienceForm />));
+  act(() => root.render(<LocalExperienceForm onSaved={onSaved} />));
 }
 
 function select(name: string) {
@@ -38,11 +46,11 @@ function toggle(value: string) {
   act(() => container.querySelector<HTMLInputElement>(`input[value="${value}"]`)!.click());
 }
 
-function review() {
+function save() {
   act(() => container.querySelector<HTMLButtonElement>('button[type="submit"]')!.click());
 }
 
-const REVIEW_MESSAGE = 'Vista previa lista. Esta experiencia todavía no se ha guardado';
+const SAVED_MESSAGE = 'Experiencia guardada en tu perfil.';
 
 function preview() {
   return container.querySelector<HTMLElement>('[aria-label="Vista previa de la experiencia"]')!;
@@ -56,7 +64,7 @@ function observeValidation() {
 
 describe('LocalExperienceForm', () => {
   it('exige actividad, asocia el error y cancela el submit sin navegar', () => {
-    setup();
+    setup(vi.fn());
     expect(select('activity').value).toBe('');
     expect(select('activity').required).toBe(true);
     expect(preview().querySelector('dl')).toBeNull();
@@ -70,29 +78,59 @@ describe('LocalExperienceForm', () => {
     expect(document.getElementById(errorId)?.getAttribute('role')).toBe('alert');
     expect(document.getElementById(errorId)?.parentElement).toBe(select('activity').parentElement);
     expect(container.querySelectorAll('[role="alert"]')).toHaveLength(1);
-    expect(container.textContent).not.toContain(REVIEW_MESSAGE);
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(container.textContent).not.toContain('Revisar experiencia');
     change('activity', FUNCTION_TYPE_OPTIONS[0].value);
     expect(select('activity').getAttribute('aria-invalid')).toBe('false');
   });
 
-  it('anuncia la revisión válida junto al botón, permite repetirla y no anuncia cada edición', () => {
-    setup();
-    expect(container.textContent).not.toContain(REVIEW_MESSAGE);
+  it('solo anuncia guardado tras confirmación del servidor y lo retira al editar', async () => {
+    const onSaved = vi.fn();
+    setup(onSaved);
     change('activity', 'analysis');
-    expect(container.textContent).not.toContain(REVIEW_MESSAGE);
-    review();
-    const status = container.querySelector('[role="status"]')!;
-    expect(status?.textContent).toBe(REVIEW_MESSAGE);
-    expect(status.getAttribute('aria-live')).toBe('polite');
-    expect(status.previousElementSibling).toBe(container.querySelector('button[type="submit"]'));
-    expect(container.querySelectorAll('[role="status"]')).toHaveLength(1);
-    expect(container.querySelector('[role="alert"]')).toBeNull();
-    expect(preview().hasAttribute('aria-live')).toBe(false);
-    const announcement = status.firstElementChild;
-    review();
-    expect(status.textContent).toBe(REVIEW_MESSAGE);
-    expect(status.firstElementChild).not.toBe(announcement);
-    expect(select('activity').value).toBe('analysis');
+    expect(mocks.create).not.toHaveBeenCalled();
+    let resolve!: (value: unknown) => void;
+    mocks.create.mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolve = r;
+        }),
+    );
+    save();
+    expect(container.textContent).not.toContain(SAVED_MESSAGE);
+    expect(onSaved).not.toHaveBeenCalled();
+    const experience = mocks.create.mock.calls[0][0].experience;
+    await act(async () => resolve({ ok: true, data: { experience } }));
+    expect(container.querySelector('[role="status"]')?.textContent).toBe(SAVED_MESSAGE);
+    expect(onSaved).toHaveBeenCalledWith(experience);
+    change('frequency', 'occasional');
+    expect(container.textContent).not.toContain(SAVED_MESSAGE);
+  });
+
+  it('conserva la validación del schema opcional sin marcar la actividad válida como errónea', () => {
+    setup(vi.fn());
+    // Remount to supply an invalid boundary value, not a value selectable from the UI.
+    act(() =>
+      root.render(
+        <LocalExperienceForm
+          key="invalid-optional"
+          initialExperience={
+            {
+              id: 'experience-one',
+              activity: 'analysis',
+              frequency: 'invalid',
+            } as unknown as StructuredExperience
+          }
+          onSaved={vi.fn()}
+        />,
+      ),
+    );
+    save();
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(select('activity').getAttribute('aria-invalid')).toBe('false');
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Revisa los datos');
+    change('frequency', '');
+    expect(preview().textContent).toContain('Análisis');
   });
 
   it.each([
@@ -103,19 +141,13 @@ describe('LocalExperienceForm', () => {
     ['participation', 'performed', 'La realizaba personalmente'],
     ['assignmentContext', 'temporary_assignment', 'La realicé por asignación temporal'],
   ])(
-    'invalida la revisión al cambiar %s y permite revisar los datos actualizados',
+    'actualiza la vista previa al cambiar %s sin revisión ni llamadas al servidor',
     (name, value, label) => {
       setup();
       change('activity', 'analysis');
       act(() => container.querySelector('summary')!.click());
-      review();
-      expect(container.querySelector('[role="status"]')?.textContent).toBe(REVIEW_MESSAGE);
       if (name === 'participation') toggle(value);
       else change(name, value);
-      expect(container.textContent).not.toContain(REVIEW_MESSAGE);
-      expect(preview().textContent).toContain(label);
-      review();
-      expect(container.querySelector('[role="status"]')?.textContent).toBe(REVIEW_MESSAGE);
       expect(preview().textContent).toContain(label);
       if (name === 'participation') {
         expect(container.querySelector<HTMLInputElement>(`input[value="${value}"]`)!.checked).toBe(
@@ -126,20 +158,19 @@ describe('LocalExperienceForm', () => {
         expect(select(name).value).toBe(value);
         change(name, '');
       }
-      expect(container.textContent).not.toContain(REVIEW_MESSAGE);
+      expect(container.querySelector('[role="status"]')).toBeNull();
+      expect(mocks.create).not.toHaveBeenCalled();
+      expect(mocks.edit).not.toHaveBeenCalled();
     },
   );
 
-  it('retira el éxito al quitar la actividad y enfoca el selector al revisar de nuevo', () => {
-    setup();
+  it('valida al guardar después de quitar la actividad y conserva los opcionales', () => {
+    setup(vi.fn());
     change('activity', 'analysis');
     change('frequency', 'by_periods');
-    review();
-    expect(container.textContent).toContain(REVIEW_MESSAGE);
     change('activity', '');
-    expect(container.textContent).not.toContain(REVIEW_MESSAGE);
-    review();
-    expect(container.textContent).not.toContain(REVIEW_MESSAGE);
+    save();
+    expect(mocks.create).not.toHaveBeenCalled();
     expect(container.querySelector('[role="alert"]')?.textContent).toContain(
       'Selecciona una actividad',
     );
@@ -147,15 +178,15 @@ describe('LocalExperienceForm', () => {
     expect(select('frequency').value).toBe('by_periods');
   });
 
-  it('conserva el éxito al abrir y cerrar detalles sin editar datos', () => {
+  it('conserva la vista previa al abrir y cerrar detalles sin generar feedback redundante', () => {
     setup();
     change('activity', 'analysis');
-    review();
     const details = container.querySelector('details')!;
     for (const open of [true, false, true]) {
       act(() => details.querySelector('summary')!.click());
       expect(details.open).toBe(open);
-      expect(container.querySelector('[role="status"]')?.textContent).toBe(REVIEW_MESSAGE);
+      expect(preview().textContent).toContain('Análisis');
+      expect(container.querySelector('[role="status"]')).toBeNull();
     }
   });
 
@@ -320,7 +351,7 @@ describe('LocalExperienceForm', () => {
     change('activity', 'analysis');
     change('frequency', 'by_periods');
     toggle('performed');
-    act(() => container.querySelector<HTMLButtonElement>('button[type="submit"]')!.click());
+    expect(container.querySelector('button')).toBeNull();
     expect(container.textContent).toContain(
       'Esta es una vista previa. Todavía no se ha guardado en tu perfil',
     );

@@ -1,9 +1,18 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { FUNCTION_TYPE_OPTIONS } from '@/features/wizard/config/wizard-catalogs';
+import {
+  createExperienceAction,
+  editExperienceAction,
+} from '@/features/profile/actions/save-experience-action';
+import {
+  createExperienceInputSchema,
+  editExperienceInputSchema,
+} from '@/features/profile/schemas/save-experience.schema';
+import type { DomainError } from '@/lib/contracts/domain-error';
 import {
   structuredExperienceSchema,
   type StructuredExperience,
@@ -66,18 +75,129 @@ const PARTICIPATION_LABELS = {
 const SELECT_CLASS_NAME =
   'min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
 
-export function LocalExperienceForm() {
+export function LocalExperienceForm({
+  initialExperience = { id: 'local-experience', activity: '' },
+  mode = 'create',
+  onSaved,
+  onDirtyChange,
+  onPendingChange,
+  onConflict,
+  disabled = false,
+}: {
+  initialExperience?: StructuredExperience;
+  mode?: 'create' | 'edit';
+  onSaved?: (experience: StructuredExperience) => void;
+  onDirtyChange?: (dirty: boolean) => void;
+  onPendingChange?: (pending: boolean) => void;
+  onConflict?: () => void;
+  disabled?: boolean;
+}) {
   const formId = useId();
-  const [experience, setExperience] = useState<StructuredExperience>({
-    // Only one in-memory record: no cross-record identity or persistence is needed here.
-    id: 'local-experience',
-    activity: '',
-  });
-  const [attemptedReview, setAttemptedReview] = useState(false);
-  const [reviewCount, setReviewCount] = useState(0);
+  const [experience, setExperience] = useState<StructuredExperience>(initialExperience);
+  const [baseline, setBaseline] = useState(initialExperience);
+  const [savedMode, setSavedMode] = useState(mode === 'edit');
+  const [pending, setPending] = useState(false);
+  const savingRef = useRef(false);
+  const [saveError, setSaveError] = useState<DomainError>();
+  const [confirmed, setConfirmed] = useState(false);
+  const currentDraft = useRef(experience);
+  const fields = [
+    'activity',
+    'durationRange',
+    'frequency',
+    'autonomy',
+    'assignmentContext',
+    'participation',
+  ] as const;
+  // Participation is a set for UI dirtiness; CAS still receives the untouched full baseline.
+  const same = (left: unknown, right: unknown) =>
+    JSON.stringify(Array.isArray(left) ? [...left].sort() : left) ===
+    JSON.stringify(Array.isArray(right) ? [...right].sort() : right);
+  const dirty = fields.some((field) => !same(experience[field], baseline[field]));
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
+  function updateExperience(update: (previous: StructuredExperience) => StructuredExperience) {
+    const next = update(currentDraft.current);
+    currentDraft.current = next;
+    setExperience(next);
+    setConfirmed(false);
+  }
+
+  async function save() {
+    if (!onSaved || savingRef.current || disabled || (savedMode && !dirty)) return;
+    setAttemptedSave(true);
+    if (!validation.success) {
+      if (validation.error.issues.some((issue) => issue.path[0] === 'activity')) {
+        document.getElementById(activityId)?.focus();
+      } else {
+        setSaveError({ code: 'VALIDATION_ERROR', message: 'Revisa los datos antes de guardar.' });
+      }
+      return;
+    }
+    const submitted = experience;
+    const set: Record<string, unknown> = {};
+    const clear: string[] = [];
+    fields.forEach((field) => {
+      if (same(submitted[field], baseline[field])) return;
+      if (submitted[field] === undefined) clear.push(field);
+      else set[field] = submitted[field];
+    });
+    const parsed = savedMode
+      ? editExperienceInputSchema.safeParse({
+          id: baseline.id,
+          expectedExperience: baseline,
+          set,
+          clear,
+        })
+      : createExperienceInputSchema.safeParse({ experience: submitted });
+    if (!parsed.success) {
+      setSaveError({ code: 'VALIDATION_ERROR', message: 'Revisa los datos antes de guardar.' });
+      return;
+    }
+    savingRef.current = true;
+    setPending(true);
+    setConfirmed(false);
+    setSaveError(undefined);
+    try {
+      const result = await (savedMode
+        ? editExperienceAction(parsed.data)
+        : createExperienceAction(parsed.data));
+      if (!result.ok) {
+        setSaveError(result.error);
+        if (result.error.code === 'CONFLICT') onConflict?.();
+        return;
+      }
+      const saved = result.data.experience;
+      setBaseline(saved);
+      setSavedMode(true);
+      onSaved?.(saved);
+      // A late response confirms only its captured payload, never a newer draft.
+      if (currentDraft.current === submitted) {
+        currentDraft.current = saved;
+        setExperience(saved);
+        setConfirmed(true);
+      }
+    } catch {
+      setSaveError({
+        code: 'EXTERNAL_DEPENDENCY_ERROR',
+        message: 'No se pudo guardar. Tu borrador se conserva.',
+      });
+    } finally {
+      savingRef.current = false;
+      setPending(false);
+    }
+  }
+  const [attemptedSave, setAttemptedSave] = useState(false);
   const validation = structuredExperienceSchema.safeParse(experience);
   const preview = validation.success ? validation.data : null;
-  const activityInvalid = attemptedReview && !validation.success;
+  const activityInvalid =
+    attemptedSave &&
+    !validation.success &&
+    validation.error.issues.some((issue) => issue.path[0] === 'activity');
   const activityId = `${formId}-activity`;
   const activityLabel = (value: string) => {
     // The shared catalog's legacy English label is presented in Spanish, not changed in place.
@@ -104,7 +224,7 @@ export function LocalExperienceForm() {
             const value = event.target.value;
             const parsed = structuredExperienceSchema.shape[name].safeParse(value);
             if (value !== '' && !parsed.success) return;
-            setExperience((previous) => {
+            updateExperience((previous) => {
               const next = { ...previous };
               delete next[name];
               return parsed.success ? { ...next, [name]: parsed.data } : next;
@@ -126,129 +246,148 @@ export function LocalExperienceForm() {
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
       <Card>
         <CardHeader
-          title="Una experiencia profesional"
+          title={
+            onSaved
+              ? savedMode
+                ? 'Editar experiencia guardada'
+                : 'Añadir experiencia'
+              : 'Una experiencia profesional'
+          }
           description="Elige una actividad que hayas realizado. Solo la actividad es obligatoria."
         />
         <CardContent>
           <form
             noValidate
+            aria-busy={pending}
             className="space-y-6"
-            onChange={() => setReviewCount(0)}
             onSubmit={(event) => {
               event.preventDefault();
-              setAttemptedReview(true);
-              if (!validation.success) {
-                setReviewCount(0);
-                event.currentTarget.querySelector<HTMLSelectElement>('[name="activity"]')?.focus();
-              } else {
-                setReviewCount((previous) => previous + 1);
-              }
+              void save();
             }}
           >
-            <fieldset className="space-y-4">
-              <legend className="mb-3 text-sm font-semibold text-slate-900">
-                Actividad realizada
-              </legend>
-              <div className="space-y-2">
-                <label htmlFor={activityId} className="text-sm font-medium text-slate-900">
-                  Actividad (obligatoria)
-                </label>
-                <select
-                  id={activityId}
-                  name="activity"
-                  required
-                  value={experience.activity}
-                  className={SELECT_CLASS_NAME}
-                  aria-invalid={activityInvalid}
-                  aria-describedby={activityInvalid ? `${formId}-activity-error` : undefined}
-                  onChange={(event) => {
-                    const activity = event.target.value;
-                    setExperience((previous) => ({ ...previous, activity }));
-                  }}
-                >
-                  <option value="">Selecciona una actividad</option>
-                  {FUNCTION_TYPE_OPTIONS.map(({ value }) => (
-                    <option key={value} value={value}>
-                      {activityLabel(value)}
-                    </option>
-                  ))}
-                </select>
-                {activityInvalid ? (
-                  <p id={`${formId}-activity-error`} role="alert" className="text-sm text-red-700">
-                    Selecciona una actividad para revisar tu experiencia.
-                  </p>
-                ) : null}
-              </div>
-              {renderOptionalField('durationRange')}
-              {renderOptionalField('frequency')}
-            </fieldset>
+            <fieldset disabled={pending || disabled} className="space-y-6">
+              <fieldset className="space-y-4">
+                <legend className="mb-3 text-sm font-semibold text-slate-900">
+                  Actividad realizada
+                </legend>
+                <div className="space-y-2">
+                  <label htmlFor={activityId} className="text-sm font-medium text-slate-900">
+                    Actividad (obligatoria)
+                  </label>
+                  <select
+                    id={activityId}
+                    name="activity"
+                    required
+                    value={experience.activity}
+                    className={SELECT_CLASS_NAME}
+                    aria-invalid={activityInvalid}
+                    aria-describedby={activityInvalid ? `${formId}-activity-error` : undefined}
+                    onChange={(event) => {
+                      const activity = event.target.value;
+                      updateExperience((previous) => ({ ...previous, activity }));
+                    }}
+                  >
+                    <option value="">Selecciona una actividad</option>
+                    {FUNCTION_TYPE_OPTIONS.map(({ value }) => (
+                      <option key={value} value={value}>
+                        {activityLabel(value)}
+                      </option>
+                    ))}
+                  </select>
+                  {activityInvalid ? (
+                    <p
+                      id={`${formId}-activity-error`}
+                      role="alert"
+                      className="text-sm text-red-700"
+                    >
+                      Selecciona una actividad para guardar tu experiencia.
+                    </p>
+                  ) : null}
+                </div>
+                {renderOptionalField('durationRange')}
+                {renderOptionalField('frequency')}
+              </fieldset>
 
-            <details className="rounded-xl border border-slate-200 p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-900">
-                Añadir detalles de mi experiencia (opcional)
-              </summary>
-              <div className="mt-4 space-y-5">
-                {renderOptionalField('autonomy')}
-                <fieldset aria-describedby={`${formId}-participation-help`} className="space-y-3">
-                  <legend className="mb-2 text-sm font-medium text-slate-900">
-                    Participación (opcional, puedes elegir varias)
-                  </legend>
-                  {Object.entries(PARTICIPATION_LABELS).map(([value, label]) => {
-                    const participation = structuredExperienceSchema.shape.participation
-                      .unwrap()
-                      .element.parse(value);
-                    const id = `${formId}-${participation}`;
-                    return (
-                      <label
-                        key={value}
-                        htmlFor={id}
-                        className="flex min-h-11 items-center gap-3 text-sm"
-                      >
-                        <input
-                          id={id}
-                          type="checkbox"
-                          name="participation"
-                          value={participation}
-                          checked={experience.participation?.includes(participation) ?? false}
-                          className="size-5 shrink-0 accent-slate-900"
-                          onChange={(event) => {
-                            const checked = event.target.checked;
-                            setExperience((previous) => {
-                              const values = (previous.participation ?? []).filter(
-                                (item) => item !== participation,
-                              );
-                              if (checked) values.push(participation);
-                              const next = { ...previous };
-                              delete next.participation;
-                              return values.length ? { ...next, participation: values } : next;
-                            });
-                          }}
-                        />
-                        {label}
-                      </label>
-                    );
-                  })}
-                  <p id={`${formId}-participation-help`} className="text-sm text-slate-600">
-                    Coordinar no implica mando formal; instruir no acredita una titulación.
+              <details className="rounded-xl border border-slate-200 p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+                  Añadir detalles de mi experiencia (opcional)
+                </summary>
+                <div className="mt-4 space-y-5">
+                  {renderOptionalField('autonomy')}
+                  <fieldset aria-describedby={`${formId}-participation-help`} className="space-y-3">
+                    <legend className="mb-2 text-sm font-medium text-slate-900">
+                      Participación (opcional, puedes elegir varias)
+                    </legend>
+                    {Object.entries(PARTICIPATION_LABELS).map(([value, label]) => {
+                      const participation = structuredExperienceSchema.shape.participation
+                        .unwrap()
+                        .element.parse(value);
+                      const id = `${formId}-${participation}`;
+                      return (
+                        <label
+                          key={value}
+                          htmlFor={id}
+                          className="flex min-h-11 items-center gap-3 text-sm"
+                        >
+                          <input
+                            id={id}
+                            type="checkbox"
+                            name="participation"
+                            value={participation}
+                            checked={experience.participation?.includes(participation) ?? false}
+                            className="size-5 shrink-0 accent-slate-900"
+                            onChange={(event) => {
+                              const checked = event.target.checked;
+                              updateExperience((previous) => {
+                                const values = (previous.participation ?? []).filter(
+                                  (item) => item !== participation,
+                                );
+                                if (checked) values.push(participation);
+                                const next = { ...previous };
+                                delete next.participation;
+                                return values.length ? { ...next, participation: values } : next;
+                              });
+                            }}
+                          />
+                          {label}
+                        </label>
+                      );
+                    })}
+                    <p id={`${formId}-participation-help`} className="text-sm text-slate-600">
+                      Coordinar no implica mando formal; instruir no acredita una titulación.
+                    </p>
+                  </fieldset>
+                  {renderOptionalField('assignmentContext')}
+                  <p id={`${formId}-assignment-help`} className="text-sm text-slate-600">
+                    Una sustitución temporal no implica un empleo superior ni un nombramiento.
                   </p>
-                </fieldset>
-                {renderOptionalField('assignmentContext')}
-                <p id={`${formId}-assignment-help`} className="text-sm text-slate-600">
-                  Una sustitución temporal no implica un empleo superior ni un nombramiento.
-                </p>
-              </div>
-            </details>
-            <Button type="submit" className="min-h-11 w-full sm:w-auto">
-              Revisar experiencia
-            </Button>
-            <p role="status" aria-live="polite" className="text-sm text-slate-700">
-              {reviewCount > 0 ? (
-                // Refresh the announcement on repeated reviews without duplicating live regions.
-                <span key={reviewCount}>
-                  Vista previa lista. Esta experiencia todavía no se ha guardado
-                </span>
+                </div>
+              </details>
+              {onSaved ? (
+                <Button
+                  type="submit"
+                  className="min-h-11 w-full sm:w-auto"
+                  disabled={savedMode && !dirty}
+                >
+                  {savedMode ? 'Guardar cambios' : 'Guardar experiencia'}
+                </Button>
               ) : null}
-            </p>
+            </fieldset>
+            {pending ? <p role="status">Guardando experiencia…</p> : null}
+            {confirmed ? <p role="status">Experiencia guardada en tu perfil.</p> : null}
+            {saveError ? (
+              <p role="alert" className="text-sm text-red-700">
+                {saveError.code === 'UNAUTHORIZED'
+                  ? 'Tu sesión ha caducado. Inicia sesión para guardar; tu borrador se conserva.'
+                  : saveError.code === 'CONFLICT'
+                    ? 'La experiencia ha cambiado. Consulta la versión guardada antes de continuar; tu borrador se conserva.'
+                    : saveError.code === 'NOT_FOUND'
+                      ? 'La experiencia ya no está guardada. Tu borrador se conserva.'
+                      : saveError.code === 'VALIDATION_ERROR'
+                        ? 'No se pudo validar la experiencia. Revisa los datos; tu borrador se conserva.'
+                        : 'No se pudo guardar. Reintenta; tu borrador se conserva.'}
+              </p>
+            ) : null}
           </form>
         </CardContent>
       </Card>
@@ -258,11 +397,14 @@ export function LocalExperienceForm() {
           <CardHeader title="Vista previa" description="Se actualiza al cambiar tus respuestas." />
           <CardContent className="space-y-4">
             <p className="rounded-xl bg-slate-100 p-3 text-sm font-medium text-slate-900">
-              Esta es una vista previa. Todavía no se ha guardado en tu perfil
+              {onSaved
+                ? 'Vista previa de tus respuestas. Solo Guardar confirma los cambios en tu perfil.'
+                : 'Esta es una vista previa. Todavía no se ha guardado en tu perfil'}
             </p>
             <p className="text-sm text-slate-600">
-              Tus respuestas solo están en la memoria de esta página y se perderán al recargar o
-              salir de esta página.
+              {onSaved
+                ? 'Los cambios sin guardar se perderán al recargar o salir de esta página.'
+                : 'Tus respuestas solo están en la memoria de esta página y se perderán al recargar o salir de esta página.'}
             </p>
             {preview ? (
               <dl className="space-y-4 text-sm">
