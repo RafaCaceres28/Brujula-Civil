@@ -92,8 +92,11 @@ describe('CareerRouteShortlist', () => {
 
     expect(container?.textContent).toContain('Rutas sugeridas para tu transicion');
     expect(container?.textContent).toContain('Guia rapida: prioriza ajuste alto');
-    expect(container?.textContent).toContain('operations-coordinator');
-    expect(container?.textContent).toContain('project-manager');
+    expect(container?.textContent).toContain('Coordinador de Operaciones y Logística');
+    expect(container?.textContent).toContain('Gestor de Proyectos y Operaciones');
+    expect(container?.textContent).not.toContain('operations-coordinator');
+    expect(container?.textContent).not.toContain('route-project-manager-consulting-mid');
+    expect(container?.textContent).not.toContain('90');
     expect(container?.textContent).toContain('Ajuste alto');
     expect(container?.textContent).toContain('Ajuste medio');
     expect(container?.textContent).toContain('Fortalezas detectadas');

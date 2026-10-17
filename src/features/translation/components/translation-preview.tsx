@@ -146,7 +146,7 @@ export function TranslationPreview(props: TranslationPreviewProps) {
           <h2 className="text-base font-semibold text-slate-900">
             Contexto recuperado de tu ruta seleccionada
           </h2>
-          <p className="text-xs text-slate-600">Ruta activa: {props.reentrySelectedRouteId}</p>
+          <p className="text-xs text-slate-600">Ruta activa recuperada</p>
           {props.reentrySelectedRouteContext ? (
             <>
               <p className="text-sm text-slate-700">

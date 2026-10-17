@@ -134,8 +134,10 @@ describe('/traduccion page UI states', () => {
     );
 
     expect(container?.textContent).toContain('Rutas sugeridas para tu transicion');
-    expect(container?.textContent).toContain('operations-coordinator');
-    expect(container?.textContent).toContain('project-manager');
+    expect(container?.textContent).toContain('Coordinador de Operaciones y Logística');
+    expect(container?.textContent).toContain('Gestor de Proyectos y Operaciones');
+    expect(container?.textContent).not.toContain('operations-coordinator');
+    expect(container?.textContent).not.toContain('project-manager');
     expect(container?.textContent).toContain('Ajuste alto');
     expect(container?.textContent).toContain('Fortalezas detectadas');
     expect(container?.textContent).toContain('Seleccionada');
@@ -205,6 +207,7 @@ describe('/traduccion page UI states', () => {
     });
 
     expect(container?.textContent).toContain('Contexto recuperado de tu ruta seleccionada');
+    expect(container?.textContent).not.toContain('route-operations-coordinator-logistics-mid');
     expect(container?.textContent).toContain('Ajuste recuperado: alto');
     expect(container?.textContent).toContain(
       'Priorizala si quieres continuidad operativa inmediata.',

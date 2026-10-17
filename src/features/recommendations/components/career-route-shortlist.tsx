@@ -3,6 +3,11 @@
 import { useState, useTransition } from 'react';
 import type { RecommendationRoute } from '../schemas/recommendation.schema';
 import { normalizeRouteExplainability } from '../services/recommendation-explanation-fallback';
+import {
+  TARGET_ROLE_OPTIONS,
+  TARGET_SECTOR_OPTIONS,
+  SENIORITY_OPTIONS,
+} from '@/features/wizard/config/wizard-catalogs';
 
 type SelectionInput = {
   recommendationSetId: string;
@@ -17,7 +22,13 @@ type CareerRouteShortlistProps = {
 };
 
 function formatRouteLabel(route: RecommendationRoute) {
-  return [route.roleId, route.sectorId, route.seniorityId].filter(Boolean).join(' / ');
+  return [
+    TARGET_ROLE_OPTIONS.find((option) => option.slug === route.roleId)?.label ?? 'Ruta profesional',
+    TARGET_SECTOR_OPTIONS.find((option) => option.value === route.sectorId)?.label,
+    SENIORITY_OPTIONS.find((option) => option.value === route.seniorityId)?.label,
+  ]
+    .filter(Boolean)
+    .join(' / ');
 }
 
 export function CareerRouteShortlist(props: CareerRouteShortlistProps) {

@@ -1,10 +1,12 @@
 'use server';
 
+import { unstable_rethrow } from 'next/navigation';
 import { requireUser } from '@/features/auth/server/require-user';
 import {
   createDomainError,
   domainFailure,
   domainSuccess,
+  isDomainError,
   type DomainMeta,
   type DomainResult,
 } from '../../../lib/contracts/index';
@@ -16,6 +18,7 @@ import {
 } from '../server/generate-career-routes';
 import { normalizeRecommendationRoutesExplainability } from '../services/recommendation-explanation-fallback';
 import type { RecommendationOutput } from '../schemas/recommendation.schema';
+import { isOnboardingStorageReadError } from '../services/career-routes-error';
 
 const GET_CAREER_ROUTES_ACTION_SOURCE = 'recs.action.get-career-routes';
 
@@ -76,7 +79,26 @@ export async function getCareerRoutesAction(
       },
       result.meta,
     );
-  } catch {
+  } catch (error) {
+    unstable_rethrow(error);
+    if (isOnboardingStorageReadError(error)) {
+      return domainFailure(
+        createDomainError({
+          code: 'EXTERNAL_DEPENDENCY_ERROR',
+          message: 'Unable to read stored onboarding data',
+          retryable: true,
+        }),
+        createMeta(nowIso, options?.requestId),
+      );
+    }
+    if (
+      isDomainError(error) &&
+      error.code !== 'INTERNAL_ERROR' &&
+      error.code !== 'VALIDATION_ERROR'
+    ) {
+      return domainFailure(error, createMeta(nowIso, options?.requestId));
+    }
+    console.error('Career routes action: unexpected context or generation failure');
     return createSafeActionFailure(nowIso, options?.requestId);
   }
 }

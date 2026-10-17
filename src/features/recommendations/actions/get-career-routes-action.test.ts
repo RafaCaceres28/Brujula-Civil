@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getCareerRoutesAction } from './get-career-routes-action';
+import { createDomainError } from '../../../lib/contracts';
 
 const {
   requireUserMock,
@@ -226,6 +227,7 @@ describe('getCareerRoutesAction', () => {
   });
 
   it('returns safe internal error when loading profile context fails', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     const now = new Date('2026-03-25T01:05:00.000Z');
 
     requireUserMock.mockRejectedValueOnce(new Error('database timeout: supabase unavailable'));
@@ -242,5 +244,23 @@ describe('getCareerRoutesAction', () => {
       'Unable to load structured profile for career recommendations',
     );
     expect(result.error.message).not.toContain('supabase');
+    expect(result.error.retryable).toBe(false);
+    expect(log).toHaveBeenCalledExactlyOnceWith(
+      'Career routes action: unexpected context or generation failure',
+    );
+  });
+
+  it('preserves expected dependency failures without logging an unexpected exception', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    requireUserMock.mockResolvedValueOnce({ id: 'user-1' });
+    const error = createDomainError({
+      code: 'EXTERNAL_DEPENDENCY_ERROR',
+      message: 'Service temporarily unavailable',
+      retryable: true,
+    });
+    getOnboardingOverviewMock.mockRejectedValueOnce(error);
+    expect(await getCareerRoutesAction()).toMatchObject({ ok: false, error });
+    expect(log).not.toHaveBeenCalled();
+    expect(generateCareerRoutesMock).not.toHaveBeenCalled();
   });
 });
