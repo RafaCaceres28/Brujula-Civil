@@ -1,12 +1,13 @@
 import {
+  createDomainError,
   domainFailure,
   domainSuccess,
-  toInternalDomainError,
+  isDomainError,
   type DomainMeta,
   type DomainResult,
 } from '../../../lib/contracts/index';
 import { getProfile } from '../../profile/server/get-profile';
-import { buildRecommendationInput } from '../../recommendations/services/build-recommendation-input';
+import { buildRecommendationContext } from '../../recommendations/services/build-recommendation-input';
 import {
   generateCareerRoutes,
   type GenerateCareerRoutesResult,
@@ -65,14 +66,12 @@ export async function getTranslation(
     let recommendations = overview.employabilityFlow?.recommendations;
 
     if (!recommendations) {
-      const recommendationInput = buildRecommendationInput({
+      const { input, source } = buildRecommendationContext({
         userId,
         overview,
+        careerHistory: profile.careerHistory,
       });
-      const generatedResult = withMeta(
-        generateCareerRoutes(recommendationInput, { requestId }),
-        meta,
-      );
+      const generatedResult = withMeta(generateCareerRoutes(input, { requestId, source }), meta);
 
       if (!generatedResult.ok) {
         return generatedResult;
@@ -119,6 +118,21 @@ export async function getTranslation(
       meta,
     );
   } catch (error) {
-    return domainFailure(toInternalDomainError(error, 'Failed to load translation context'), meta);
+    if (
+      isDomainError(error) &&
+      error.code !== 'INTERNAL_ERROR' &&
+      error.code !== 'VALIDATION_ERROR'
+    ) {
+      return domainFailure(error, meta);
+    }
+    console.error('Translation context: profile or recommendation read failed');
+    return domainFailure(
+      createDomainError({
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to load translation context',
+        retryable: false,
+      }),
+      meta,
+    );
   }
 }

@@ -11,7 +11,8 @@ import {
   type DomainResult,
 } from '../../../lib/contracts/index';
 import { getOnboardingOverview } from '../../wizard/server/get-onboarding-overview';
-import { buildRecommendationInput } from '../services/build-recommendation-input';
+import { getProfile } from '../../profile/server/get-profile';
+import { buildRecommendationContext } from '../services/build-recommendation-input';
 import {
   generateCareerRoutes,
   type GenerateCareerRoutesResult,
@@ -58,14 +59,17 @@ export async function getCareerRoutesAction(
   try {
     const user = await requireUser();
     const overview = await getOnboardingOverview(user.id);
-    const recommendationInput = buildRecommendationInput({
+    const profile = await getProfile(user.id);
+    const { input, source } = buildRecommendationContext({
       userId: user.id,
       overview,
+      careerHistory: profile?.careerHistory,
     });
 
-    const result = generateCareerRoutes(recommendationInput, {
+    const result = generateCareerRoutes(input, {
       requestId: options?.requestId,
       now,
+      source,
     });
 
     if (!result.ok) {

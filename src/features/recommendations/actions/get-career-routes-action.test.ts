@@ -7,11 +7,13 @@ const {
   getOnboardingOverviewMock,
   buildRecommendationInputMock,
   generateCareerRoutesMock,
+  getProfileMock,
 } = vi.hoisted(() => ({
   requireUserMock: vi.fn(),
   getOnboardingOverviewMock: vi.fn(),
   buildRecommendationInputMock: vi.fn(),
   generateCareerRoutesMock: vi.fn(),
+  getProfileMock: vi.fn(),
 }));
 
 vi.mock('@/features/auth/server/require-user', () => ({
@@ -22,8 +24,10 @@ vi.mock('../../wizard/server/get-onboarding-overview', () => ({
   getOnboardingOverview: getOnboardingOverviewMock,
 }));
 
+vi.mock('../../profile/server/get-profile', () => ({ getProfile: getProfileMock }));
+
 vi.mock('../services/build-recommendation-input', () => ({
-  buildRecommendationInput: buildRecommendationInputMock,
+  buildRecommendationContext: buildRecommendationInputMock,
 }));
 
 vi.mock('../server/generate-career-routes', () => ({
@@ -33,6 +37,7 @@ vi.mock('../server/generate-career-routes', () => ({
 describe('getCareerRoutesAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getProfileMock.mockResolvedValue(null);
   });
 
   it('builds snapshot from wizard and delegates shortlist generation', async () => {
@@ -51,7 +56,8 @@ describe('getCareerRoutesAction', () => {
     requireUserMock.mockResolvedValueOnce({ id: 'user-1' });
     getOnboardingOverviewMock.mockResolvedValueOnce(overview);
     buildRecommendationInputMock.mockReturnValueOnce({
-      snapshotId: 'wizard-profile-snapshot-user-1',
+      input: { snapshotId: 'wizard-profile-snapshot-user-1' },
+      source: { kind: 'legacy_wizard' },
     });
     generateCareerRoutesMock.mockReturnValueOnce({
       ok: true,
@@ -120,15 +126,18 @@ describe('getCareerRoutesAction', () => {
 
     expect(requireUserMock).toHaveBeenCalledTimes(1);
     expect(getOnboardingOverviewMock).toHaveBeenCalledWith('user-1');
+    expect(getProfileMock).toHaveBeenCalledExactlyOnceWith('user-1');
     expect(buildRecommendationInputMock).toHaveBeenCalledWith({
       userId: 'user-1',
       overview,
+      careerHistory: undefined,
     });
     expect(generateCareerRoutesMock).toHaveBeenCalledWith(
       { snapshotId: 'wizard-profile-snapshot-user-1' },
       {
         requestId: 'req-us1-1',
         now,
+        source: { kind: 'legacy_wizard' },
       },
     );
     expect(result.ok).toBe(true);
@@ -161,7 +170,8 @@ describe('getCareerRoutesAction', () => {
     requireUserMock.mockResolvedValueOnce({ id: 'user-1' });
     getOnboardingOverviewMock.mockResolvedValueOnce(overview);
     buildRecommendationInputMock.mockReturnValueOnce({
-      snapshotId: 'wizard-profile-snapshot-user-1',
+      input: { snapshotId: 'wizard-profile-snapshot-user-1' },
+      source: { kind: 'legacy_wizard' },
     });
     generateCareerRoutesMock.mockReturnValueOnce({
       ok: true,
@@ -262,5 +272,23 @@ describe('getCareerRoutesAction', () => {
     expect(await getCareerRoutesAction()).toMatchObject({ ok: false, error });
     expect(log).not.toHaveBeenCalled();
     expect(generateCareerRoutesMock).not.toHaveBeenCalled();
+  });
+
+  it('does not generate or fall back when the canonical profile read fails', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    requireUserMock.mockResolvedValueOnce({ id: 'user-1' });
+    getOnboardingOverviewMock.mockResolvedValueOnce({});
+    getProfileMock.mockRejectedValueOnce(new Error('private profile integrity failure'));
+    const result = await getCareerRoutesAction();
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'INTERNAL_ERROR', retryable: false },
+    });
+    expect(JSON.stringify(result)).not.toContain('private profile');
+    expect(buildRecommendationInputMock).not.toHaveBeenCalled();
+    expect(generateCareerRoutesMock).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledExactlyOnceWith(
+      'Career routes action: unexpected context or generation failure',
+    );
   });
 });

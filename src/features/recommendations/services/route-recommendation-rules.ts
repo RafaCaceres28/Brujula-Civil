@@ -9,6 +9,8 @@ import type {
   RecommendationInputSnapshot,
   RecommendationRoute,
 } from '../schemas/recommendation.schema';
+import { careerHistorySchema } from '../../translation/schemas/career-history.schema';
+import type { RecommendationSource } from './build-recommendation-input';
 
 const MAX_SHORTLIST_ROUTES = 5;
 const MIN_SHORTLIST_ROUTES = 3;
@@ -149,8 +151,6 @@ function normalizeSignals(input: RecommendationInputSnapshot): Set<string> {
     ...input.drivingLicenses,
     ...input.languages,
     ...input.officeTools,
-    ...(input.targetSectorHints ?? []),
-    ...(input.targetRoleHints ?? []),
     input.branch,
     input.corps,
     input.rank,
@@ -187,7 +187,7 @@ function getDefaultWorkModel(input: RecommendationInputSnapshot): string | undef
 
 function createReasonSummary(roleLabel: string, sectorLabel: string, matches: string[]): string {
   if (matches.length === 0) {
-    return `Tu experiencia militar transferible sugiere una ruta como ${roleLabel} en ${sectorLabel}.`;
+    return `Ruta de orientacion como ${roleLabel} en ${sectorLabel} para contrastar con tu objetivo profesional.`;
   }
 
   const highlightedMatches = matches.slice(0, 3).join(', ');
@@ -364,7 +364,31 @@ function buildCandidateRoutes(input: RecommendationInputSnapshot): Recommendatio
   return [];
 }
 
-export function hasRecommendationSignals(input: RecommendationInputSnapshot): boolean {
+export function hasRecommendationSignals(
+  input: RecommendationInputSnapshot,
+  source?: RecommendationSource,
+): boolean {
+  if (source !== undefined && source.kind !== 'legacy_wizard') {
+    if (source.kind !== 'career_history') throw new Error('Invalid recommendation source');
+    const history = careerHistorySchema.parse(source.history);
+    const activities = new Set(history.experiences.map((experience) => experience.activity));
+    if (
+      input.functionTypes.length !== activities.size ||
+      new Set(input.functionTypes).size !== activities.size ||
+      input.functionTypes.some((activity) => !activities.has(activity))
+    ) {
+      throw new Error('Recommendation activities do not match canonical evidence');
+    }
+
+    // Sufficiency requires a declared activity usable by an existing rule, not identity,
+    // preferences, participation or an invented activity-to-profession equivalence.
+    return history.experiences.some((experience) =>
+      [...Object.values(ROLE_SIGNAL_RULES), ...Object.values(SECTOR_SIGNAL_RULES)].some((signals) =>
+        signals.includes(experience.activity),
+      ),
+    );
+  }
+
   const coreSignals = [
     input.branch,
     input.corps,

@@ -6,9 +6,11 @@ import { getProfile } from '@/features/profile/server/get-profile';
 import { profileReadOutputSchema } from '@/features/profile/schemas/profile.schema';
 import { mapProfileToTranslationSnapshot } from '@/features/profile/services/profile.mapper';
 import { getCareerRoutesAction } from '@/features/recommendations/actions/get-career-routes-action';
-import { buildRecommendationInput } from '@/features/recommendations/services/build-recommendation-input';
+import { buildRecommendationContext } from '@/features/recommendations/services/build-recommendation-input';
 import { generateCareerRoutes } from '@/features/recommendations/server/generate-career-routes';
 import { generateTranslation } from '@/features/translation/server/generate-translation';
+import { getTranslation } from '@/features/translation/server/get-translation';
+import { recommendationOutputFixture } from '@/features/recommendations/server/__fixtures__/recommendation-fixtures';
 import { translationInputSchema } from '@/features/translation/schemas/translation.schema';
 import { generateCv } from '@/features/cv/server/generate-cv';
 import { mapTranslationOutputToCvInput } from '@/features/cv/services/cv.mapper';
@@ -73,6 +75,7 @@ let wizardError: string | null;
 let rawHistory: unknown;
 let wizardDraft: Record<string, unknown> | null;
 let sourceSummary: string | null;
+let reads: string[];
 
 beforeEach(() => {
   vi.mocked(getCurrentUser)
@@ -81,9 +84,11 @@ beforeEach(() => {
   wizardError = null;
   wizardDraft = null;
   sourceSummary = null;
+  reads = [];
   rawHistory = shape.military!.raw_profile_jsonb;
   vi.mocked(createClient).mockResolvedValue({
     from(table: string) {
+      reads.push(table);
       const data =
         table === 'app_user_profiles'
           ? shape.app
@@ -169,13 +174,18 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
     expect(cv.ok).toBe(true);
   });
 
-  it('reproduce la precondicion real de recomendaciones sin onboarding, no un parse legacy', async () => {
+  it('mantiene insuficiencia sin onboarding para technical_instruction sin equivalencia existente', async () => {
     const overview = await getOnboardingOverview('user-001');
     expect(overview.state).toBeNull();
-    const input = buildRecommendationInput({ userId: 'user-001', overview });
-    expect(input.functionTypes).toEqual([]);
+    const profile = (await getProfile('user-001'))!;
+    const { input, source } = buildRecommendationContext({
+      userId: 'user-001',
+      overview,
+      careerHistory: profile.careerHistory,
+    });
+    expect(input.functionTypes).toEqual(['technical_instruction']);
     const now = new Date('2026-01-01T00:00:00Z');
-    const result = generateCareerRoutes(input, { now });
+    const result = generateCareerRoutes(input, { now, source });
     expect(result).toMatchObject({
       ok: false,
       error: {
@@ -207,6 +217,18 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
 
   it('preserva exito simultaneo de propuestas, legacy y recomendaciones reales', async () => {
     sourceSummary = 'Experiencia real en instruccion y coordinacion de actividades tecnicas.';
+    rawHistory = {
+      careerHistory: {
+        experiences: [
+          {
+            id: 'saved-training',
+            activity: 'technical_instruction',
+            participation: ['instructed'],
+          },
+          { id: 'saved-coordination', activity: 'coordination' },
+        ],
+      },
+    };
     wizardDraft = {
       experiencia: {
         functionTypes: FUNCTION_TYPE_OPTIONS.slice(0, 4).map((option) => option.value),
@@ -281,6 +303,7 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
   });
 
   it('historial persistido invalido falla con path preciso y no se convierte en vacio', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     rawHistory = {
       careerHistory: { experiences: [{ id: 'invalid', activity: 'not-a-catalog-code' }] },
     };
@@ -296,5 +319,95 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
     expect(doc.body.textContent).toContain('No pudimos leer tu perfil');
     expect(doc.body.textContent).not.toContain('No hay experiencias');
     expect(doc.querySelector('[aria-labelledby="experience-proposals-title"]')).toBeNull();
+    expect(await getCareerRoutesAction()).toMatchObject({
+      ok: false,
+      error: { code: 'INTERNAL_ERROR' },
+    });
+    const translation = await getTranslation('user-001');
+    expect(translation).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to load translation context',
+        retryable: false,
+      },
+    });
+    expect(JSON.stringify(translation)).not.toMatch(
+      /not-a-catalog-code|Zod|careerHistory|issues|path/,
+    );
+    expect(log).toHaveBeenCalledWith(
+      'Career routes action: unexpected context or generation failure',
+    );
+  });
+
+  it.each([
+    [{}, true],
+    [{ careerHistory: { experiences: [] } }, false],
+    [
+      {
+        careerHistory: {
+          experiences: [
+            { id: 'unsupported', activity: 'technical_instruction', participation: ['instructed'] },
+          ],
+        },
+      },
+      false,
+    ],
+    [{ careerHistory: { experiences: [{ id: 'recognized', activity: 'analysis' }] } }, true],
+  ])('action y getTranslation usan la misma fuente canonica %j, exito %s', async (raw, ok) => {
+    rawHistory = raw;
+    wizardDraft = {
+      experiencia: {
+        functionTypes: FUNCTION_TYPE_OPTIONS.slice(0, 4).map((option) => option.value),
+      },
+    };
+    const action = await getCareerRoutesAction();
+    reads = [];
+    const translation = await getTranslation('user-001');
+    expect(reads.filter((table) => table === 'user_military_profiles')).toHaveLength(1);
+    expect(action.ok).toBe(ok);
+    expect(translation.ok).toBe(ok);
+    if (!ok) {
+      expect(action).toMatchObject({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Insufficient structured profile to generate career routes',
+        },
+      });
+      expect(translation).toMatchObject({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Insufficient structured profile to generate career routes',
+        },
+      });
+    }
+  });
+
+  it('genera rutas desde actividad reconocida sin wizard en ambos consumidores y en pagina', async () => {
+    rawHistory = { careerHistory: { experiences: [{ id: 'recognized', activity: 'analysis' }] } };
+    expect((await getCareerRoutesAction()).ok).toBe(true);
+    const translation = await getTranslation('user-001');
+    expect(translation.ok).toBe(true);
+    if (!translation.ok || !translation.data) throw new Error('Expected translation context');
+    expect(
+      translation.data.recommendations.routes.some((route) =>
+        route.explanation?.explanationKeywords.includes('analysis'),
+      ),
+    ).toBe(true);
+    const doc = await pageDocument();
+    expect(doc.body.textContent).toContain('Rutas sugeridas para tu transicion');
+    expect(doc.body.textContent).not.toContain('Completa las funciones y responsabilidades');
+  });
+
+  it('mantiene la reutilizacion de recomendaciones persistidas sin validar vigencia nueva', async () => {
+    rawHistory = { careerHistory: { experiences: [] } };
+    wizardDraft = { employabilityFlow: { recommendations: recommendationOutputFixture } };
+    const translation = await getTranslation('user-001');
+    expect(translation.ok).toBe(true);
+    if (!translation.ok || !translation.data) throw new Error('Expected persisted context');
+    expect(translation.data.recommendations).toEqual(recommendationOutputFixture);
+    const doc = await pageDocument();
+    expect(doc.body.textContent).toContain('Rutas sugeridas para tu transicion');
+    expect(doc.body.textContent).not.toContain('Completa las funciones y responsabilidades');
   });
 });

@@ -18,12 +18,14 @@ import {
   hasRecommendationSignals,
 } from '../services/route-recommendation-rules';
 import { normalizeRecommendationRoutesExplainability } from '../services/recommendation-explanation-fallback';
+import type { RecommendationSource } from '../services/build-recommendation-input';
 
 const GENERATE_ROUTES_SOURCE = 'recs.server.generate-routes';
 
 type GenerateCareerRoutesOptions = {
   requestId?: string;
   now?: Date;
+  source?: RecommendationSource;
 };
 
 export type GenerateCareerRoutesResult = DomainResult<RecommendationOutput>;
@@ -57,7 +59,7 @@ export function generateCareerRoutes(
       return domainFailure(parsedInput.error, meta);
     }
 
-    if (!hasRecommendationSignals(parsedInput.data)) {
+    if (!hasRecommendationSignals(parsedInput.data, options?.source)) {
       return domainFailure(
         createValidationDomainError('Insufficient structured profile to generate career routes'),
         meta,

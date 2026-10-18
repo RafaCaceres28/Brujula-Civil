@@ -1,6 +1,51 @@
 import { describe, expect, it } from 'vitest';
 import { recommendationInputFixture } from '../server/__fixtures__/recommendation-fixtures';
-import { buildCareerRouteShortlist } from './route-recommendation-rules';
+import { buildCareerRouteShortlist, hasRecommendationSignals } from './route-recommendation-rules';
+import { recommendationInputSnapshotSchema } from '../schemas/recommendation.schema';
+import { buildRecommendationContext } from './build-recommendation-input';
+import { onboardingDraftStateSchema } from '../../wizard/schemas/wizard-state.schema';
+
+describe('hasRecommendationSignals canonical gate', () => {
+  it('preserves historical identity sufficiency only without canonical history', () => {
+    const input = { ...recommendationInputFixture, functionTypes: [] };
+    expect(hasRecommendationSignals(input)).toBe(true);
+    expect(hasRecommendationSignals(input, { kind: 'legacy_wizard' })).toBe(true);
+    expect(
+      hasRecommendationSignals(input, {
+        kind: 'career_history',
+        history: { experiences: [] },
+        wizardTools: [],
+      }),
+    ).toBe(false);
+  });
+
+  it('evaluates each declared activity independently, without deriving from participation or equipment', () => {
+    const overview = { draft: onboardingDraftStateSchema.parse({}) };
+    const unsupported = buildRecommendationContext({
+      userId: 'user-1',
+      overview,
+      careerHistory: {
+        experiences: [
+          { id: 'unsupported', activity: 'technical_instruction', participation: ['instructed'] },
+        ],
+      },
+    });
+    expect(hasRecommendationSignals(unsupported.input, unsupported.source)).toBe(false);
+    const recognized = buildRecommendationContext({
+      userId: 'user-1',
+      overview,
+      careerHistory: {
+        experiences: [
+          { id: 'unsupported', activity: 'technical_instruction', participation: ['instructed'] },
+          { id: 'recognized', activity: 'analysis' },
+        ],
+      },
+    });
+    const before = JSON.stringify(recognized);
+    expect(hasRecommendationSignals(recognized.input, recognized.source)).toBe(true);
+    expect(JSON.stringify(recognized)).toBe(before);
+  });
+});
 
 describe('buildCareerRouteShortlist', () => {
   it('prioritizes role and sector hints and keeps deterministic tie-breaking', () => {
@@ -69,4 +114,27 @@ describe('buildCareerRouteShortlist', () => {
       shortlist.every((route) => (route.explanation?.explanationKeywords.length ?? 0) > 0),
     ).toBe(true);
   });
+
+  it.each(['logistics', 'training'])(
+    'uses %s preferences only for orientation, never as capability',
+    (sector) => {
+      const shortlist = buildCareerRouteShortlist(
+        recommendationInputSnapshotSchema.parse({
+          userId: 'user-1',
+          locale: 'es-ES',
+          snapshotId: 'snapshot-1',
+          targetSectorHints: [sector],
+          targetRoleHints: [sector === 'training' ? 'training-specialist' : 'logistics-specialist'],
+        }),
+      );
+      expect(shortlist[0].sectorId).toBe(sector);
+      expect(shortlist[0].matchedSignals).toEqual(['TARGET_ROLE_HINT', 'TARGET_SECTOR_HINT']);
+      expect(shortlist[0].explanation?.fitScore).toBe(70);
+      expect(shortlist.every((route) => !route.matchedSignals.includes('SKILL_SIGNAL_MATCH'))).toBe(
+        true,
+      );
+      expect(shortlist[0].explanation?.explanationKeywords).not.toContain(sector);
+      expect(shortlist[0].reasonSummary).not.toContain('Tu experiencia militar transferible');
+    },
+  );
 });
