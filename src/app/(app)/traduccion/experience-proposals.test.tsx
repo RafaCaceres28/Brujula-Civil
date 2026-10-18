@@ -27,8 +27,8 @@ vi.mock('@/features/profile/server/get-profile', () => ({ getProfile: mocks.prof
 vi.mock('@/features/wizard/server/get-onboarding-overview', () => ({
   getOnboardingOverview: mocks.overview,
 }));
-vi.mock('@/features/recommendations/actions/get-career-routes-action', () => ({
-  getCareerRoutesAction: mocks.recommendations,
+vi.mock('@/features/recommendations/server/resolve-recommendation-state', () => ({
+  resolveRecommendationState: mocks.recommendations,
 }));
 vi.mock('@/features/recommendations/actions/select-career-route-action', () => ({
   selectCareerRouteAction: vi.fn(),
@@ -39,6 +39,10 @@ beforeEach(() => {
   mocks.user.mockResolvedValue({ id: profileDomainFixture.userId });
   mocks.overview.mockResolvedValue({
     employabilityFlow: { recommendations: { recommendationSetId: 'saved-routes', routes: [] } },
+  });
+  mocks.recommendations.mockResolvedValue({
+    ok: true,
+    data: { recommendations: { recommendationSetId: 'saved-routes', routes: [] } },
   });
   mocks.profile.mockResolvedValue({
     ...profileDomainFixture,
@@ -80,7 +84,11 @@ describe('/traduccion propuestas desde perfil autenticado', () => {
     expect(legacy.textContent).not.toContain('Competencia civil candidata');
     expect(mocks.profile).toHaveBeenCalledExactlyOnceWith(profileDomainFixture.userId);
     expect(mocks.user).toHaveBeenCalledExactlyOnceWith('/traduccion');
-    expect(mocks.recommendations).not.toHaveBeenCalled();
+    expect(mocks.recommendations).toHaveBeenCalledExactlyOnceWith({
+      userId: profileDomainFixture.userId,
+      overview: await mocks.overview.mock.results[0].value,
+      profile: await mocks.profile.mock.results[0].value,
+    });
   });
 
   it.each([undefined, { experiences: [] }])(

@@ -1,3 +1,4 @@
+import { unstable_rethrow } from 'next/navigation';
 import {
   createDomainError,
   domainFailure,
@@ -7,11 +8,7 @@ import {
   type DomainResult,
 } from '../../../lib/contracts/index';
 import { getProfile } from '../../profile/server/get-profile';
-import { buildRecommendationContext } from '../../recommendations/services/build-recommendation-input';
-import {
-  generateCareerRoutes,
-  type GenerateCareerRoutesResult,
-} from '../../recommendations/server/generate-career-routes';
+import { resolveRecommendationState } from '../../recommendations/server/resolve-recommendation-state';
 import type { RecommendationOutput } from '../../recommendations/schemas/recommendation.schema';
 import type { TranslationOutput } from '../schemas/translation.schema';
 import { getOnboardingOverview } from '../../wizard/server/get-onboarding-overview';
@@ -35,16 +32,6 @@ function createMeta(requestId?: string): DomainMeta {
   };
 }
 
-function withMeta(
-  result: GenerateCareerRoutesResult,
-  meta: DomainMeta,
-): GenerateCareerRoutesResult {
-  return {
-    ...result,
-    meta,
-  };
-}
-
 export async function getTranslation(
   userId: string,
   requestId?: string,
@@ -61,24 +48,14 @@ export async function getTranslation(
       return domainSuccess(null, meta);
     }
 
-    const selectedRouteId = overview.employabilityFlow?.selectedRoute?.selectedRouteId;
-    const persistedRouteContext = overview.employabilityFlow?.selectedRouteContext;
-    let recommendations = overview.employabilityFlow?.recommendations;
-
-    if (!recommendations) {
-      const { input, source } = buildRecommendationContext({
-        userId,
-        overview,
-        careerHistory: profile.careerHistory,
-      });
-      const generatedResult = withMeta(generateCareerRoutes(input, { requestId, source }), meta);
-
-      if (!generatedResult.ok) {
-        return generatedResult;
-      }
-
-      recommendations = generatedResult.data;
-    }
+    const resolved = await resolveRecommendationState({ userId, overview, profile, requestId });
+    if (!resolved.ok) return resolved;
+    const {
+      recommendations,
+      selectedRoute,
+      selectedRouteContext: persistedRouteContext,
+    } = resolved.data;
+    const selectedRouteId = selectedRoute?.selectedRouteId;
 
     let selectedRouteContext: TranslationOutput['selectedRouteContext'];
 
@@ -118,6 +95,7 @@ export async function getTranslation(
       meta,
     );
   } catch (error) {
+    unstable_rethrow(error);
     if (
       isDomainError(error) &&
       error.code !== 'INTERNAL_ERROR' &&

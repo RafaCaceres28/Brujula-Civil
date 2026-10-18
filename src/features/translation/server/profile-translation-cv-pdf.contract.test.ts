@@ -52,9 +52,16 @@ function createDraftPersistenceMock() {
         },
         update(payload: Record<string, unknown>) {
           aggregatedDraft = payload.aggregated_draft_jsonb as Record<string, unknown>;
-          return {
-            eq: async () => ({ error: null }),
+          const mutation = {
+            eq: () => mutation,
+            select: () => mutation,
+            maybeSingle: async () => ({
+              data: { user_id: profileDomainFixture.userId },
+              error: null,
+            }),
+            then: Promise.resolve({ error: null }).then.bind(Promise.resolve({ error: null })),
           };
+          return mutation;
         },
       };
     },
@@ -411,7 +418,7 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
     expect(pdfResult.meta?.traceability?.selectedRouteFitLabel).toBeUndefined();
   });
 
-  it('keeps recommendation explainability context after guided draft re-entry', async () => {
+  it('drops legacy recommendation context on re-entry when its source identity is stale', async () => {
     vi.mocked(getProfile).mockResolvedValue(profileDomainFixture);
     vi.mocked(getOnboardingOverview).mockResolvedValue({
       state: null,
@@ -517,6 +524,11 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
       },
     });
 
+    const overview = await getOnboardingOverview(profileDomainFixture.userId);
+    overview.state = {
+      user_id: profileDomainFixture.userId,
+      aggregated_draft_jsonb: { employabilityFlow: overview.employabilityFlow },
+    } as never;
     const context = await getTranslation(profileDomainFixture.userId, 'req-us3-translation');
 
     expect(context.ok).toBe(true);
@@ -524,11 +536,9 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
       throw new Error('Expected translation context success with guided re-entry data');
     }
 
-    expect(context.data.selectedRouteId).toBe('route-project-manager-consulting-mid');
-    expect(context.data.selectedRouteContext).toMatchObject({
-      fitLabelSnapshot: 'alto',
-      reasonSummarySnapshot: 'Se recomienda por coincidencias de planificacion y liderazgo.',
-    });
+    expect(context.data.recommendations.sourceSnapshotId).toMatch(/^recsrc-v1-/);
+    expect(context.data.selectedRouteId).toBeUndefined();
+    expect(context.data.selectedRouteContext).toBeUndefined();
 
     const profileSnapshot = mapProfileToTranslationSnapshot(context.data.profile);
     const translationResult = await generateTranslation({
@@ -546,11 +556,7 @@ describe('profile -> translation -> cv -> pdf contract slice', () => {
       throw new Error('Expected translation success for guided re-entry context');
     }
 
-    expect(translationResult.data.selectedRouteId).toBe('route-project-manager-consulting-mid');
-    expect(translationResult.data.selectedRouteContext).toMatchObject({
-      fitLabelSnapshot: 'alto',
-      guidanceSnapshot:
-        'Priorizala si quieres continuidad operativa con foco en gestion de equipos.',
-    });
+    expect(translationResult.data.selectedRouteId).toBeUndefined();
+    expect(translationResult.data.selectedRouteContext).toBeUndefined();
   });
 });

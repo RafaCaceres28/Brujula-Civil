@@ -1,272 +1,125 @@
-import { createClient } from '@/lib/supabase/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectCareerRoute } from './select-career-route';
+import { createDomainError, domainFailure, domainSuccess } from '../../../lib/contracts/index';
+import { recommendationOutputFixture } from './__fixtures__/recommendation-fixtures';
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  overview: vi.fn(),
+  profile: vi.fn(),
+  resolve: vi.fn(),
+  persist: vi.fn(),
+}));
+vi.mock('../../wizard/server/get-onboarding-overview', () => ({
+  getOnboardingOverview: mocks.overview,
+}));
+vi.mock('../../profile/server/get-profile', () => ({ getProfile: mocks.profile }));
+vi.mock('./resolve-recommendation-state', () => ({
+  resolveRecommendationState: mocks.resolve,
+  persistRecommendationFlow: mocks.persist,
 }));
 
-type SelectCareerRouteMockOptions = {
-  withRecommendations?: boolean;
-  recommendationSetId?: string;
-  routes?: Array<Record<string, unknown>>;
+const input = {
+  userId: 'user-1',
+  recommendationSetId: recommendationOutputFixture.recommendationSetId,
+  selectedRouteId: recommendationOutputFixture.routes[0].routeId,
 };
 
-function createSupabaseMock(options?: SelectCareerRouteMockOptions) {
-  const withRecommendations = options?.withRecommendations ?? true;
-  const recommendationSetId = options?.recommendationSetId ?? 'recset-snapshot-1-20260324010101';
-  const routes = options?.routes ?? [
-    {
-      routeId: 'route-operations-coordinator-logistics-mid',
-      roleId: 'operations-coordinator',
-      sectorId: 'logistics',
-      seniorityId: 'mid',
-      reasonSummary: 'Se recomienda por coincidencias de logistica y coordinacion.',
-      matchedSignals: ['TARGET_ROLE_HINT'],
-      explanation: {
-        reasonSummary: 'Se recomienda por coincidencias de logistica y coordinacion.',
-        fitLabel: 'alto',
-        fitScore: 88,
-        explanationKeywords: ['logistica', 'coordinacion'],
-        decisionGuidance: 'Priorizala si quieres continuidad operativa inmediata.',
-      },
-    },
-    {
-      routeId: 'route-project-manager-consulting-mid',
-      roleId: 'project-manager',
-      sectorId: 'consulting',
-      seniorityId: 'mid',
-      reasonSummary: 'Se recomienda por coincidencias de planificacion y liderazgo.',
-      matchedSignals: ['TARGET_SECTOR_HINT'],
-      explanation: {
-        reasonSummary: 'Se recomienda por coincidencias de planificacion y liderazgo.',
-        fitLabel: 'medio',
-        fitScore: 70,
-        explanationKeywords: ['planificacion', 'liderazgo'],
-        decisionGuidance: 'Comparala si buscas equilibrio entre estrategia y ejecucion.',
-      },
-    },
-    {
-      routeId: 'route-team-lead-technology-mid',
-      roleId: 'team-lead',
-      sectorId: 'technology',
-      seniorityId: 'mid',
-      reasonSummary: 'Se recomienda por coincidencias de supervision y comunicacion.',
-      matchedSignals: ['LEADERSHIP_MATCH'],
-      explanation: {
-        reasonSummary: 'Se recomienda por coincidencias de supervision y comunicacion.',
-        fitLabel: 'medio',
-        fitScore: 64,
-        explanationKeywords: ['supervision', 'comunicacion'],
-        decisionGuidance: 'Usala para evaluar un paso a liderazgo tecnico.',
-      },
-    },
-  ];
-
-  const calls: {
-    updateDraft?: Record<string, unknown>;
-  } = {};
-
-  const client = {
-    from(table: string) {
-      if (table !== 'user_wizard_state') {
-        throw new Error(`Unexpected table ${table}`);
-      }
-
-      return {
-        select() {
-          return {
-            eq() {
-              return {
-                maybeSingle: async () => ({
-                  data: {
-                    aggregated_draft_jsonb: {
-                      employabilityFlow: {
-                        ...(withRecommendations
-                          ? {
-                              recommendations: {
-                                recommendationSetId,
-                                generatedAt: '2026-03-24T01:01:01.000Z',
-                                sourceSnapshotId: 'snapshot-1',
-                                routes,
-                              },
-                            }
-                          : {}),
-                      },
-                    },
-                  },
-                  error: null,
-                }),
-              };
-            },
-          };
-        },
-        update(payload: Record<string, unknown>) {
-          calls.updateDraft = payload;
-          return {
-            eq: async () => ({ error: null }),
-          };
-        },
-      };
-    },
-  };
-
-  return { client, calls };
-}
-
 describe('selectCareerRoute', () => {
-  it('persists selected route when route belongs to active recommendation set', async () => {
-    const { client, calls } = createSupabaseMock();
-    vi.mocked(createClient).mockResolvedValue(client as never);
-
-    const result = await selectCareerRoute({
-      userId: 'user-1',
-      recommendationSetId: 'recset-snapshot-1-20260324010101',
-      selectedRouteId: 'route-operations-coordinator-logistics-mid',
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mocks.overview.mockResolvedValue({
+      state: { aggregated_draft_jsonb: { employabilityFlow: { custom: { preserved: true } } } },
     });
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
-    }
-
-    const mergedDraft = calls.updateDraft?.aggregated_draft_jsonb as Record<string, unknown>;
-    expect(mergedDraft.employabilityFlow).toMatchObject({
-      selectedRoute: {
-        recommendationSetId: 'recset-snapshot-1-20260324010101',
-        selectedRouteId: 'route-operations-coordinator-logistics-mid',
-      },
-      selectedRouteContext: {
-        recommendationSetId: 'recset-snapshot-1-20260324010101',
-        selectedRouteId: 'route-operations-coordinator-logistics-mid',
-        reasonSummarySnapshot: 'Se recomienda por coincidencias de logistica y coordinacion.',
-        fitLabelSnapshot: 'alto',
-        guidanceSnapshot: 'Priorizala si quieres continuidad operativa inmediata.',
-      },
-      selectedRecommendation: {
-        recommendationSetId: 'recset-snapshot-1-20260324010101',
-        selectedRouteId: 'route-operations-coordinator-logistics-mid',
-      },
-    });
-  });
-
-  it('rejects route that does not belong to recommendation set', async () => {
-    const { client, calls } = createSupabaseMock();
-    vi.mocked(createClient).mockResolvedValue(client as never);
-
-    const result = await selectCareerRoute({
-      userId: 'user-1',
-      recommendationSetId: 'recset-snapshot-1-20260324010101',
-      selectedRouteId: 'route-does-not-exist',
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok) {
-      return;
-    }
-
-    expect(result.error.code).toBe('VALIDATION_ERROR');
-    expect(result.error.message).toBe(
-      'Selected route does not belong to active recommendation set',
+    mocks.profile.mockResolvedValue(null);
+    mocks.resolve.mockResolvedValue(
+      domainSuccess({ recommendations: recommendationOutputFixture }),
     );
-    expect(calls.updateDraft).toBeUndefined();
   });
 
-  it('returns stale-context marker and reprocess action when recommendation set drift is detected', async () => {
-    const { client, calls } = createSupabaseMock({
-      recommendationSetId: 'recset-snapshot-2-20260325020202',
-    });
-    vi.mocked(createClient).mockResolvedValue(client as never);
-
-    const result = await selectCareerRoute({
-      userId: 'user-1',
-      recommendationSetId: 'recset-snapshot-1-20260324010101',
-      selectedRouteId: 'route-operations-coordinator-logistics-mid',
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok) {
-      return;
-    }
-
-    expect(result.error.code).toBe('VALIDATION_ERROR');
-    expect(result.error.details).toMatchObject({
-      activeRecommendationSetId: 'recset-snapshot-2-20260325020202',
-      requestedRecommendationSetId: 'recset-snapshot-1-20260324010101',
-      staleExplanationContext: true,
-      reprocessAction: 'refresh_recommendations',
-    });
-    expect(calls.updateDraft).toBeUndefined();
+  it('validates current source before persisting selection, aliases and captured explanation', async () => {
+    expect(await selectCareerRoute(input)).toMatchObject({ ok: true, data: inputWithoutUser() });
+    expect(mocks.resolve).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1', requireCurrentSet: input.recommendationSetId }),
+    );
+    expect(mocks.persist).toHaveBeenCalledWith(
+      'user-1',
+      expect.anything(),
+      expect.objectContaining({
+        custom: { preserved: true },
+        selectedRoute: expect.objectContaining(inputWithoutUser()),
+        selectedRecommendation: expect.objectContaining(inputWithoutUser()),
+        selectedRouteContext: expect.objectContaining({
+          ...inputWithoutUser(),
+          reasonSummarySnapshot: recommendationOutputFixture.routes[0].explanation!.reasonSummary,
+        }),
+      }),
+      expect.any(String),
+    );
   });
 
-  it('keeps backward compatibility with legacy reason codes when explanation is missing', async () => {
-    const { client, calls } = createSupabaseMock({
-      routes: [
-        {
-          routeId: 'route-operations-coordinator-logistics-mid',
-          roleId: 'operations-coordinator',
-          sectorId: 'logistics',
-          seniorityId: 'mid',
-          reasonSummary: 'Se recomienda por experiencia transferible en coordinacion.',
-          matchedSignals: ['LEGACY_CODE_NOT_MAPPED'],
-        },
-        {
-          routeId: 'route-project-manager-consulting-mid',
-          roleId: 'project-manager',
-          sectorId: 'consulting',
-          seniorityId: 'mid',
-          reasonSummary: 'Se recomienda por planificacion operativa.',
-          matchedSignals: ['TARGET_SECTOR_HINT'],
-        },
-        {
-          routeId: 'route-team-lead-technology-mid',
-          roleId: 'team-lead',
-          sectorId: 'technology',
-          seniorityId: 'mid',
-          reasonSummary: 'Se recomienda por supervision de equipos.',
-          matchedSignals: ['LEADERSHIP_MATCH'],
-        },
-      ],
-    });
-    vi.mocked(createClient).mockResolvedValue(client as never);
-
-    const result = await selectCareerRoute({
-      userId: 'user-1',
-      recommendationSetId: 'recset-snapshot-1-20260324010101',
-      selectedRouteId: 'route-operations-coordinator-logistics-mid',
-    });
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
-    }
-
-    const mergedDraft = calls.updateDraft?.aggregated_draft_jsonb as Record<string, unknown>;
-    expect(mergedDraft.employabilityFlow).toMatchObject({
-      selectedRouteContext: {
-        selectedRouteId: 'route-operations-coordinator-logistics-mid',
-        fitLabelSnapshot: 'exploratorio',
-        guidanceSnapshot: 'Usa esta ruta como referencia inicial mientras reunes mas contexto.',
+  it('rejects route that does not belong to current recommendation set', async () => {
+    expect(await selectCareerRoute({ ...input, selectedRouteId: 'not-in-set' })).toMatchObject({
+      ok: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Selected route does not belong to active recommendation set',
       },
     });
+    expect(mocks.persist).not.toHaveBeenCalled();
   });
 
-  it('rejects selection when there is no active recommendation shortlist', async () => {
-    const { client } = createSupabaseMock({ withRecommendations: false });
-    vi.mocked(createClient).mockResolvedValue(client as never);
+  it('preserves source/gate rejection without generating or persisting a replacement', async () => {
+    const failure = domainFailure(
+      createDomainError({
+        code: 'VALIDATION_ERROR',
+        message: 'Stale set',
+        details: { staleExplanationContext: true },
+      }),
+    );
+    mocks.resolve.mockResolvedValue(failure);
+    expect(await selectCareerRoute(input)).toEqual(failure);
+    expect(mocks.persist).not.toHaveBeenCalled();
+  });
 
-    const result = await selectCareerRoute({
-      userId: 'user-1',
-      recommendationSetId: 'recset-snapshot-1-20260324010101',
-      selectedRouteId: 'route-operations-coordinator-logistics-mid',
+  it('keeps fallback for a current route with a legacy explanation absent', async () => {
+    const output = structuredClone(recommendationOutputFixture);
+    delete output.routes[0].explanation;
+    output.routes[0].matchedSignals = ['LEGACY_CODE_NOT_MAPPED'];
+    mocks.resolve.mockResolvedValue(domainSuccess({ recommendations: output }));
+    expect((await selectCareerRoute(input)).ok).toBe(true);
+    expect(mocks.persist.mock.calls[0][2].selectedRouteContext).toMatchObject({
+      fitLabelSnapshot: 'exploratorio',
+      guidanceSnapshot: 'Usa esta ruta como referencia inicial mientras reunes mas contexto.',
     });
+  });
 
-    expect(result.ok).toBe(false);
-    if (result.ok) {
-      return;
-    }
+  it.each(['CONFLICT', 'EXTERNAL_DEPENDENCY_ERROR'] as const)(
+    'does not report successful selection after persistence %s',
+    async (code) => {
+      mocks.persist.mockRejectedValue(
+        createDomainError({ code, message: 'Safe storage failure', retryable: true }),
+      );
+      expect(await selectCareerRoute(input)).toMatchObject({ ok: false, error: { code } });
+    },
+  );
 
-    expect(result.error.code).toBe('VALIDATION_ERROR');
-    expect(result.error.message).toContain('No active recommendation shortlist');
+  it('does not expose raw profile failures', async () => {
+    mocks.profile.mockRejectedValue(new Error('private profile error'));
+    const result = await selectCareerRoute(input);
+    expect(result).toMatchObject({ ok: false, error: { code: 'INTERNAL_ERROR' } });
+    expect(JSON.stringify(result)).not.toContain('private profile');
+    expect(mocks.persist).not.toHaveBeenCalled();
+  });
+
+  it('validates boundary input before reads', async () => {
+    expect(await selectCareerRoute({ userId: 'user-1' })).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION_ERROR' },
+    });
+    expect(mocks.overview).not.toHaveBeenCalled();
   });
 });
+
+function inputWithoutUser() {
+  return { recommendationSetId: input.recommendationSetId, selectedRouteId: input.selectedRouteId };
+}

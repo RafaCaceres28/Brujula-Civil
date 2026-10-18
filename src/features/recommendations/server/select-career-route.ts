@@ -1,19 +1,26 @@
-import { createClient } from '@/lib/supabase/server';
+import { z } from 'zod';
+import { unstable_rethrow } from 'next/navigation';
+import { getProfile } from '../../profile/server/get-profile';
+import { getOnboardingOverview } from '../../wizard/server/get-onboarding-overview';
+import {
+  persistRecommendationFlow,
+  resolveRecommendationState,
+} from './resolve-recommendation-state';
 import {
   createValidationDomainError,
+  createDomainError,
   domainFailure,
   domainSuccess,
   safeParseWithDomainError,
-  toInternalDomainError,
+  isDomainError,
   type DomainMeta,
   type DomainResult,
 } from '../../../lib/contracts/index';
-import { z } from 'zod';
-import { employabilityFlowDraftSchema } from '../../wizard/schemas/wizard-state.schema';
 import {
   recommendationSelectionSchema,
   selectedRouteContextSchema,
   type RecommendationSelection,
+  type RecommendationOutput,
 } from '../schemas/recommendation.schema';
 import { normalizeRouteExplainability } from '../services/recommendation-explanation-fallback';
 
@@ -28,7 +35,6 @@ const selectCareerRouteInputSchema = z
   })
   .strict();
 
-type SelectCareerRouteInput = z.infer<typeof selectCareerRouteInputSchema>;
 export type SelectCareerRouteResult = DomainResult<RecommendationSelection>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -43,43 +49,11 @@ function createMeta(nowIso: string, requestId?: string): DomainMeta {
   };
 }
 
-function validateRouteSelection(
-  input: SelectCareerRouteInput,
-  employabilityFlow: z.infer<typeof employabilityFlowDraftSchema>,
-) {
-  const recommendations = employabilityFlow.recommendations;
-
-  if (!recommendations) {
-    return createValidationDomainError('No active recommendation shortlist found for this user');
-  }
-
-  if (recommendations.recommendationSetId !== input.recommendationSetId) {
-    return createValidationDomainError('Recommendation set does not match active shortlist', {
-      activeRecommendationSetId: recommendations.recommendationSetId,
-      requestedRecommendationSetId: input.recommendationSetId,
-      staleExplanationContext: true,
-      reprocessAction: 'refresh_recommendations',
-    });
-  }
-
-  const belongsToSet = recommendations.routes.some(
-    (route) => route.routeId === input.selectedRouteId,
-  );
-
-  if (!belongsToSet) {
-    return createValidationDomainError(
-      'Selected route does not belong to active recommendation set',
-    );
-  }
-
-  return null;
-}
-
 function buildSelectedRouteContext(input: {
   recommendationSetId: string;
   selectedRouteId: string;
   selectedAt: string;
-  employabilityFlow: z.infer<typeof employabilityFlowDraftSchema>;
+  employabilityFlow: { recommendations: RecommendationOutput };
 }) {
   const selectedRoute = input.employabilityFlow.recommendations?.routes.find(
     (route) => route.routeId === input.selectedRouteId,
@@ -119,34 +93,33 @@ export async function selectCareerRoute(input: unknown): Promise<SelectCareerRou
   }
 
   try {
-    const supabase = await createClient();
+    const [overview, profile] = await Promise.all([
+      getOnboardingOverview(parsedInput.data.userId),
+      getProfile(parsedInput.data.userId),
+    ]);
+    const resolved = await resolveRecommendationState({
+      userId: parsedInput.data.userId,
+      overview,
+      profile,
+      requireCurrentSet: parsedInput.data.recommendationSetId,
+      requestId,
+      now: new Date(nowIso),
+    });
+    if (!resolved.ok) return resolved;
+    const currentAggregatedDraft = isRecord(overview.state?.aggregated_draft_jsonb)
+      ? overview.state.aggregated_draft_jsonb
+      : {};
+    const currentFlow = resolved.data;
 
-    const { data: currentState, error: currentStateError } = await supabase
-      .from('user_wizard_state')
-      .select('aggregated_draft_jsonb')
-      .eq('user_id', parsedInput.data.userId)
-      .maybeSingle();
-
-    if (currentStateError) {
+    if (
+      !currentFlow.recommendations.routes.some(
+        (route) => route.routeId === parsedInput.data.selectedRouteId,
+      )
+    ) {
       return domainFailure(
-        toInternalDomainError(currentStateError, 'Failed to load recommendation draft state'),
+        createValidationDomainError('Selected route does not belong to active recommendation set'),
         meta,
       );
-    }
-
-    const currentAggregatedDraft = isRecord(currentState?.aggregated_draft_jsonb)
-      ? currentState.aggregated_draft_jsonb
-      : {};
-    const parsedFlow = employabilityFlowDraftSchema.safeParse(
-      currentAggregatedDraft.employabilityFlow,
-    );
-    const currentFlow = parsedFlow.success
-      ? parsedFlow.data
-      : employabilityFlowDraftSchema.parse({});
-
-    const selectionValidationError = validateRouteSelection(parsedInput.data, currentFlow);
-    if (selectionValidationError) {
-      return domainFailure(selectionValidationError, meta);
     }
 
     const parsedSelection = recommendationSelectionSchema.parse({
@@ -161,36 +134,34 @@ export async function selectCareerRoute(input: unknown): Promise<SelectCareerRou
       employabilityFlow: currentFlow,
     });
 
-    const nextEmployabilityFlow = employabilityFlowDraftSchema.parse({
-      ...currentFlow,
+    const nextEmployabilityFlow = {
+      ...(isRecord(currentAggregatedDraft.employabilityFlow)
+        ? currentAggregatedDraft.employabilityFlow
+        : {}),
       selectedRoute: parsedSelection,
       ...(selectedRouteContext ? { selectedRouteContext } : {}),
       selectedRecommendation: parsedSelection,
       lastUpdatedAt: nowIso,
-    });
-
-    const nextAggregatedDraft = {
-      ...currentAggregatedDraft,
-      employabilityFlow: nextEmployabilityFlow,
     };
-
-    const { error: updateError } = await supabase
-      .from('user_wizard_state')
-      .update({
-        aggregated_draft_jsonb: nextAggregatedDraft,
-        last_saved_at: nowIso,
-      })
-      .eq('user_id', parsedInput.data.userId);
-
-    if (updateError) {
-      return domainFailure(
-        toInternalDomainError(updateError, 'Failed to persist selected career route'),
-        meta,
-      );
-    }
+    await persistRecommendationFlow(
+      parsedInput.data.userId,
+      overview,
+      nextEmployabilityFlow,
+      nowIso,
+    );
 
     return domainSuccess(parsedSelection, meta);
   } catch (error) {
-    return domainFailure(toInternalDomainError(error, 'Failed to select career route'), meta);
+    unstable_rethrow(error);
+    return domainFailure(
+      isDomainError(error)
+        ? error
+        : createDomainError({
+            code: 'INTERNAL_ERROR',
+            message: 'Failed to select career route',
+            retryable: false,
+          }),
+      meta,
+    );
   }
 }

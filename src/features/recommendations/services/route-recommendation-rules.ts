@@ -65,19 +65,17 @@ function addReasonCode(reasons: Set<string>, reasonCode: string): void {
 }
 
 function computeScore(
-  input: RecommendationInputSnapshot,
+  input: ReturnType<typeof getRecommendationRuleInputs>,
   roleId: string,
   sectorId: string,
-  seniorityId: string | undefined,
-  workModelId: string | undefined,
 ): number {
   let score = 0;
 
-  if (input.targetRoleHints.includes(roleId)) {
+  if (input.selectedRoleHints.includes(roleId)) {
     score += 40;
   }
 
-  if (input.targetSectorHints.includes(sectorId)) {
+  if (input.selectedSectorHints.includes(sectorId)) {
     score += 30;
   }
 
@@ -85,19 +83,19 @@ function computeScore(
     score += 12;
   }
 
-  if (input.teamSize !== undefined) {
-    if (input.teamSize >= 16 && MANAGEMENT_ROLE_SET.has(roleId)) {
+  if (input.teamSizeBand >= 6) {
+    if (input.teamSizeBand >= 16 && MANAGEMENT_ROLE_SET.has(roleId)) {
       score += 15;
-    } else if (input.teamSize >= 6) {
+    } else {
       score += 8;
     }
   }
 
-  if (input.seniorityHint && seniorityId && input.seniorityHint === seniorityId) {
+  if (input.seniorityMatch) {
     score += 14;
   }
 
-  if (input.workModelHint && workModelId && input.workModelHint === workModelId) {
+  if (input.workModelMatch) {
     score += 10;
   }
 
@@ -105,18 +103,18 @@ function computeScore(
 }
 
 function resolveReasonCodes(
-  input: RecommendationInputSnapshot,
+  input: ReturnType<typeof getRecommendationRuleInputs>,
   roleId: string,
   sectorId: string,
   matchedSignals: string[],
 ): string[] {
   const reasonCodes = new Set<string>();
 
-  if (input.targetRoleHints.includes(roleId)) {
+  if (input.selectedRoleHints.includes(roleId)) {
     addReasonCode(reasonCodes, 'TARGET_ROLE_HINT');
   }
 
-  if (input.targetSectorHints.includes(sectorId)) {
+  if (input.selectedSectorHints.includes(sectorId)) {
     addReasonCode(reasonCodes, 'TARGET_SECTOR_HINT');
   }
 
@@ -128,7 +126,7 @@ function resolveReasonCodes(
     addReasonCode(reasonCodes, 'LEADERSHIP_MATCH');
   }
 
-  if (input.teamSize !== undefined && input.teamSize >= 6) {
+  if (input.teamSizeBand >= 6) {
     addReasonCode(reasonCodes, 'TEAM_SIZE_MATCH');
   }
 
@@ -276,11 +274,54 @@ function createRouteId(roleId: string, sectorId: string, seniorityId?: string): 
   return `route-${roleId}-${sectorId}-${normalizedSeniority}`;
 }
 
+// Shared by the motor and its source identity; do not fingerprint unused profile metadata.
+export function getRecommendationRuleInputs(input: RecommendationInputSnapshot) {
+  const recognizedSignals = new Set([
+    ...Object.values(ROLE_SIGNAL_RULES).flat(),
+    ...Object.values(SECTOR_SIGNAL_RULES).flat(),
+  ]);
+  const seniorityId =
+    SENIORITY_OPTIONS.find((option) => option.value === input.seniorityHint)?.value ??
+    (input.teamSize && input.teamSize >= 16 ? 'manager' : undefined);
+  const normalizedSeniority =
+    SENIORITY_OPTIONS.find((option) => option.value === seniorityId)?.value ??
+    getDefaultSeniority(input);
+  const normalizedWorkModel =
+    WORK_MODEL_OPTIONS.find((option) => option.value === input.workModelHint)?.value ??
+    WORK_MODEL_OPTIONS.find((option) => option.value === input.destinationContext)?.value ??
+    getDefaultWorkModel(input);
+
+  return {
+    signals: [...normalizeSignals(input)].filter((signal) => recognizedSignals.has(signal)).sort(),
+    selectedSectorHints: TARGET_SECTOR_OPTIONS.filter((option) =>
+      input.targetSectorHints.includes(option.value),
+    ).map((option) => option.value),
+    selectedRoleHints: TARGET_ROLE_OPTIONS.filter((option) =>
+      input.targetRoleHints.includes(option.slug),
+    ).map((option) => option.slug),
+    normalizedSeniority,
+    normalizedWorkModel,
+    leadership: Boolean(input.leadership),
+    teamSizeBand:
+      input.teamSize !== undefined && input.teamSize >= 16
+        ? 16
+        : input.teamSize !== undefined && input.teamSize >= 6
+          ? 6
+          : 0,
+    seniorityMatch: Boolean(input.seniorityHint && input.seniorityHint === normalizedSeniority),
+    workModelMatch: Boolean(input.workModelHint && input.workModelHint === normalizedWorkModel),
+  };
+}
+
 function buildCandidateRoutes(input: RecommendationInputSnapshot): RecommendationRoute[] {
-  const knownSectorIds = new Set(TARGET_SECTOR_OPTIONS.map((option) => option.value));
-  const knownRoleIds = new Set(TARGET_ROLE_OPTIONS.map((option) => option.slug));
-  const selectedSectorHints = input.targetSectorHints.filter((hint) => knownSectorIds.has(hint));
-  const selectedRoleHints = input.targetRoleHints.filter((hint) => knownRoleIds.has(hint));
+  const ruleInputs = getRecommendationRuleInputs(input);
+  const {
+    selectedSectorHints,
+    selectedRoleHints,
+    normalizedSeniority,
+    normalizedWorkModel,
+    signals: effectiveSignals,
+  } = ruleInputs;
 
   const sectorPool =
     selectedSectorHints.length > 0
@@ -298,17 +339,7 @@ function buildCandidateRoutes(input: RecommendationInputSnapshot): Recommendatio
         ]
       : TARGET_ROLE_OPTIONS;
 
-  const signals = normalizeSignals(input);
-  const seniorityId =
-    SENIORITY_OPTIONS.find((option) => option.value === input.seniorityHint)?.value ??
-    (input.teamSize && input.teamSize >= 16 ? 'manager' : undefined);
-  const normalizedSeniority =
-    SENIORITY_OPTIONS.find((option) => option.value === seniorityId)?.value ??
-    getDefaultSeniority(input);
-  const normalizedWorkModel =
-    WORK_MODEL_OPTIONS.find((option) => option.value === input.workModelHint)?.value ??
-    WORK_MODEL_OPTIONS.find((option) => option.value === input.destinationContext)?.value ??
-    getDefaultWorkModel(input);
+  const signals = new Set(effectiveSignals);
   const candidates: RouteCandidate[] = [];
 
   for (const role of rolePool) {
@@ -318,10 +349,8 @@ function buildCandidateRoutes(input: RecommendationInputSnapshot): Recommendatio
       const matchedSignals = [...new Set([...roleSignals, ...sectorSignals])]
         .map(normalizeSignal)
         .filter((signal) => signals.has(signal));
-      const reasonCodes = resolveReasonCodes(input, role.slug, sector.value, matchedSignals);
-      const score =
-        computeScore(input, role.slug, sector.value, normalizedSeniority, normalizedWorkModel) +
-        matchedSignals.length * 9;
+      const reasonCodes = resolveReasonCodes(ruleInputs, role.slug, sector.value, matchedSignals);
+      const score = computeScore(ruleInputs, role.slug, sector.value) + matchedSignals.length * 9;
 
       const explanation = createRouteExplanation({
         roleLabel: role.label,

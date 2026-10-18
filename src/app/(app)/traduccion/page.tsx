@@ -7,10 +7,13 @@ import { generateCv } from '@/features/cv/server/generate-cv';
 import { mapTranslationOutputToCvInput } from '@/features/cv/services/cv.mapper';
 import { mapProfileToTranslationSnapshot } from '@/features/profile/services/profile.mapper';
 import { getProfile } from '@/features/profile/server/get-profile';
-import { getCareerRoutesAction } from '@/features/recommendations/actions/get-career-routes-action';
+import { resolveRecommendationState } from '@/features/recommendations/server/resolve-recommendation-state';
 import { selectCareerRouteAction } from '@/features/recommendations/actions/select-career-route-action';
 import { CareerRouteShortlist } from '@/features/recommendations/components/career-route-shortlist';
-import type { RecommendationOutput } from '@/features/recommendations/schemas/recommendation.schema';
+import type {
+  RecommendationOutput,
+  SelectedRouteContext,
+} from '@/features/recommendations/schemas/recommendation.schema';
 import {
   classifyCareerRoutesError,
   isOnboardingStorageReadError,
@@ -21,7 +24,6 @@ import { buildExperienceProposals } from '@/features/translation/services/experi
 import type { ExperienceProposal } from '@/features/translation/types/experience-proposal.types';
 import { generateTranslation } from '@/features/translation/server/generate-translation';
 import { getOnboardingOverview } from '@/features/wizard/server/get-onboarding-overview';
-import type { OnboardingOverview } from '@/features/wizard/types/wizard.types';
 import { routes } from '@/lib/constants/routes';
 import { isDomainError } from '@/lib/contracts';
 
@@ -214,19 +216,19 @@ export default async function TranslationPage() {
     props.proposalBuildFailed = true;
   }
 
-  let flow: OnboardingOverview['employabilityFlow'];
+  let selectedRouteId: string | undefined;
+  let selectedRouteContext: SelectedRouteContext | undefined;
   try {
-    flow = (await getOnboardingOverview(user.id)).employabilityFlow;
-    props.recommendations = flow?.recommendations;
-    if (!props.recommendations) {
-      const result = await getCareerRoutesAction();
-      if (result.ok) {
-        props.recommendations = result.data;
-      } else {
-        props.routesFailure = classifyCareerRoutesError(result.error, result.meta);
-        if (props.routesFailure === 'internal') {
-          console.error('Translation page: career recommendations internal failure');
-        }
+    const overview = await getOnboardingOverview(user.id);
+    const result = await resolveRecommendationState({ userId: user.id, overview, profile });
+    if (result.ok) {
+      props.recommendations = result.data.recommendations;
+      selectedRouteId = result.data.selectedRoute?.selectedRouteId;
+      selectedRouteContext = result.data.selectedRouteContext;
+    } else {
+      props.routesFailure = classifyCareerRoutesError(result.error, result.meta);
+      if (props.routesFailure === 'internal') {
+        console.error('Translation page: career recommendations internal failure');
       }
     }
   } catch (error) {
@@ -243,8 +245,6 @@ export default async function TranslationPage() {
     }
   }
 
-  const selectedRouteId = flow?.selectedRoute?.selectedRouteId;
-  const selectedRouteContext = flow?.selectedRouteContext;
   props.selectedRouteId = selectedRouteId;
   props.reentrySelectedRouteContext = selectedRouteContext
     ? {

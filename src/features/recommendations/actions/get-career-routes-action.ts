@@ -12,12 +12,8 @@ import {
 } from '../../../lib/contracts/index';
 import { getOnboardingOverview } from '../../wizard/server/get-onboarding-overview';
 import { getProfile } from '../../profile/server/get-profile';
-import { buildRecommendationContext } from '../services/build-recommendation-input';
-import {
-  generateCareerRoutes,
-  type GenerateCareerRoutesResult,
-} from '../server/generate-career-routes';
-import { normalizeRecommendationRoutesExplainability } from '../services/recommendation-explanation-fallback';
+import type { GenerateCareerRoutesResult } from '../server/generate-career-routes';
+import { resolveRecommendationState } from '../server/resolve-recommendation-state';
 import type { RecommendationOutput } from '../schemas/recommendation.schema';
 import { isOnboardingStorageReadError } from '../services/career-routes-error';
 
@@ -60,29 +56,19 @@ export async function getCareerRoutesAction(
     const user = await requireUser();
     const overview = await getOnboardingOverview(user.id);
     const profile = await getProfile(user.id);
-    const { input, source } = buildRecommendationContext({
+    const result = await resolveRecommendationState({
       userId: user.id,
       overview,
-      careerHistory: profile?.careerHistory,
-    });
-
-    const result = generateCareerRoutes(input, {
+      profile,
       requestId: options?.requestId,
       now,
-      source,
     });
 
     if (!result.ok) {
       return result;
     }
 
-    return domainSuccess(
-      {
-        ...result.data,
-        routes: normalizeRecommendationRoutesExplainability(result.data.routes),
-      },
-      result.meta,
-    );
+    return domainSuccess(result.data.recommendations, result.meta);
   } catch (error) {
     unstable_rethrow(error);
     if (isOnboardingStorageReadError(error)) {

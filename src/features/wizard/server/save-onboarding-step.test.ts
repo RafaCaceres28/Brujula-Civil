@@ -50,6 +50,7 @@ function createSupabaseMock() {
                           },
                         }),
                         employabilityFlow: {
+                          customNested: { retained: ['one', 'two'] },
                           recommendations: {
                             recommendationSetId: 'recset-snapshot-1-20260324010101',
                             generatedAt: '2026-03-24T01:01:01.000Z',
@@ -170,6 +171,7 @@ describe('saveOnboardingStep', () => {
       responsibilityAreas: ['operations'],
     });
     expect(mergedDraft.employabilityFlow).toMatchObject({
+      customNested: { retained: ['one', 'two'] },
       recommendations: {
         recommendationSetId: 'recset-snapshot-1-20260324010101',
       },

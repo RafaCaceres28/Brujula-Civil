@@ -1,260 +1,74 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getCareerRoutesAction } from './get-career-routes-action';
-import { createDomainError } from '../../../lib/contracts';
+import { createDomainError, domainFailure, domainSuccess } from '../../../lib/contracts';
+import { recommendationOutputFixture } from '../server/__fixtures__/recommendation-fixtures';
 
-const {
-  requireUserMock,
-  getOnboardingOverviewMock,
-  buildRecommendationInputMock,
-  generateCareerRoutesMock,
-  getProfileMock,
-} = vi.hoisted(() => ({
-  requireUserMock: vi.fn(),
-  getOnboardingOverviewMock: vi.fn(),
-  buildRecommendationInputMock: vi.fn(),
-  generateCareerRoutesMock: vi.fn(),
-  getProfileMock: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  user: vi.fn(),
+  overview: vi.fn(),
+  profile: vi.fn(),
+  resolve: vi.fn(),
 }));
-
-vi.mock('@/features/auth/server/require-user', () => ({
-  requireUser: requireUserMock,
-}));
-
+vi.mock('@/features/auth/server/require-user', () => ({ requireUser: mocks.user }));
 vi.mock('../../wizard/server/get-onboarding-overview', () => ({
-  getOnboardingOverview: getOnboardingOverviewMock,
+  getOnboardingOverview: mocks.overview,
 }));
-
-vi.mock('../../profile/server/get-profile', () => ({ getProfile: getProfileMock }));
-
-vi.mock('../services/build-recommendation-input', () => ({
-  buildRecommendationContext: buildRecommendationInputMock,
-}));
-
-vi.mock('../server/generate-career-routes', () => ({
-  generateCareerRoutes: generateCareerRoutesMock,
+vi.mock('../../profile/server/get-profile', () => ({ getProfile: mocks.profile }));
+vi.mock('../server/resolve-recommendation-state', () => ({
+  resolveRecommendationState: mocks.resolve,
 }));
 
 describe('getCareerRoutesAction', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    getProfileMock.mockResolvedValue(null);
+    vi.resetAllMocks();
+    mocks.user.mockResolvedValue({ id: 'user-1' });
+    mocks.profile.mockResolvedValue(null);
+    mocks.overview.mockResolvedValue({ state: null });
   });
 
-  it('builds snapshot from wizard and delegates shortlist generation', async () => {
+  it('delegates validation, reuse and persistence with the authenticated context read once', async () => {
     const now = new Date('2026-03-25T01:02:03.000Z');
-    const overview = {
-      draft: {
-        militar: {
-          branch: 'army',
-        },
-      },
-      employabilityFlow: {
-        profileSnapshotId: 'profile-snapshot-user-1',
-      },
-    };
-
-    requireUserMock.mockResolvedValueOnce({ id: 'user-1' });
-    getOnboardingOverviewMock.mockResolvedValueOnce(overview);
-    buildRecommendationInputMock.mockReturnValueOnce({
-      input: { snapshotId: 'wizard-profile-snapshot-user-1' },
-      source: { kind: 'legacy_wizard' },
-    });
-    generateCareerRoutesMock.mockReturnValueOnce({
-      ok: true,
-      data: {
-        recommendationSetId: 'recset-wizard-profile-snapshot-user-1-20260325010203',
-        generatedAt: now.toISOString(),
-        sourceSnapshotId: 'wizard-profile-snapshot-user-1',
-        routes: [
-          {
-            routeId: 'route-project-manager-logistics-mid',
-            roleId: 'project-manager',
-            sectorId: 'logistics',
-            reasonSummary: 'Your profile aligns with operational planning transferability.',
-            matchedSignals: ['TARGET_ROLE_HINT'],
-            explanation: {
-              reasonSummary: 'Your profile aligns with operational planning transferability.',
-              fitLabel: 'alto',
-              fitScore: 89,
-              explanationKeywords: ['planning', 'leadership'],
-              decisionGuidance:
-                'Prioritize this route if you want near-term leadership continuity.',
-            },
-          },
-          {
-            routeId: 'route-operations-coordinator-logistics-mid',
-            roleId: 'operations-coordinator',
-            sectorId: 'logistics',
-            reasonSummary: 'Your profile aligns with coordination and logistics operations.',
-            matchedSignals: ['TARGET_SECTOR_HINT'],
-            explanation: {
-              reasonSummary: 'Your profile aligns with coordination and logistics operations.',
-              fitLabel: 'medio',
-              fitScore: 67,
-              explanationKeywords: ['coordination', 'logistics'],
-              decisionGuidance:
-                'Compare it if you prefer execution-heavy operational coordination.',
-            },
-          },
-          {
-            routeId: 'route-team-lead-technology-mid',
-            roleId: 'team-lead',
-            sectorId: 'technology',
-            reasonSummary: 'Your profile aligns with leadership and systems collaboration.',
-            matchedSignals: ['LEADERSHIP_MATCH'],
-            explanation: {
-              reasonSummary: 'Your profile aligns with leadership and systems collaboration.',
-              fitLabel: 'medio',
-              fitScore: 61,
-              explanationKeywords: ['leadership', 'systems'],
-              decisionGuidance:
-                'Use this route if you want to move toward cross-functional tech teams.',
-            },
-          },
-        ],
-      },
-      meta: {
-        timestamp: now.toISOString(),
-        source: 'recs.server.generate-routes',
-      },
-    });
-
-    const result = await getCareerRoutesAction({
-      requestId: 'req-us1-1',
-      now,
-    });
-
-    expect(requireUserMock).toHaveBeenCalledTimes(1);
-    expect(getOnboardingOverviewMock).toHaveBeenCalledWith('user-1');
-    expect(getProfileMock).toHaveBeenCalledExactlyOnceWith('user-1');
-    expect(buildRecommendationInputMock).toHaveBeenCalledWith({
-      userId: 'user-1',
-      overview,
-      careerHistory: undefined,
-    });
-    expect(generateCareerRoutesMock).toHaveBeenCalledWith(
-      { snapshotId: 'wizard-profile-snapshot-user-1' },
-      {
-        requestId: 'req-us1-1',
-        now,
-        source: { kind: 'legacy_wizard' },
-      },
+    const meta = { timestamp: now.toISOString(), source: 'recs.server.resolve-state' };
+    mocks.resolve.mockResolvedValue(
+      domainSuccess({ recommendations: recommendationOutputFixture }, meta),
     );
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
-    }
-
-    for (const route of result.data.routes) {
-      expect(route.explanation).toBeDefined();
-      expect(route.explanation?.reasonSummary).toBe(route.reasonSummary);
-      expect(route.explanation?.fitLabel).toMatch(/alto|medio|exploratorio/);
-      expect(route.explanation?.explanationKeywords.length).toBeGreaterThan(0);
-      expect(route.explanation?.decisionGuidance.length).toBeGreaterThanOrEqual(8);
-    }
-  });
-
-  it('returns safe explainability fallback when route metadata is incomplete', async () => {
-    const now = new Date('2026-03-25T01:08:00.000Z');
-    const overview = {
-      draft: {
-        militar: {
-          branch: 'army',
-        },
-      },
-      employabilityFlow: {
-        profileSnapshotId: 'profile-snapshot-user-1',
-      },
-    };
-
-    requireUserMock.mockResolvedValueOnce({ id: 'user-1' });
-    getOnboardingOverviewMock.mockResolvedValueOnce(overview);
-    buildRecommendationInputMock.mockReturnValueOnce({
-      input: { snapshotId: 'wizard-profile-snapshot-user-1' },
-      source: { kind: 'legacy_wizard' },
-    });
-    generateCareerRoutesMock.mockReturnValueOnce({
-      ok: true,
-      data: {
-        recommendationSetId: 'recset-wizard-profile-snapshot-user-1-20260325010800',
-        generatedAt: now.toISOString(),
-        sourceSnapshotId: 'wizard-profile-snapshot-user-1',
-        routes: [
-          {
-            routeId: 'route-project-manager-logistics-mid',
-            roleId: 'project-manager',
-            sectorId: 'logistics',
-            reasonSummary: 'Continuidad operativa en planificacion de proyectos.',
-            matchedSignals: ['TARGET_ROLE_HINT'],
-          },
-          {
-            routeId: 'route-operations-coordinator-logistics-mid',
-            roleId: 'operations-coordinator',
-            sectorId: 'logistics',
-            reasonSummary: 'Experiencia transferible en coordinacion de operaciones.',
-            matchedSignals: ['TARGET_SECTOR_HINT'],
-            explanation: {
-              reasonSummary: 'Experiencia transferible en coordinacion de operaciones.',
-              fitLabel: 'medio',
-              fitScore: 60,
-              explanationKeywords: ['coordinacion', 'operaciones'],
-              decisionGuidance: 'Compara esta ruta con tu objetivo de corto plazo.',
-            },
-          },
-          {
-            routeId: 'route-team-lead-technology-mid',
-            roleId: 'team-lead',
-            sectorId: 'technology',
-            reasonSummary: 'Liderazgo y colaboracion tecnica en equipos multidisciplinares.',
-            matchedSignals: ['LEADERSHIP_MATCH'],
-            explanation: {
-              reasonSummary: 'Liderazgo y colaboracion tecnica en equipos multidisciplinares.',
-              fitLabel: 'exploratorio',
-              fitScore: 41,
-              explanationKeywords: ['liderazgo', 'colaboracion'],
-              decisionGuidance: 'Usala para comparar una opcion de exploracion inicial.',
-            },
-          },
-        ],
-      },
-      meta: {
-        timestamp: now.toISOString(),
-        source: 'recs.server.generate-routes',
-      },
-    });
-
-    const result = await getCareerRoutesAction({ now });
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
-    }
-
-    expect(result.data.routes[0]?.explanation).toMatchObject({
-      reasonSummary: 'Continuidad operativa en planificacion de proyectos.',
-      fitLabel: 'exploratorio',
+    expect(await getCareerRoutesAction({ now, requestId: 'req-1' })).toEqual(
+      domainSuccess(recommendationOutputFixture, meta),
+    );
+    expect(mocks.user).toHaveBeenCalledTimes(1);
+    expect(mocks.profile).toHaveBeenCalledExactlyOnceWith('user-1');
+    expect(mocks.overview).toHaveBeenCalledExactlyOnceWith('user-1');
+    expect(mocks.resolve).toHaveBeenCalledExactlyOnceWith({
+      userId: 'user-1',
+      overview: { state: null },
+      profile: null,
+      now,
+      requestId: 'req-1',
     });
   });
+
+  it.each(['VALIDATION_ERROR', 'CONFLICT', 'INTERNAL_ERROR', 'EXTERNAL_DEPENDENCY_ERROR'] as const)(
+    'preserves resolver failure %s without returning old recommendations',
+    async (code) => {
+      const failure = domainFailure(createDomainError({ code, message: 'Safe resolver failure' }));
+      mocks.resolve.mockResolvedValue(failure);
+      expect(await getCareerRoutesAction()).toEqual(failure);
+    },
+  );
 
   it('returns safe internal error when loading profile context fails', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const now = new Date('2026-03-25T01:05:00.000Z');
-
-    requireUserMock.mockRejectedValueOnce(new Error('database timeout: supabase unavailable'));
-
-    const result = await getCareerRoutesAction({ now });
-
-    expect(result.ok).toBe(false);
-    if (result.ok) {
-      return;
-    }
-
-    expect(result.error.code).toBe('INTERNAL_ERROR');
-    expect(result.error.message).toBe(
-      'Unable to load structured profile for career recommendations',
-    );
-    expect(result.error.message).not.toContain('supabase');
-    expect(result.error.retryable).toBe(false);
+    mocks.user.mockRejectedValue(new Error('private database failure'));
+    const result = await getCareerRoutesAction();
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Unable to load structured profile for career recommendations',
+        retryable: false,
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('private database failure');
     expect(log).toHaveBeenCalledExactlyOnceWith(
       'Career routes action: unexpected context or generation failure',
     );
@@ -262,33 +76,26 @@ describe('getCareerRoutesAction', () => {
 
   it('preserves expected dependency failures without logging an unexpected exception', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
-    requireUserMock.mockResolvedValueOnce({ id: 'user-1' });
     const error = createDomainError({
       code: 'EXTERNAL_DEPENDENCY_ERROR',
       message: 'Service temporarily unavailable',
       retryable: true,
     });
-    getOnboardingOverviewMock.mockRejectedValueOnce(error);
+    mocks.overview.mockRejectedValue(error);
     expect(await getCareerRoutesAction()).toMatchObject({ ok: false, error });
     expect(log).not.toHaveBeenCalled();
-    expect(generateCareerRoutesMock).not.toHaveBeenCalled();
+    expect(mocks.resolve).not.toHaveBeenCalled();
   });
 
-  it('does not generate or fall back when the canonical profile read fails', async () => {
-    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
-    requireUserMock.mockResolvedValueOnce({ id: 'user-1' });
-    getOnboardingOverviewMock.mockResolvedValueOnce({});
-    getProfileMock.mockRejectedValueOnce(new Error('private profile integrity failure'));
+  it('does not resolve or fall back when the canonical profile read fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.profile.mockRejectedValue(new Error('private profile integrity failure'));
     const result = await getCareerRoutesAction();
     expect(result).toMatchObject({
       ok: false,
       error: { code: 'INTERNAL_ERROR', retryable: false },
     });
     expect(JSON.stringify(result)).not.toContain('private profile');
-    expect(buildRecommendationInputMock).not.toHaveBeenCalled();
-    expect(generateCareerRoutesMock).not.toHaveBeenCalled();
-    expect(log).toHaveBeenCalledExactlyOnceWith(
-      'Career routes action: unexpected context or generation failure',
-    );
+    expect(mocks.resolve).not.toHaveBeenCalled();
   });
 });
