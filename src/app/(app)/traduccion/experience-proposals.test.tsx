@@ -247,7 +247,7 @@ describe('/traduccion propuestas desde perfil autenticado', () => {
         message: 'Invalid recommendation input payload',
         source: 'recs.server.generate-routes',
         text: 'Los datos enviados para las rutas no son validos',
-        action: 'Completar experiencia del onboarding',
+        action: 'Revisar experiencias y datos del perfil',
         logs: false,
       },
       {
@@ -306,7 +306,7 @@ describe('/traduccion propuestas desde perfil autenticado', () => {
       expect(doc.body.textContent).not.toContain('Completa las funciones y responsabilidades');
       expect(doc.body.textContent).not.toContain(entry.message);
       const action = [...doc.querySelectorAll('a')].find((link) =>
-        ['Reintentar rutas', 'Completar experiencia del onboarding'].includes(
+        ['Reintentar rutas', 'Revisar experiencias y datos del perfil'].includes(
           link.textContent ?? '',
         ),
       );

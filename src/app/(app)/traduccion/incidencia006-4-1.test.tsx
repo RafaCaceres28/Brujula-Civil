@@ -246,9 +246,9 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
     const doc = await pageDocument();
     expect(doc.body.textContent).toContain('Enseñanza en actividades de formación técnica.');
     expect(doc.body.textContent).toContain('Vista previa textual anterior');
-    expect(doc.body.textContent).toContain('Completa las funciones y responsabilidades');
+    expect(doc.body.textContent).toContain('Revisa tus experiencias y los datos complementarios');
     expect(doc.querySelector('a[href="/onboarding/experiencia"]')?.textContent).toBe(
-      'Completar experiencia del onboarding',
+      'Revisar experiencias y datos del perfil',
     );
     expect(doc.body.textContent).not.toContain('Reintentar rutas');
     expect(doc.body.textContent).toContain('no dispone de un resumen fuente');
@@ -339,7 +339,7 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
     const doc = await pageDocument();
     expect(doc.body.textContent).toContain('problema interno o de integridad de datos');
     expect(doc.body.textContent).toContain('Enseñanza en actividades de formación técnica.');
-    expect(doc.body.textContent).not.toContain('Completar experiencia del onboarding');
+    expect(doc.body.textContent).not.toContain('Revisar experiencias y datos del perfil');
     expect(doc.body.textContent).not.toContain('Reintentar rutas');
     expect(log.mock.calls).toEqual([
       ['Career routes action: unexpected context or generation failure'],
@@ -451,7 +451,7 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
     expect(translation).toMatchObject({ ok: false, error: { code: 'VALIDATION_ERROR' } });
     const doc = await pageDocument();
     expect(doc.body.textContent).not.toContain('Rutas sugeridas para tu transicion');
-    expect(doc.body.textContent).toContain('Completa las funciones y responsabilidades');
+    expect(doc.body.textContent).toContain('Revisa tus experiencias y los datos complementarios');
     expect(writes).toBe(0);
   });
 });

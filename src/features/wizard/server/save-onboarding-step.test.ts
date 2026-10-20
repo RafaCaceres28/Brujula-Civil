@@ -12,7 +12,10 @@ vi.mock('./recalculate-onboarding-state', () => ({
   recalculateOnboardingState: vi.fn(),
 }));
 
-function createSupabaseMock() {
+function createSupabaseMock(
+  previousExperience?: Record<string, unknown>,
+  failure?: 'readStep' | 'readDraft' | 'upsert' | 'update',
+) {
   const calls: {
     upsert?: Record<string, unknown>;
     updateDraft?: Record<string, unknown>;
@@ -22,9 +25,19 @@ function createSupabaseMock() {
     from(table: string) {
       if (table === 'wizard_step_states') {
         return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: { payload_jsonb: previousExperience },
+                  error: failure === 'readStep' ? { message: 'private' } : null,
+                }),
+              }),
+            }),
+          }),
           upsert: async (payload: Record<string, unknown>) => {
             calls.upsert = payload;
-            return { error: null };
+            return { error: failure === 'upsert' ? { message: 'private' } : null };
           },
         };
       }
@@ -49,7 +62,16 @@ function createSupabaseMock() {
                             additionalContext: null,
                           },
                         }),
+                        ...(previousExperience
+                          ? {
+                              experiencia: {
+                                ...previousExperience,
+                                aggregatedMetadata: { keep: true },
+                              },
+                            }
+                          : {}),
                         employabilityFlow: {
+                          ...(calls.upsert ? { writtenDuringStep: true } : {}),
                           customNested: { retained: ['one', 'two'] },
                           recommendations: {
                             recommendationSetId: 'recset-snapshot-1-20260324010101',
@@ -107,7 +129,7 @@ function createSupabaseMock() {
                         },
                       },
                     },
-                    error: null,
+                    error: failure === 'readDraft' ? { message: 'private' } : null,
                   }),
                 };
               },
@@ -116,7 +138,7 @@ function createSupabaseMock() {
           update(payload: Record<string, unknown>) {
             calls.updateDraft = payload;
             return {
-              eq: async () => ({ error: null }),
+              eq: async () => ({ error: failure === 'update' ? { message: 'private' } : null }),
             };
           },
         };
@@ -130,6 +152,67 @@ function createSupabaseMock() {
 }
 
 describe('saveOnboardingStep', () => {
+  it.each(['readStep', 'readDraft', 'upsert', 'update'] as const)(
+    'no recalcula ni devuelve exito si falla %s',
+    async (failure) => {
+      vi.mocked(recalculateOnboardingState).mockClear();
+      const { client, calls } = createSupabaseMock({ functionTypes: ['legacy'] }, failure);
+      vi.mocked(createClient).mockResolvedValue(client as never);
+      await expect(
+        saveOnboardingStep('user-1', 'experiencia', onboardingDraftSchema.parse({}).experiencia, {
+          markCompleted: true,
+          experienceFields: ['tools'],
+        }),
+      ).rejects.toThrow();
+      expect(recalculateOnboardingState).not.toHaveBeenCalled();
+      if (failure === 'readStep' || failure === 'readDraft') expect(calls.upsert).toBeUndefined();
+    },
+  );
+  it('preserva funciones raw y metadata, omite campos no publicados y vacia solo complementarios explicitos', async () => {
+    const previous = {
+      responsibilityAreas: ['operations'],
+      functionTypes: ['Funcion legacy no catalogada'],
+      tools: ['erp'],
+      achievements: ['Original'],
+      additionalContext: 'Contexto',
+      metadata: { hidden: ['keep'] },
+    };
+    const { client, calls } = createSupabaseMock(previous);
+    vi.mocked(createClient).mockResolvedValue(client as never);
+    await saveOnboardingStep('user-1', 'experiencia', onboardingDraftSchema.parse({}).experiencia, {
+      markCompleted: true,
+      experienceFields: ['tools'],
+    });
+    const expected = { ...previous, tools: [], aggregatedMetadata: { keep: true } };
+    expect(calls.upsert).toMatchObject({
+      step_key: 'missions_achievements',
+      is_completed: true,
+      payload_jsonb: expected,
+    });
+    const draft = calls.updateDraft?.aggregated_draft_jsonb as Record<string, unknown>;
+    expect(draft.experiencia).toEqual(expected);
+    expect(draft).not.toHaveProperty('careerHistory');
+    expect(draft.employabilityFlow).toMatchObject({
+      writtenDuringStep: true,
+      customNested: { retained: ['one', 'two'] },
+      recommendations: { recommendationSetId: 'recset-snapshot-1-20260324010101' },
+    });
+  });
+
+  it('conserva experiencia raw al guardar un paso posterior, sin normalizar legacy oculto', async () => {
+    const previous = { functionTypes: ['legacy'], metadata: { keep: true } };
+    const { client, calls } = createSupabaseMock(previous);
+    vi.mocked(createClient).mockResolvedValue(client as never);
+    await saveOnboardingStep(
+      'user-1',
+      'competencias',
+      onboardingDraftSchema.parse({}).competencias,
+      { markCompleted: true },
+    );
+    expect(
+      (calls.updateDraft?.aggregated_draft_jsonb as Record<string, unknown>).experiencia,
+    ).toEqual({ ...previous, aggregatedMetadata: { keep: true } });
+  });
   it('upserts step state, merges draft, and recalculates wizard state', async () => {
     const { client, calls } = createSupabaseMock();
 

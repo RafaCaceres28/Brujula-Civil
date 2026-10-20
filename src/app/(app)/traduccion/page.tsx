@@ -29,13 +29,13 @@ import { isDomainError } from '@/lib/contracts';
 
 const ROUTES_FEEDBACK = {
   insufficient_data:
-    'Completa las funciones y responsabilidades de tu experiencia en el onboarding para obtener rutas sugeridas. Las propuestas de tu historial siguen disponibles.',
+    'Revisa tus experiencias y los datos complementarios del perfil para obtener rutas sugeridas. Las propuestas de tu historial siguen disponibles.',
   storage:
     'No pudimos cargar las rutas sugeridas. No pudimos leer los datos guardados del onboarding. Reintenta la lectura.',
   service:
     'No pudimos cargar las rutas sugeridas. El servicio no esta disponible temporalmente. Espera un momento y reintenta.',
   invalid_input:
-    'Los datos enviados para las rutas no son validos. Revisa tu experiencia del onboarding.',
+    'Los datos enviados para las rutas no son validos. Revisa tus experiencias y los datos complementarios del perfil.',
   internal:
     'No pudimos cargar las rutas sugeridas por un problema interno o de integridad de datos. Si persiste, contacta con soporte.',
   unavailable:
@@ -108,7 +108,7 @@ function TranslationPageContent(props: TranslationPageContentProps) {
           {props.routesFailure === 'insufficient_data' ||
           props.routesFailure === 'invalid_input' ? (
             <Link href={`${routes.app.onboarding}/experiencia`}>
-              Completar experiencia del onboarding
+              Revisar experiencias y datos del perfil
             </Link>
           ) : props.routesFailure === 'storage' || props.routesFailure === 'service' ? (
             <Link href={routes.app.translation}>Reintentar rutas</Link>

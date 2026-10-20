@@ -1,18 +1,27 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { readExperiencesAction } from '@/features/profile/actions/read-experiences-action';
 import { FUNCTION_TYPE_OPTIONS } from '@/features/wizard/config/wizard-catalogs';
 import type { StructuredExperience } from '../schemas/structured-experience.schema';
 import { LocalExperienceForm } from './local-experience-form';
 
+export type ExperienceEditorState = {
+  dirty: boolean;
+  pending: boolean;
+  reading: boolean;
+  loaded: boolean;
+};
+
 export function ProfessionalExperienceEditor({
   initialExperiences,
   initialError,
+  onStateChange,
 }: {
   initialExperiences: StructuredExperience[];
   initialError?: string;
+  onStateChange?: (state: ExperienceEditorState) => void;
 }) {
   const [experiences, setExperiences] = useState(initialExperiences);
   const [error, setError] = useState(initialError);
@@ -28,6 +37,10 @@ export function ProfessionalExperienceEditor({
   const [pending, setPending] = useState(false);
   const [current, setCurrent] = useState<StructuredExperience>();
   const [conflict, setConflict] = useState(false);
+  const notifyState = useEffectEvent((state: ExperienceEditorState) => onStateChange?.(state));
+  useEffect(() => {
+    notifyState({ dirty, pending, reading, loaded });
+  }, [dirty, pending, reading, loaded]);
   const label = (activity: string) =>
     activity === 'reporting'
       ? 'Elaboración de informes'

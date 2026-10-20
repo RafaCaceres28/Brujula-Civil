@@ -14,7 +14,8 @@ import {
   employabilityFlowDraftSchema,
   onboardingDraftStateSchema,
 } from '../schemas/wizard-state.schema';
-import type { WizardPayloadBySlug } from '../types/wizard.types';
+import { mergeProfileJson } from '../../profile/services/profile-json';
+import type { ExperienciaStepPayload, WizardPayloadBySlug } from '../types/wizard.types';
 import { recalculateOnboardingState } from './recalculate-onboarding-state';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -27,6 +28,7 @@ export async function saveOnboardingStep<TStep extends WizardStepSlug>(
   payload: WizardPayloadBySlug[TStep],
   options?: {
     markCompleted?: boolean;
+    experienceFields?: readonly Exclude<keyof ExperienciaStepPayload, 'functionTypes'>[];
   },
 ) {
   const supabase = await createClient();
@@ -67,36 +69,61 @@ export async function saveOnboardingStep<TStep extends WizardStepSlug>(
   const dbKey = getDbKeyBySlug(stepSlug);
   const stepOrder = getStepOrderBySlug(stepSlug);
 
+  let storedPayload: Record<string, unknown> = parsedPayload;
+  if (stepSlug === 'experiencia' && options?.experienceFields) {
+    const { data: previousStep, error: previousStepError } = await supabase
+      .from('wizard_step_states')
+      .select('payload_jsonb')
+      .eq('user_id', userId)
+      .eq('step_key', dbKey)
+      .maybeSingle();
+    if (previousStepError) throw new Error('No se pudo leer el paso de experiencia guardado.');
+    const { data: previousState, error: previousStateError } = await supabase
+      .from('user_wizard_state')
+      .select('aggregated_draft_jsonb')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (previousStateError) throw new Error('No se pudo leer el borrador de experiencia guardado.');
+    const aggregate = isRecord(previousState?.aggregated_draft_jsonb)
+      ? previousState.aggregated_draft_jsonb.experiencia
+      : undefined;
+    const previous = previousStep?.payload_jsonb;
+    // Validate edits, but retain hidden legacy fields and metadata in their original form.
+    storedPayload = mergeProfileJson(
+      isRecord(aggregate) ? aggregate : {},
+      isRecord(previous) ? previous : {},
+    );
+    for (const field of options.experienceFields) {
+      storedPayload[field] = (parsedPayload as ExperienciaStepPayload)[field];
+    }
+  }
+
   const { error: upsertStepError } = await supabase.from('wizard_step_states').upsert(
     {
       user_id: userId,
       step_key: dbKey,
       step_order: stepOrder,
       is_completed: markCompleted,
-      payload_jsonb: parsedPayload,
+      payload_jsonb: storedPayload,
       saved_at: now,
     },
-    {
-      onConflict: 'user_id,step_key',
-    },
+    { onConflict: 'user_id,step_key' },
   );
-
   if (upsertStepError) {
     throw new Error(`Error saving onboarding step "${stepSlug}": ${upsertStepError.message}`);
   }
 
+  // Re-read after the upsert, as before; do not reuse the earlier preservation snapshot.
   const { data: currentWizardState, error: currentWizardStateError } = await supabase
     .from('user_wizard_state')
     .select('aggregated_draft_jsonb')
     .eq('user_id', userId)
     .maybeSingle();
-
   if (currentWizardStateError) {
     throw new Error(
       `Error loading user_wizard_state aggregated draft: ${currentWizardStateError.message}`,
     );
   }
-
   const currentAggregatedDraft = isRecord(currentWizardState?.aggregated_draft_jsonb)
     ? currentWizardState.aggregated_draft_jsonb
     : {};
@@ -115,6 +142,10 @@ export async function saveOnboardingStep<TStep extends WizardStepSlug>(
   const mergedAggregatedDraft = {
     ...currentAggregatedDraft,
     ...mergedDraft,
+    ...(isRecord(currentAggregatedDraft.experiencia)
+      ? { experiencia: currentAggregatedDraft.experiencia }
+      : {}),
+    ...(stepSlug === 'experiencia' ? { experiencia: storedPayload } : {}),
     ...(currentEmployabilityFlow
       ? {
           employabilityFlow: {

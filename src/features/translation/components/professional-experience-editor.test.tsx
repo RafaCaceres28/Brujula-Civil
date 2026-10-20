@@ -62,6 +62,51 @@ function failure(code: string) {
 }
 
 describe('ProfessionalExperienceEditor', () => {
+  it('publica estado UI opcional sin bucle por callback cambiante ni afirmar guardado pendiente', async () => {
+    const states = vi.fn();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    const render = (error?: string) =>
+      act(() =>
+        root.render(
+          <ProfessionalExperienceEditor
+            initialExperiences={[]}
+            initialError={error}
+            onStateChange={(state) => states(state)}
+          />,
+        ),
+      );
+    render();
+    expect(states).toHaveBeenLastCalledWith({
+      dirty: false,
+      pending: false,
+      reading: false,
+      loaded: true,
+    });
+    const count = states.mock.calls.length;
+    render();
+    expect(states).toHaveBeenCalledTimes(count);
+    await click('Añadir experiencia');
+    expect(states).toHaveBeenCalledTimes(count);
+    change('activity', 'analysis');
+    expect(states).toHaveBeenLastCalledWith({
+      dirty: true,
+      pending: false,
+      reading: false,
+      loaded: true,
+    });
+    let resolve!: (result: unknown) => void;
+    mocks.create.mockReturnValue(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    await click('Guardar experiencia');
+    expect(states.mock.lastCall?.[0]).toMatchObject({ dirty: true, pending: true });
+    await act(async () => resolve(failure('CONFLICT')));
+    expect(states.mock.lastCall?.[0]).toMatchObject({ dirty: true, pending: false });
+  });
   it('distingue vacío válido y lectura fallida; reintenta sin habilitar creación antes de leer', async () => {
     setup([], 'No se pudo cargar el historial');
     expect(container.querySelector('form')).toBeNull();

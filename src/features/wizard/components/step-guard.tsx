@@ -26,6 +26,9 @@ const ALLOWED_DB_STEPS_BY_SLUG: Record<WizardStepSlug, string[]> = {
 export function StepGuard({ requestedStepSlug, wizardState, children }: StepGuardProps) {
   const currentStep = wizardState?.current_step;
 
+  // Experience is independently editable, including after onboarding completion.
+  if (requestedStepSlug === 'experiencia') return <>{children}</>;
+
   if (!currentStep) {
     return <>{children}</>;
   }
@@ -33,6 +36,8 @@ export function StepGuard({ requestedStepSlug, wizardState, children }: StepGuar
   if (currentStep === 'completed' || wizardState?.is_completed) {
     redirect('/dashboard');
   }
+
+  if (requestedStepSlug === 'militar') return <>{children}</>;
 
   const allowedSteps = ALLOWED_DB_STEPS_BY_SLUG[requestedStepSlug];
 
