@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { FUNCTION_TYPE_OPTIONS, TOOL_OPTIONS } from '../../wizard/config/wizard-catalogs';
 import {
+  MAINTENANCE_MATERIALS,
+  MAINTENANCE_OPERATIONS,
+  type MaintenanceMaterial,
+  type MaintenanceOperation,
+} from '../config/maintenance-catalog';
+import {
   structuredExperienceSchema,
   structuredExperiencesSchema,
 } from './structured-experience.schema';
@@ -12,6 +18,79 @@ const EXPERIENCE = {
 };
 
 describe('structuredExperienceSchema', () => {
+  it('preserves optional material-only declarations without inventing operations or changing legacy records', () => {
+    expect(structuredExperienceSchema.parse(EXPERIENCE)).toStrictEqual(EXPERIENCE);
+    const input = {
+      ...EXPERIENCE,
+      maintenanceTasks: [
+        { material: 'light_vehicles' },
+        { material: 'communications_equipment', operations: ['coaxial_repair'] },
+      ],
+    };
+    expect(structuredExperienceSchema.parse(input)).toStrictEqual(input);
+    expect(
+      structuredExperienceSchema.safeParse({ ...input, activity: 'instruction' }).success,
+    ).toBe(false);
+    expect(
+      structuredExperienceSchema.safeParse({
+        ...input,
+        activity: 'analysis',
+        maintenanceTasks: undefined,
+      }).success,
+    ).toBe(false);
+  });
+
+  it.each(
+    (Object.keys(MAINTENANCE_MATERIALS) as MaintenanceMaterial[]).flatMap((material) =>
+      (Object.keys(MAINTENANCE_OPERATIONS) as MaintenanceOperation[]).map((operation) => ({
+        material,
+        operation,
+      })),
+    ),
+  )('validates the specific applicability $material / $operation', ({ material, operation }) => {
+    const result = structuredExperienceSchema.safeParse({
+      ...EXPERIENCE,
+      maintenanceTasks: [{ material, operations: [operation] }],
+    });
+    const applicable =
+      material === 'communications_equipment'
+        ? [
+            'communications_cleaning',
+            'batteries',
+            'coaxial_repair',
+            'antenna_repair',
+            'report_faults',
+          ]
+        : [
+            'levels_functioning',
+            'vehicle_cleaning',
+            'consumables_lubrication',
+            'periodic_checks',
+            'report_faults',
+          ];
+    expect(result.success).toBe(applicable.includes(operation));
+    if (!result.success)
+      expect(result.error.issues[0].path).toEqual(['maintenanceTasks', 0, 'operations', 0]);
+  });
+
+  it.each([
+    null,
+    [],
+    {},
+    [null],
+    [{ material: 'unknown' }],
+    [{ material: 'light_vehicles', operations: [] }],
+    [{ material: 'light_vehicles', operations: null }],
+    [{ material: 'light_vehicles', operations: ['unknown'] }],
+    [{ material: 'light_vehicles', operations: ['levels_functioning', 'levels_functioning'] }],
+    [{ material: 'light_vehicles' }, { material: 'light_vehicles' }],
+    [{ material: 'light_vehicles', notes: 'invented' }],
+  ])('rejects malformed, duplicate or empty maintenance declarations: %j', (maintenanceTasks) => {
+    expect(structuredExperienceSchema.safeParse({ ...EXPERIENCE, maintenanceTasks }).success).toBe(
+      false,
+    );
+  });
+
   it.each(['regular_duties', 'temporary_assignment', 'acting_replacement', 'not_sure'])(
     'preserves assignmentContext %s for every catalog activity with or without equipment',
     (assignmentContext) => {

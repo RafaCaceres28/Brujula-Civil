@@ -13,6 +13,178 @@ const experience: StructuredExperience = {
 };
 
 describe('buildExperienceProposals', () => {
+  it('groups only declared operations of each material, with distinct competency and exact trace', () => {
+    const input = structuredExperiencesSchema.parse([
+      {
+        id: 'maintenance-1',
+        activity: 'op_maintenance',
+        maintenanceTasks: [
+          { material: 'light_vehicles', operations: ['levels_functioning'] },
+          {
+            material: 'heavy_vehicles',
+            operations: ['consumables_lubrication', 'vehicle_cleaning'],
+          },
+          {
+            material: 'communications_equipment',
+            operations: ['coaxial_repair', 'batteries', 'communications_cleaning'],
+          },
+          { material: 'armoured_vehicles' },
+        ],
+      },
+    ]);
+    const proposals = buildExperienceProposals(input);
+    expect(proposals.map((value) => value.cvDescription.text)).toEqual([
+      'Comprobación de niveles y elementos de funcionamiento en vehículos ligeros.',
+      'Limpieza y conservación; reposición de consumibles y lubricación en vehículos pesados.',
+      'Limpieza y mantenimiento básico; carga y comprobación de baterías en equipos de comunicaciones.',
+      'Reparación de cableado coaxial en equipos de comunicaciones.',
+    ]);
+    expect(proposals.map((value) => value.civilianCompetencyCandidate.label)).toEqual([
+      'Comprobaciones básicas de funcionamiento de vehículos ligeros',
+      'Conservación básica de vehículos pesados',
+      'Mantenimiento básico de equipos de comunicaciones',
+      'Reparación de cableado coaxial',
+    ]);
+    for (const proposal of proposals) {
+      expect(proposal.id).toMatch(/^maintenance:maintenance-1:/);
+      expect(proposal.cvDescription).toMatchObject({
+        basis: 'direct_declaration',
+        requiresReview: true,
+      });
+      expect(proposal.civilianCompetencyCandidate).toMatchObject({
+        basis: 'direct_declaration',
+        requiresReview: true,
+      });
+      const { material, operations } = proposal.maintenanceSource!;
+      expect(proposal.cvDescription.evidence).toEqual([
+        {
+          experienceId: 'maintenance-1',
+          field: 'structuredExperiences.activity',
+          value: 'op_maintenance',
+        },
+        {
+          experienceId: 'maintenance-1',
+          field: 'structuredExperiences.maintenanceTasks.material',
+          value: material,
+        },
+        {
+          experienceId: 'maintenance-1',
+          field: 'structuredExperiences.maintenanceTasks.operations',
+          material,
+          value: operations,
+        },
+      ]);
+      expect(proposal.civilianCompetencyCandidate.evidence).toEqual(
+        proposal.cvDescription.evidence,
+      );
+      expect(proposal.civilianCompetencyCandidate.evidence).not.toBe(
+        proposal.cvDescription.evidence,
+      );
+    }
+  });
+
+  it('does not infer repairs, defaults or tasks from equipment, metadata, siblings or material alone', () => {
+    const input = structuredExperiencesSchema.parse([
+      {
+        id: 'empty',
+        activity: 'op_maintenance',
+        equipment: 'radio_comms',
+        participation: ['performed'],
+        autonomy: 'autonomous',
+        context: 'Reparación de antenas',
+      },
+      {
+        id: 'material',
+        activity: 'op_maintenance',
+        maintenanceTasks: [{ material: 'communications_equipment' }],
+      },
+      {
+        id: 'checks',
+        activity: 'op_maintenance',
+        maintenanceTasks: [
+          { material: 'armoured_vehicles', operations: ['periodic_checks', 'report_faults'] },
+        ],
+      },
+    ]);
+    const proposals = buildExperienceProposals(input);
+    expect(proposals).toHaveLength(2);
+    expect(proposals.every((proposal) => proposal.experienceId === 'checks')).toBe(true);
+    expect(JSON.stringify(proposals)).not.toMatch(
+      /Reparación|reparación|mecánic|certific|diagnóstic|avanzad/,
+    );
+    expect(proposals[1].civilianCompetencyCandidate.label).toBe(
+      'Comunicación de incidencias técnicas',
+    );
+  });
+
+  it('keeps antenna repair separate and qualifies non-personal participation without inventing performance', () => {
+    const [proposal] = buildExperienceProposals(
+      structuredExperiencesSchema.parse([
+        {
+          id: 'help',
+          activity: 'op_maintenance',
+          participation: ['assisted'],
+          maintenanceTasks: [
+            { material: 'communications_equipment', operations: ['antenna_repair'] },
+          ],
+        },
+      ]),
+    );
+    expect(proposal.cvDescription.text).toBe(
+      'Participación en tareas de reparación de antenas en equipos de comunicaciones.',
+    );
+    expect(proposal.civilianCompetencyCandidate.label).toBe(
+      'Participación en reparación de antenas',
+    );
+    expect(proposal.cvDescription.evidence.at(-1)).toEqual({
+      experienceId: 'help',
+      field: 'structuredExperiences.participation',
+      value: 'assisted',
+    });
+  });
+
+  it('is deterministic for frozen maintenance sets, isolates output evidence and never mutates input', () => {
+    const input = structuredExperiencesSchema.parse([
+      {
+        id: 'stable',
+        activity: 'op_maintenance',
+        maintenanceTasks: [
+          {
+            material: 'communications_equipment',
+            operations: ['antenna_repair', 'coaxial_repair', 'batteries'],
+          },
+          { material: 'light_vehicles', operations: ['periodic_checks', 'levels_functioning'] },
+        ],
+      },
+    ]);
+    const before = JSON.stringify(input);
+    input[0].maintenanceTasks!.forEach((entry) => {
+      Object.freeze(entry.operations);
+      Object.freeze(entry);
+    });
+    Object.freeze(input[0].maintenanceTasks);
+    Object.freeze(input[0]);
+    Object.freeze(input);
+    const output = buildExperienceProposals(input);
+    expect(
+      buildExperienceProposals(
+        input.map((value) => ({
+          ...value,
+          maintenanceTasks: [...value.maintenanceTasks!]
+            .reverse()
+            .map((entry) => ({ ...entry, operations: [...entry.operations!].reverse() })),
+        })),
+      ),
+    ).toEqual(output);
+    expect(JSON.stringify(input)).toBe(before);
+    expect(new Set(output.map(({ id }) => id)).size).toBe(output.length);
+    output[0].maintenanceSource!.operations.pop();
+    expect(buildExperienceProposals(input)).not.toEqual(output);
+    expect(output[0].cvDescription.evidence).toEqual(
+      output[0].civilianCompetencyCandidate.evidence,
+    );
+  });
+
   it.each([
     ['assisted', 'Apoyo en actividades de formación técnica.'],
     ['performed', 'Realización de actividades de formación técnica.'],

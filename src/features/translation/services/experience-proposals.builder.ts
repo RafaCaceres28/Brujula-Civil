@@ -1,5 +1,10 @@
 import { FUNCTION_TYPE_OPTIONS } from '../../wizard/config/wizard-catalogs';
 import type { StructuredExperience } from '../schemas/structured-experience.schema';
+import {
+  MAINTENANCE_MATERIALS,
+  MAINTENANCE_OPERATIONS,
+  type MaintenanceOperation,
+} from '../config/maintenance-catalog';
 import type {
   ExperienceProposal,
   ExperienceProposalEvidence,
@@ -23,6 +28,97 @@ export function buildExperienceProposals(
 
   for (const experience of sorted) {
     const { activity, id: experienceId } = experience;
+    if (activity === 'op_maintenance') {
+      for (const material of Object.keys(
+        MAINTENANCE_MATERIALS,
+      ) as (keyof typeof MAINTENANCE_MATERIALS)[]) {
+        const entry = experience.maintenanceTasks?.find((value) => value.material === material);
+        if (!entry?.operations?.length) continue;
+        const groups = new Map<string, MaintenanceOperation[]>();
+        for (const operation of Object.keys(MAINTENANCE_OPERATIONS) as MaintenanceOperation[]) {
+          if (!entry.operations.includes(operation)) continue;
+          const category = MAINTENANCE_OPERATIONS[operation].category;
+          const group = category === 'repair' ? operation : category;
+          groups.set(group, [...(groups.get(group) ?? []), operation]);
+        }
+        for (const [group, operations] of groups) {
+          const materialLabel = MAINTENANCE_MATERIALS[material].toLocaleLowerCase('es');
+          const competency =
+            group === 'inspect'
+              ? `Comprobaciones básicas de funcionamiento de ${materialLabel}`
+              : group === 'conserve'
+                ? `${material === 'communications_equipment' ? 'Mantenimiento básico' : 'Conservación básica'} de ${materialLabel}`
+                : group === 'report'
+                  ? 'Comunicación de incidencias técnicas'
+                  : group === 'coaxial_repair'
+                    ? 'Reparación de cableado coaxial'
+                    : 'Reparación de antenas';
+          const indirect =
+            !!experience.participation?.length && !experience.participation.includes('performed');
+          const id = `maintenance:${encodeURIComponent(experienceId)}:${material}:${group}`;
+          const evidence: ExperienceProposalEvidence = [
+            { experienceId, field: 'structuredExperiences.activity', value: 'op_maintenance' },
+            {
+              experienceId,
+              field: 'structuredExperiences.maintenanceTasks.material',
+              value: material,
+            },
+            {
+              experienceId,
+              field: 'structuredExperiences.maintenanceTasks.operations',
+              material,
+              value: [...operations],
+            },
+            ...(indirect
+              ? (Object.keys(PARTICIPATION) as TrainingParticipation[])
+                  .filter((role) => experience.participation!.includes(role))
+                  .map((role) => ({
+                    experienceId,
+                    field: 'structuredExperiences.participation' as const,
+                    value: role,
+                  }))
+              : []),
+          ];
+          const tasks = operations
+            .map((operation) => MAINTENANCE_OPERATIONS[operation].label.toLocaleLowerCase('es'))
+            .join('; ');
+          const description = `${indirect ? 'Participación en tareas de ' : ''}${tasks} en ${materialLabel}.`;
+          proposals.push({
+            id,
+            experienceId,
+            sourceLabel: FUNCTION_TYPE_OPTIONS.find((option) => option.value === activity)!.label,
+            ...(indirect
+              ? {
+                  participationLabel: (Object.keys(PARTICIPATION) as TrainingParticipation[])
+                    .filter((role) => experience.participation!.includes(role))
+                    .map((role) => PARTICIPATION[role].label)
+                    .join('; '),
+                }
+              : {}),
+            maintenanceSource: { material, operations: [...operations] },
+            cvDescription: {
+              id: `cv:${id}`,
+              experienceId,
+              text: description[0].toLocaleUpperCase('es') + description.slice(1),
+              basis: 'direct_declaration',
+              requiresReview: true,
+              evidence,
+            },
+            civilianCompetencyCandidate: {
+              id: `competency:${id}`,
+              experienceId,
+              label: indirect
+                ? `Participación en ${competency.toLocaleLowerCase('es')}`
+                : competency,
+              basis: 'direct_declaration',
+              requiresReview: true,
+              evidence: structuredClone(evidence),
+            },
+          });
+        }
+      }
+      continue;
+    }
     if (activity !== 'instruction' && activity !== 'technical_instruction') continue;
 
     for (const role of Object.keys(PARTICIPATION) as TrainingParticipation[]) {

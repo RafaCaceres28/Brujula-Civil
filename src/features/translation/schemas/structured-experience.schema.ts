@@ -1,8 +1,55 @@
 import { z } from 'zod';
 import { domainIdSchema } from '../../../lib/contracts/shared.schema';
 import { FUNCTION_TYPE_OPTIONS, TOOL_OPTIONS } from '../../wizard/config/wizard-catalogs';
+import {
+  MAINTENANCE_MATERIALS,
+  MAINTENANCE_OPERATIONS,
+  isMaintenanceOperationApplicable,
+} from '../config/maintenance-catalog';
 
 const optionalNarrativeSchema = z.string().trim().min(1).max(500).optional();
+
+const maintenanceTasksSchema = z
+  .array(
+    z
+      .object({
+        material: z.enum(
+          Object.keys(MAINTENANCE_MATERIALS) as [
+            keyof typeof MAINTENANCE_MATERIALS,
+            ...(keyof typeof MAINTENANCE_MATERIALS)[],
+          ],
+        ),
+        operations: z
+          .array(
+            z.enum(
+              Object.keys(MAINTENANCE_OPERATIONS) as [
+                keyof typeof MAINTENANCE_OPERATIONS,
+                ...(keyof typeof MAINTENANCE_OPERATIONS)[],
+              ],
+            ),
+          )
+          .min(1)
+          .refine((values) => new Set(values).size === values.length, 'Duplicate operation')
+          .optional(),
+      })
+      .strict()
+      .superRefine((entry, context) => {
+        entry.operations?.forEach((operation, index) => {
+          if (!isMaintenanceOperationApplicable(entry.material, operation)) {
+            context.addIssue({
+              code: 'custom',
+              path: ['operations', index],
+              message: 'Operation not applicable to material',
+            });
+          }
+        });
+      }),
+  )
+  .min(1)
+  .refine(
+    (entries) => new Set(entries.map(({ material }) => material)).size === entries.length,
+    'Duplicate material',
+  );
 
 export const structuredExperienceSchema = z
   .object({
@@ -27,6 +74,7 @@ export const structuredExperienceSchema = z
       .optional(),
     context: optionalNarrativeSchema,
     result: optionalNarrativeSchema,
+    maintenanceTasks: maintenanceTasksSchema.optional(),
     // Assignment context, not frequency/duration; absence means undeclared.
     // Replacement implies no formal appointment, higher position or replaced person's rank.
     assignmentContext: z
@@ -59,7 +107,12 @@ export const structuredExperienceSchema = z
       )
       .optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (experience) =>
+      !Object.hasOwn(experience, 'maintenanceTasks') || experience.activity === 'op_maintenance',
+    { path: ['maintenanceTasks'], message: 'Maintenance tasks require op_maintenance' },
+  );
 
 export const structuredExperiencesSchema = z
   .array(structuredExperienceSchema)

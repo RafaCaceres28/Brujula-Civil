@@ -63,6 +63,148 @@ function observeValidation() {
 }
 
 describe('LocalExperienceForm', () => {
+  it('treats maintenance sets as unordered for dirtiness and omits untouched tasks from metadata edits', async () => {
+    setup(vi.fn());
+    const initial: StructuredExperience = {
+      id: 'unchanged-tasks',
+      activity: 'op_maintenance',
+      maintenanceTasks: [
+        { material: 'light_vehicles', operations: ['periodic_checks', 'levels_functioning'] },
+        { material: 'communications_equipment', operations: ['batteries'] },
+      ],
+    };
+    const dirty = vi.fn();
+    act(() =>
+      root.render(
+        <LocalExperienceForm
+          key="sets"
+          mode="edit"
+          initialExperience={initial}
+          onSaved={vi.fn()}
+          onDirtyChange={dirty}
+        />,
+      ),
+    );
+    toggle('light_vehicles:periodic_checks');
+    expect(dirty).toHaveBeenLastCalledWith(true);
+    toggle('light_vehicles:periodic_checks');
+    expect(dirty).toHaveBeenLastCalledWith(false);
+    const details = container.querySelector('details')!;
+    act(() => details.querySelector('summary')!.click());
+    act(() => details.querySelector('summary')!.click());
+    expect(
+      container.querySelector<HTMLInputElement>(
+        'input[value="communications_equipment:batteries"]',
+      )!.checked,
+    ).toBe(true);
+    change('frequency', 'occasional');
+    mocks.edit.mockResolvedValue({
+      ok: true,
+      data: { experience: { ...initial, frequency: 'occasional' } },
+    });
+    await act(async () => save());
+    expect(mocks.edit).toHaveBeenCalledWith({
+      id: initial.id,
+      expectedExperience: initial,
+      set: { frequency: 'occasional' },
+      clear: [],
+    });
+  });
+
+  it('captures different tasks per material, preserves material without operations and explicitly clears the last material', async () => {
+    setup(vi.fn());
+    change('activity', 'op_maintenance');
+    toggle('light_vehicles');
+    toggle('communications_equipment');
+    expect(container.querySelector('input[value="light_vehicles:coaxial_repair"]')).toBeNull();
+    expect(
+      container.querySelector('input[value="communications_equipment:levels_functioning"]'),
+    ).toBeNull();
+    toggle('light_vehicles:levels_functioning');
+    toggle('communications_equipment:coaxial_repair');
+    mocks.create.mockImplementation(async ({ experience }) => ({ ok: true, data: { experience } }));
+    await act(async () => save());
+    const saved = mocks.create.mock.calls[0][0].experience;
+    expect(saved.maintenanceTasks).toEqual([
+      { material: 'communications_equipment', operations: ['coaxial_repair'] },
+      { material: 'light_vehicles', operations: ['levels_functioning'] },
+    ]);
+    expect(preview().textContent).toContain('Reparación de cableado coaxial');
+    toggle('light_vehicles:levels_functioning');
+    mocks.edit.mockImplementation(async ({ set, clear }) => {
+      const experience = { ...saved, ...set };
+      clear.forEach((field: string) => delete experience[field]);
+      return { ok: true, data: { experience } };
+    });
+    await act(async () => save());
+    expect(mocks.edit.mock.calls[0][0]).toMatchObject({
+      expectedExperience: saved,
+      set: {
+        maintenanceTasks: [
+          { material: 'communications_equipment', operations: ['coaxial_repair'] },
+          { material: 'light_vehicles' },
+        ],
+      },
+      clear: [],
+    });
+    toggle('light_vehicles');
+    expect(
+      container.querySelector<HTMLInputElement>(
+        'input[value="communications_equipment:coaxial_repair"]',
+      )!.checked,
+    ).toBe(true);
+    toggle('communications_equipment');
+    await act(async () => save());
+    expect(mocks.edit.mock.calls[1][0]).toMatchObject({ set: {}, clear: ['maintenanceTasks'] });
+  });
+
+  it('reloads full task details and requires confirmation before changing activity, without losing hidden baseline fields', async () => {
+    setup(vi.fn());
+    const initial: StructuredExperience = {
+      id: 'stored-tasks',
+      activity: 'op_maintenance',
+      equipment: 'radio_comms',
+      stageIds: ['stage-1'],
+      context: 'Taller',
+      result: 'Operativo',
+      maintenanceTasks: [{ material: 'communications_equipment', operations: ['batteries'] }],
+    };
+    act(() =>
+      root.render(
+        <LocalExperienceForm
+          key="reloaded"
+          mode="edit"
+          initialExperience={initial}
+          onSaved={vi.fn()}
+        />,
+      ),
+    );
+    expect(
+      container.querySelector<HTMLInputElement>(
+        'input[value="communications_equipment:batteries"]',
+      )!.checked,
+    ).toBe(true);
+    expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(
+      true,
+    );
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    change('activity', 'analysis');
+    expect(select('activity').value).toBe('op_maintenance');
+    expect(preview().textContent).toContain('Carga y comprobación de baterías');
+    confirm.mockReturnValue(true);
+    change('activity', 'analysis');
+    mocks.edit.mockResolvedValue({ ok: false, error: { code: 'CONFLICT', message: 'Conflict' } });
+    await act(async () => save());
+    expect(mocks.edit).toHaveBeenCalledWith({
+      id: initial.id,
+      expectedExperience: initial,
+      set: { activity: 'analysis' },
+      clear: ['maintenanceTasks'],
+    });
+    expect(container.textContent).toContain('tu borrador se conserva');
+    confirm.mockRestore();
+  });
+
   it('exige actividad, asocia el error y cancela el submit sin navegar', () => {
     setup(vi.fn());
     expect(select('activity').value).toBe('');

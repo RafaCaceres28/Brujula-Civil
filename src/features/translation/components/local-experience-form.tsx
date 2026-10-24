@@ -14,6 +14,13 @@ import {
 } from '@/features/profile/schemas/save-experience.schema';
 import type { DomainError } from '@/lib/contracts/domain-error';
 import {
+  MAINTENANCE_MATERIALS,
+  MAINTENANCE_OPERATIONS,
+  isMaintenanceOperationApplicable,
+  type MaintenanceMaterial,
+  type MaintenanceOperation,
+} from '../config/maintenance-catalog';
+import {
   structuredExperienceSchema,
   type StructuredExperience,
 } from '../schemas/structured-experience.schema';
@@ -108,12 +115,28 @@ export function LocalExperienceForm({
     'autonomy',
     'assignmentContext',
     'participation',
+    'maintenanceTasks',
   ] as const;
   // Participation is a set for UI dirtiness; CAS still receives the untouched full baseline.
-  const same = (left: unknown, right: unknown) =>
-    JSON.stringify(Array.isArray(left) ? [...left].sort() : left) ===
-    JSON.stringify(Array.isArray(right) ? [...right].sort() : right);
-  const dirty = fields.some((field) => !same(experience[field], baseline[field]));
+  const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
+  const maintenanceSet = (entries: StructuredExperience['maintenanceTasks']) =>
+    entries
+      ?.map((entry) => ({
+        ...entry,
+        ...(entry.operations ? { operations: [...entry.operations].sort() } : {}),
+      }))
+      .sort((a, b) => a.material.localeCompare(b.material));
+  const sameField = (
+    field: (typeof fields)[number],
+    left: StructuredExperience,
+    right: StructuredExperience,
+  ) =>
+    field === 'participation'
+      ? same(left.participation?.slice().sort(), right.participation?.slice().sort())
+      : field === 'maintenanceTasks'
+        ? same(maintenanceSet(left.maintenanceTasks), maintenanceSet(right.maintenanceTasks))
+        : same(left[field], right[field]);
+  const dirty = fields.some((field) => !sameField(field, experience, baseline));
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
@@ -125,6 +148,36 @@ export function LocalExperienceForm({
     currentDraft.current = next;
     setExperience(next);
     setConfirmed(false);
+  }
+
+  function toggleMaintenance(material: MaintenanceMaterial, operation?: MaintenanceOperation) {
+    updateExperience((previous) => {
+      const entries = previous.maintenanceTasks ?? [];
+      const existing = entries.find((entry) => entry.material === material);
+      let nextEntries: NonNullable<StructuredExperience['maintenanceTasks']>;
+      if (!operation) {
+        nextEntries = existing
+          ? entries.filter((entry) => entry.material !== material)
+          : [...entries, { material }];
+      } else {
+        const selected = existing?.operations ?? [];
+        const operations = selected.includes(operation)
+          ? selected.filter((value) => value !== operation)
+          : [...selected, operation];
+        const entry = operations.length
+          ? { material, operations: operations.sort() }
+          : { material };
+        nextEntries = entries.map((value) => (value.material === material ? entry : value));
+      }
+      const next = { ...previous };
+      delete next.maintenanceTasks;
+      return nextEntries.length
+        ? {
+            ...next,
+            maintenanceTasks: nextEntries.sort((a, b) => a.material.localeCompare(b.material)),
+          }
+        : next;
+    });
   }
 
   async function save() {
@@ -142,7 +195,7 @@ export function LocalExperienceForm({
     const set: Record<string, unknown> = {};
     const clear: string[] = [];
     fields.forEach((field) => {
-      if (same(submitted[field], baseline[field])) return;
+      if (sameField(field, submitted, baseline)) return;
       if (submitted[field] === undefined) clear.push(field);
       else set[field] = submitted[field];
     });
@@ -284,7 +337,19 @@ export function LocalExperienceForm({
                     aria-describedby={activityInvalid ? `${formId}-activity-error` : undefined}
                     onChange={(event) => {
                       const activity = event.target.value;
-                      updateExperience((previous) => ({ ...previous, activity }));
+                      if (
+                        activity !== 'op_maintenance' &&
+                        experience.maintenanceTasks &&
+                        !window.confirm(
+                          'Cambiar de actividad eliminará los materiales y sus operaciones de mantenimiento. ¿Continuar?',
+                        )
+                      )
+                        return;
+                      updateExperience((previous) => {
+                        const next = { ...previous, activity };
+                        if (activity !== 'op_maintenance') delete next.maintenanceTasks;
+                        return next;
+                      });
                     }}
                   >
                     <option value="">Selecciona una actividad</option>
@@ -304,6 +369,95 @@ export function LocalExperienceForm({
                     </p>
                   ) : null}
                 </div>
+                {experience.activity === 'op_maintenance' ? (
+                  <details className="rounded-xl border border-slate-200 p-4">
+                    <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+                      Materiales y tareas de mantenimiento (opcional)
+                    </summary>
+                    <p className="my-3 text-sm text-slate-600">
+                      Selecciona solo lo que declaras. Un material sin operaciones se guarda sin
+                      generar propuestas. Estas tareas no acreditan una cualificación. Desmarcar un
+                      material retira también sus operaciones.
+                    </p>
+                    <div className="space-y-4">
+                      {(Object.keys(MAINTENANCE_MATERIALS) as MaintenanceMaterial[]).map(
+                        (material) => {
+                          const entry = experience.maintenanceTasks?.find(
+                            (value) => value.material === material,
+                          );
+                          return (
+                            <fieldset key={material} className="min-w-0 space-y-2">
+                              <legend className="sr-only">{MAINTENANCE_MATERIALS[material]}</legend>
+                              <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
+                                <input
+                                  type="checkbox"
+                                  name="maintenanceMaterial"
+                                  value={material}
+                                  checked={!!entry}
+                                  className="size-5 shrink-0 accent-slate-900"
+                                  onChange={() => toggleMaintenance(material)}
+                                />
+                                {MAINTENANCE_MATERIALS[material]}
+                              </label>
+                              {entry ? (
+                                <div className="space-y-2 pl-4">
+                                  {(['inspect', 'conserve', 'repair', 'report'] as const).map(
+                                    (category) => {
+                                      const operations = (
+                                        Object.keys(
+                                          MAINTENANCE_OPERATIONS,
+                                        ) as MaintenanceOperation[]
+                                      ).filter(
+                                        (operation) =>
+                                          MAINTENANCE_OPERATIONS[operation].category === category &&
+                                          isMaintenanceOperationApplicable(material, operation),
+                                      );
+                                      return operations.length ? (
+                                        <fieldset key={category} className="space-y-1">
+                                          <legend className="text-sm text-slate-600">
+                                            {
+                                              {
+                                                inspect: 'Comprobaciones',
+                                                conserve: 'Conservación',
+                                                repair: 'Reparaciones',
+                                                report: 'Incidencias',
+                                              }[category]
+                                            }
+                                          </legend>
+                                          {operations.map((operation) => (
+                                            <label
+                                              key={operation}
+                                              className="flex min-h-11 items-center gap-3 text-sm"
+                                            >
+                                              <input
+                                                type="checkbox"
+                                                name="maintenanceOperation"
+                                                value={`${material}:${operation}`}
+                                                aria-label={`${MAINTENANCE_MATERIALS[material]}: ${MAINTENANCE_OPERATIONS[operation].label}`}
+                                                checked={
+                                                  entry.operations?.includes(operation) ?? false
+                                                }
+                                                className="size-5 shrink-0 accent-slate-900"
+                                                onChange={() =>
+                                                  toggleMaintenance(material, operation)
+                                                }
+                                              />
+                                              {MAINTENANCE_OPERATIONS[operation].label}
+                                            </label>
+                                          ))}
+                                        </fieldset>
+                                      ) : null;
+                                    },
+                                  )}
+                                </div>
+                              ) : null}
+                            </fieldset>
+                          );
+                        },
+                      )}
+                    </div>
+                  </details>
+                ) : null}
                 {renderOptionalField('durationRange')}
                 {renderOptionalField('frequency')}
               </fieldset>
@@ -426,6 +580,18 @@ export function LocalExperienceForm({
                     </div>
                   ) : null,
                 )}
+                {preview.maintenanceTasks?.map((entry) => (
+                  <div key={entry.material}>
+                    <dt className="font-medium text-slate-600">
+                      {MAINTENANCE_MATERIALS[entry.material]}
+                    </dt>
+                    <dd className="mt-1 text-slate-900">
+                      {entry.operations
+                        ?.map((operation) => MAINTENANCE_OPERATIONS[operation].label)
+                        .join('; ') ?? 'Sin operaciones declaradas; no genera propuestas.'}
+                    </dd>
+                  </div>
+                ))}
                 {preview.participation ? (
                   <div>
                     <dt className="font-medium text-slate-600">Participación</dt>

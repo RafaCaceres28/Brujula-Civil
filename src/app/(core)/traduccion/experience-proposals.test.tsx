@@ -120,6 +120,38 @@ function expectReadOnlyCore() {
 }
 
 describe('007.1 /traduccion: layout, auth, shell, lector y builder reales', () => {
+  it('reads canonical maintenance tasks through the real builder and presents material-operation evidence without legacy calls', async () => {
+    mocks.read.mockResolvedValue({
+      data: {
+        raw_profile_jsonb: {
+          careerHistory: {
+            experiences: [
+              {
+                id: 'saved-maintenance',
+                activity: 'op_maintenance',
+                maintenanceTasks: [
+                  { material: 'light_vehicles', operations: ['levels_functioning'] },
+                  { material: 'communications_equipment', operations: ['coaxial_repair'] },
+                ],
+              },
+            ],
+          },
+        },
+      },
+      error: null,
+    });
+    const html = await renderPage();
+    expect(html).toContain(
+      'Comprobación de niveles y elementos de funcionamiento en vehículos ligeros.',
+    );
+    expect(html).toContain('Reparación de cableado coaxial en equipos de comunicaciones.');
+    expect(html).toContain('Material: Vehículos ligeros');
+    expect(html).toContain('Operaciones:');
+    expect(html).toContain('Comprobaciones básicas de funcionamiento de vehículos ligeros');
+    expect(html).not.toMatch(/Participación:|Reparación de antenas|saved-maintenance/);
+    expectReadOnlyCore();
+  });
+
   it('genera solo propuestas canonicas con evidencia y sin ejecutar el flujo legacy', async () => {
     const build = vi.spyOn(builder, 'buildExperienceProposals');
     const html = await renderPage();

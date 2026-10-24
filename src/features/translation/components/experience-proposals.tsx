@@ -1,4 +1,5 @@
 import type { ExperienceProposal } from '../types/experience-proposal.types';
+import { MAINTENANCE_MATERIALS, MAINTENANCE_OPERATIONS } from '../config/maintenance-catalog';
 
 export function ExperienceProposals({
   proposals,
@@ -22,7 +23,7 @@ export function ExperienceProposals({
       {proposals.length === 0 ? (
         <p className="text-sm text-slate-700">
           {hasExperiences
-            ? 'No hay propuestas fundamentadas para estas experiencias. Esta regla necesita una actividad de formación y participación declarada en la misma experiencia; la actividad por sí sola no basta.'
+            ? 'No hay propuestas fundamentadas para estas experiencias. Se necesita formación con participación declarada, o mantenimiento con material y operaciones declaradas en la misma experiencia; la actividad por sí sola no basta.'
             : 'No hay experiencias guardadas para fundamentar propuestas.'}
         </p>
       ) : (
@@ -48,7 +49,20 @@ export function ExperienceProposals({
               className="list-disc space-y-1 pl-5 text-sm text-slate-600"
             >
               <li>Actividad: {proposal.sourceLabel}</li>
-              <li>Participación: {proposal.participationLabel}</li>
+              {proposal.participationLabel ? (
+                <li>Participación: {proposal.participationLabel}</li>
+              ) : null}
+              {proposal.maintenanceSource ? (
+                <>
+                  <li>Material: {MAINTENANCE_MATERIALS[proposal.maintenanceSource.material]}</li>
+                  <li>
+                    Operaciones:{' '}
+                    {proposal.maintenanceSource.operations
+                      .map((operation) => MAINTENANCE_OPERATIONS[operation].label)
+                      .join('; ')}
+                  </li>
+                </>
+              ) : null}
             </ul>
           </article>
         ))

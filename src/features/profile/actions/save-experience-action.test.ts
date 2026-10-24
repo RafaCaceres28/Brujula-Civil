@@ -18,6 +18,31 @@ it('returns unauthenticated without storage', async () => {
 it.each([
   [createExperienceAction, { experience: { id: 'exp-1', activity: 'op_maintenance' } }, 'create'],
   [
+    createExperienceAction,
+    {
+      experience: {
+        id: 'exp-1',
+        activity: 'op_maintenance',
+        maintenanceTasks: [{ material: 'communications_equipment', operations: ['batteries'] }],
+      },
+    },
+    'create',
+  ],
+  [
+    editExperienceAction,
+    {
+      id: 'exp-1',
+      expectedExperience: {
+        id: 'exp-1',
+        activity: 'op_maintenance',
+        maintenanceTasks: [{ material: 'light_vehicles' }],
+      },
+      set: { activity: 'analysis' },
+      clear: ['maintenanceTasks'],
+    },
+    'edit',
+  ],
+  [
     editExperienceAction,
     {
       id: 'exp-1',
@@ -43,6 +68,20 @@ it.each([
 it.each([
   { userId: 'other', experience: { id: 'exp-1', activity: 'op_maintenance' } },
   { operation: 'edit', experience: { id: 'exp-1', activity: 'op_maintenance' } },
+  {
+    experience: {
+      id: 'exp-1',
+      activity: 'analysis',
+      maintenanceTasks: [{ material: 'light_vehicles' }],
+    },
+  },
+  {
+    experience: {
+      id: 'exp-1',
+      activity: 'op_maintenance',
+      maintenanceTasks: [{ material: 'communications_equipment', operations: ['periodic_checks'] }],
+    },
+  },
 ])('rejects identity/operation injection', async (input) => {
   expect(await createExperienceAction(input)).toMatchObject({
     error: { code: 'VALIDATION_ERROR' },

@@ -5,6 +5,7 @@ import { saveProfile } from './save-profile';
 import { projectWizardToProfiles } from './project-wizard-to-profiles';
 import { getProfile } from './get-profile';
 import { profileClientFixture } from './profile-client.test-helper';
+import { buildExperienceProposals } from '../../translation/services/experience-proposals.builder';
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }));
 
@@ -34,6 +35,184 @@ function setup(raw: unknown = {}) {
 
 describe('experience commands and shared writer CAS', () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it('saves and reloads maintenance declarations into the real builder; same create is idempotent, changed tasks conflict', async () => {
+    const mock = setup({ metadata: { keep: true } });
+    mock.rows.app_user_profiles.push({
+      user_id: 'user-1',
+      display_name: 'Synthetic',
+      email: 'synthetic@example.test',
+    });
+    const declared = {
+      ...experience,
+      maintenanceTasks: [
+        { material: 'communications_equipment', operations: ['coaxial_repair'] },
+        { material: 'light_vehicles' },
+      ],
+    };
+    const command = { operation: 'create', experience: declared };
+    expect(await saveExperience('user-1', command)).toMatchObject({
+      ok: true,
+      data: { experience: declared },
+    });
+    expect(await saveExperience('user-1', command)).toMatchObject({ ok: true });
+    expect(
+      await saveExperience('user-1', {
+        ...command,
+        experience: {
+          ...declared,
+          maintenanceTasks: [
+            { material: 'communications_equipment', operations: ['antenna_repair'] },
+          ],
+        },
+      }),
+    ).toMatchObject({ error: { code: 'CONFLICT' } });
+    const reloaded = (await getProfile('user-1'))!.careerHistory!.experiences;
+    expect(reloaded).toEqual([declared]);
+    expect(buildExperienceProposals(reloaded)).toMatchObject([
+      {
+        experienceId: experience.id,
+        cvDescription: { text: 'Reparación de cableado coaxial en equipos de comunicaciones.' },
+      },
+    ]);
+    expect(mock.calls.filter((call) => call.operation === 'update')).toHaveLength(1);
+  });
+
+  it('edits and explicitly clears tasks while preserving sibling experiences, raw metadata and all hidden fields', async () => {
+    const tasks = [{ material: 'light_vehicles', operations: ['levels_functioning'] }];
+    const stored = { ...full, context: 'Taller', maintenanceTasks: tasks };
+    const sibling = {
+      ...experience,
+      id: 'sibling',
+      maintenanceTasks: [{ material: 'communications_equipment' }],
+    };
+    const raw = {
+      metadata: { nested: ['keep'] },
+      careerHistory: { ...history, experiences: [stored, sibling] },
+    };
+    const mock = setup(raw);
+    const edited = { ...stored, maintenanceTasks: [{ material: 'light_vehicles' }] };
+    expect(
+      await saveExperience('user-1', {
+        operation: 'edit',
+        id: stored.id,
+        expectedExperience: stored,
+        set: { maintenanceTasks: edited.maintenanceTasks },
+      }),
+    ).toMatchObject({ ok: true, data: { experience: edited } });
+    expect(mock.calls.find((call) => call.operation === 'update')?.filters.rawGuard).toEqual(raw);
+    expect(
+      await saveExperience('user-1', {
+        operation: 'edit',
+        id: stored.id,
+        expectedExperience: stored,
+        set: { frequency: 'occasional' },
+      }),
+    ).toMatchObject({ error: { code: 'CONFLICT' } });
+    expect(
+      await saveExperience('user-1', {
+        operation: 'edit',
+        id: stored.id,
+        expectedExperience: edited,
+        set: { activity: 'analysis' },
+      }),
+    ).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+    expect(
+      await saveExperience('user-1', {
+        operation: 'edit',
+        id: stored.id,
+        expectedExperience: edited,
+        set: { activity: 'analysis' },
+        clear: ['maintenanceTasks'],
+      }),
+    ).toMatchObject({ ok: true });
+    const cleared = { ...stored, activity: 'analysis' } as Partial<typeof stored>;
+    delete cleared.maintenanceTasks;
+    expect(mock.rows.user_military_profiles[0].raw_profile_jsonb).toEqual({
+      ...raw,
+      careerHistory: { ...history, experiences: [cleared, sibling] },
+    });
+    expect(mock.calls.filter((call) => call.operation === 'update')).toHaveLength(2);
+  });
+
+  it('includes task changes in the full snapshot CAS race without modifying the CAS writer', async () => {
+    const stored = {
+      ...experience,
+      maintenanceTasks: [{ material: 'light_vehicles', operations: ['levels_functioning'] }],
+    };
+    const mock = setup({ careerHistory: { experiences: [stored] } });
+    mock.control.beforeUpdate = async () => {
+      expect(
+        await saveExperience('user-1', {
+          operation: 'edit',
+          id: stored.id,
+          expectedExperience: stored,
+          set: {
+            maintenanceTasks: [{ material: 'communications_equipment', operations: ['batteries'] }],
+          },
+        }),
+      ).toMatchObject({ ok: true });
+    };
+    expect(
+      await saveExperience('user-1', {
+        operation: 'edit',
+        id: stored.id,
+        expectedExperience: stored,
+        set: { maintenanceTasks: [{ material: 'light_vehicles' }] },
+      }),
+    ).toMatchObject({ error: { code: 'CONFLICT' } });
+    expect(mock.rows.user_military_profiles[0].raw_profile_jsonb).toEqual({
+      careerHistory: {
+        experiences: [
+          {
+            ...experience,
+            maintenanceTasks: [{ material: 'communications_equipment', operations: ['batteries'] }],
+          },
+        ],
+      },
+    });
+  });
+
+  it.each([
+    {
+      ...create,
+      experience: {
+        ...experience,
+        activity: 'analysis',
+        maintenanceTasks: [{ material: 'light_vehicles' }],
+      },
+    },
+    {
+      ...create,
+      experience: {
+        ...experience,
+        maintenanceTasks: [{ material: 'light_vehicles', operations: ['coaxial_repair'] }],
+      },
+    },
+    {
+      operation: 'edit',
+      id: experience.id,
+      expectedExperience: experience,
+      set: {
+        maintenanceTasks: [
+          { material: 'communications_equipment', operations: ['levels_functioning'] },
+        ],
+      },
+    },
+    {
+      operation: 'edit',
+      id: experience.id,
+      expectedExperience: experience,
+      set: { maintenanceTasks: [] },
+    },
+  ])('rejects forged task commands before accessing storage: %j', async (command) => {
+    const mock = setup();
+    expect(await saveExperience('user-1', command)).toMatchObject({
+      error: { code: 'VALIDATION_ERROR' },
+    });
+    expect(createClient).not.toHaveBeenCalled();
+    expect(mock.calls).toEqual([]);
+  });
 
   it('creates, reloads and repeats the same create without duplicates; differing payload conflicts', async () => {
     const mock = setup({ metadata: { keep: true } });

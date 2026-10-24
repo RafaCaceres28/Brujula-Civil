@@ -2,20 +2,26 @@ import { z } from 'zod';
 import { domainIdSchema } from '../../../lib/contracts/shared.schema';
 import { structuredExperienceSchema } from '../../translation/schemas/structured-experience.schema';
 
-export const experienceFieldsSchema = structuredExperienceSchema.pick({
+// Commands pick editable fields; complete creates/patches retain canonical cross-field validation.
+export const experienceFieldsSchema = z.object(structuredExperienceSchema.shape).strict().pick({
   activity: true,
   assignmentContext: true,
   durationRange: true,
   frequency: true,
   autonomy: true,
   participation: true,
+  maintenanceTasks: true,
 });
 
 export const createExperienceInputSchema = z
   .object({
     experience: experienceFieldsSchema.extend({ id: domainIdSchema }),
   })
-  .strict();
+  .strict()
+  .refine((input) => structuredExperienceSchema.safeParse(input.experience).success, {
+    path: ['experience'],
+    message: 'Invalid experience',
+  });
 
 export const editExperienceInputSchema = z
   .object({
@@ -24,7 +30,14 @@ export const editExperienceInputSchema = z
     set: experienceFieldsSchema.partial(),
     clear: z
       .array(
-        z.enum(['assignmentContext', 'durationRange', 'frequency', 'autonomy', 'participation']),
+        z.enum([
+          'assignmentContext',
+          'durationRange',
+          'frequency',
+          'autonomy',
+          'participation',
+          'maintenanceTasks',
+        ]),
       )
       .refine((fields) => new Set(fields).size === fields.length, 'Duplicate clear field')
       .default([]),
@@ -48,10 +61,15 @@ export const editExperienceInputSchema = z
         message: 'Cannot set and clear the same field',
       });
     }
+    const edited = { ...input.expectedExperience, ...input.set };
+    input.clear.forEach((field) => delete edited[field]);
+    if (!structuredExperienceSchema.safeParse(edited).success) {
+      context.addIssue({ code: 'custom', path: ['set'], message: 'Invalid edited experience' });
+    }
   });
 
 export const saveExperienceCommandSchema = z.union([
-  createExperienceInputSchema.extend({ operation: z.literal('create') }),
+  createExperienceInputSchema.safeExtend({ operation: z.literal('create') }),
   editExperienceInputSchema.safeExtend({ operation: z.literal('edit') }),
 ]);
 
