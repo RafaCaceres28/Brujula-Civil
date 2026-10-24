@@ -123,7 +123,10 @@ beforeEach(() => {
         eq: () => query,
         order: () => query,
         limit: async () => result,
-        maybeSingle: async () => result,
+        maybeSingle: async () =>
+          table === 'user_military_profiles'
+            ? { ...result, data: Array.isArray(data) ? data[0] : data }
+            : result,
         then: Promise.resolve(result).then.bind(Promise.resolve(result)),
         update: (payload: { aggregated_draft_jsonb: Record<string, unknown> }) => write(payload),
         insert: (payload: { aggregated_draft_jsonb: Record<string, unknown> }) => write(payload),
@@ -241,17 +244,16 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
     expect(await getCareerRoutesAction({ now })).toEqual(result);
   });
 
-  it('conserva propuestas sin onboarding, sin overlay esperado ni legacy de ejemplo', async () => {
+  it('conserva propuestas sin onboarding y desconecta legacy en la pagina core', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     const doc = await pageDocument();
     expect(doc.body.textContent).toContain('Enseñanza en actividades de formación técnica.');
-    expect(doc.body.textContent).toContain('Vista previa textual anterior');
-    expect(doc.body.textContent).toContain('Completa las funciones y responsabilidades');
-    expect(doc.querySelector('a[href="/onboarding/experiencia"]')?.textContent).toBe(
-      'Completar experiencia del onboarding',
-    );
+    expect(doc.body.textContent).not.toContain('Vista previa textual anterior');
+    expect(doc.body.textContent).not.toContain('Completa las funciones y responsabilidades');
+    expect(doc.querySelector('a[href="/experiencia-profesional"]')).not.toBeNull();
     expect(doc.body.textContent).not.toContain('Reintentar rutas');
-    expect(doc.body.textContent).toContain('no dispone de un resumen fuente');
+    expect(reads).toEqual(['user_military_profiles']);
+    expect(writes).toBe(0);
     expect(doc.body.textContent).not.toContain('Profile data pending completion');
     expect(doc.body.textContent).not.toContain('Traduccion profesional');
     expect(doc.body.textContent).not.toContain('saved-training');
@@ -260,7 +262,7 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
     expect(doc.body.textContent).not.toContain('Necesitamos revisar los datos antes de continuar');
   });
 
-  it('preserva exito simultaneo de propuestas, legacy y recomendaciones reales', async () => {
+  it('preserva servicios legacy independientes pero la pagina solo muestra propuestas', async () => {
     sourceSummary = 'Experiencia real en instruccion y coordinacion de actividades tecnicas.';
     rawHistory = {
       careerHistory: {
@@ -282,13 +284,11 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
     expect((await getCareerRoutesAction()).ok).toBe(true);
     const doc = await pageDocument();
     expect(doc.body.textContent).toContain('Enseñanza en actividades de formación técnica.');
-    expect(doc.body.textContent).toContain('Vista previa textual anterior');
-    expect(doc.body.textContent).toContain('Rutas sugeridas para tu transicion');
+    expect(doc.body.textContent).not.toContain('Vista previa textual anterior');
+    expect(doc.body.textContent).not.toContain('Rutas sugeridas para tu transicion');
     expect(doc.querySelector('[role="alert"]')).toBeNull();
-    expect(doc.querySelector('a[href="/cv/preview"]')?.textContent).toBe(
-      'Revisar preview editable',
-    );
-    expect(doc.body.textContent).toContain(sourceSummary);
+    expect(doc.querySelector('a[href="/cv/preview"]')).toBeNull();
+    expect(doc.body.textContent).not.toContain(sourceSummary);
     expect(doc.body.textContent).not.toContain('profile-snapshot-user-001');
     expect(doc.body.textContent).not.toContain('saved-training');
     expect(doc.body.textContent).not.toContain('Profile data pending completion');
@@ -309,10 +309,10 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
     );
     const doc = await pageDocument();
     expect(doc.body.textContent).toContain('Enseñanza en actividades de formación técnica.');
-    expect(doc.body.textContent).toContain('No pudimos cargar las rutas sugeridas');
+    expect(doc.body.textContent).not.toContain('No pudimos cargar las rutas sugeridas');
     expect(doc.body.textContent).not.toContain('private wizard failure');
-    expect(doc.body.textContent).toContain('No pudimos leer los datos guardados');
-    expect(doc.querySelector('a[href="/traduccion"]')?.textContent).toBe('Reintentar rutas');
+    expect(doc.body.textContent).not.toContain('No pudimos leer los datos guardados');
+    expect(doc.querySelector('a[href="/traduccion"]')?.textContent).toBe('Reintentar propuestas');
     const result = await getCareerRoutesAction();
     expect(result).toMatchObject({
       ok: false,
@@ -337,13 +337,12 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
       error: { code: 'INTERNAL_ERROR', retryable: false },
     });
     const doc = await pageDocument();
-    expect(doc.body.textContent).toContain('problema interno o de integridad de datos');
+    expect(doc.body.textContent).not.toContain('problema interno o de integridad de datos');
     expect(doc.body.textContent).toContain('Enseñanza en actividades de formación técnica.');
     expect(doc.body.textContent).not.toContain('Completar experiencia del onboarding');
     expect(doc.body.textContent).not.toContain('Reintentar rutas');
     expect(log.mock.calls).toEqual([
       ['Career routes action: unexpected context or generation failure'],
-      ['Translation page: route context read failed'],
     ]);
   });
 
@@ -361,7 +360,7 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
       ],
     });
     const doc = await pageDocument();
-    expect(doc.body.textContent).toContain('No pudimos leer tu perfil');
+    expect(doc.body.textContent).toContain('integridad de tu historial');
     expect(doc.body.textContent).not.toContain('No hay experiencias');
     expect(doc.querySelector('[aria-labelledby="experience-proposals-title"]')).toBeNull();
     expect(await getCareerRoutesAction()).toMatchObject({
@@ -428,7 +427,7 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
     }
   });
 
-  it('genera rutas desde actividad reconocida sin wizard en ambos consumidores y en pagina', async () => {
+  it('genera rutas en consumidores legacy pero no en la pagina core', async () => {
     rawHistory = { careerHistory: { experiences: [{ id: 'recognized', activity: 'analysis' }] } };
     expect((await getCareerRoutesAction()).ok).toBe(true);
     const translation = await getTranslation('user-001');
@@ -440,7 +439,7 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
       ),
     ).toBe(true);
     const doc = await pageDocument();
-    expect(doc.body.textContent).toContain('Rutas sugeridas para tu transicion');
+    expect(doc.body.textContent).not.toContain('Rutas sugeridas para tu transicion');
     expect(doc.body.textContent).not.toContain('Completa las funciones y responsabilidades');
   });
 
@@ -451,7 +450,7 @@ describe('Incidencia006.4.1 con lectura, schemas y motores reales; solo DB/auth 
     expect(translation).toMatchObject({ ok: false, error: { code: 'VALIDATION_ERROR' } });
     const doc = await pageDocument();
     expect(doc.body.textContent).not.toContain('Rutas sugeridas para tu transicion');
-    expect(doc.body.textContent).toContain('Completa las funciones y responsabilidades');
+    expect(doc.body.textContent).toContain('No hay experiencias guardadas');
     expect(writes).toBe(0);
   });
 });
@@ -835,18 +834,19 @@ describe('006.4.2b CORE real con DB/auth simulados', () => {
     expect(writes).toBe(2);
   });
 
-  it('pagina renueva el conjunto almacenado sin duplicar perfil/auth ni reutilizar contexto', async () => {
+  it('pagina core no renueva ni lee el conjunto legacy almacenado', async () => {
     const old = await selectCurrent();
     rawHistory = { careerHistory: { experiences: [{ id: 'one', activity: 'analysis' }] } };
     reads = [];
     vi.mocked(getCurrentUser).mockClear();
     sourceSummary = 'Existing summary for the legacy pipeline.';
     const doc = await pageDocument();
-    expect(doc.body.textContent).toContain('Rutas sugeridas para tu transicion');
+    expect(doc.body.textContent).not.toContain('Rutas sugeridas para tu transicion');
     expect(doc.body.textContent).not.toContain(old.routes[0].explanation!.reasonSummary);
     expect(reads.filter((table) => table === 'user_military_profiles')).toHaveLength(1);
+    expect(reads).toEqual(['user_military_profiles']);
     expect(vi.mocked(getCurrentUser)).toHaveBeenCalledTimes(1);
-    expect(writes).toBe(3);
+    expect(writes).toBe(2);
   });
 
   it('traduccion renueva directamente y no adjunta la seleccion anterior', async () => {

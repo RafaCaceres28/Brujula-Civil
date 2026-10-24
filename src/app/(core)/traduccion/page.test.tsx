@@ -1,11 +1,11 @@
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
-import { CareerRouteShortlist } from '../../../features/recommendations/components/career-route-shortlist';
+import { CareerRouteShortlist } from '@/features/recommendations/components/career-route-shortlist';
 import {
   TranslationPreview,
   type TranslationPreviewProps,
-} from '../../../features/translation/components/translation-preview';
+} from '@/features/translation/components/translation-preview';
 
 let container: HTMLDivElement | null = null;
 let root: Root | null = null;
@@ -38,7 +38,7 @@ function renderContent(props: TranslationPreviewProps) {
   renderNode(<TranslationPreview {...props} />);
 }
 
-describe('/traduccion page UI states', () => {
+describe('componentes legacy de traduccion y recomendaciones (fuera de la pagina core)', () => {
   it('renders loading state with user-facing progress message', () => {
     renderContent({ state: 'loading' });
 
