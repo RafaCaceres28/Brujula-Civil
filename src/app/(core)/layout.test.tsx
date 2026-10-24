@@ -22,11 +22,17 @@ describe('layouts protegidos conservan shell y separan bootstrap', () => {
   it('la ruta tiene un solo page y sus ancestros/helpers no acceden al wizard', () => {
     expect(existsSync(resolve('src/app/(app)/traduccion/page.tsx'))).toBe(false);
     expect(existsSync(resolve('src/app/(core)/traduccion/page.tsx'))).toBe(true);
+    for (const file of ['page.tsx', 'page.test.tsx', 'loading.tsx']) {
+      expect(existsSync(resolve(`src/app/(app)/experiencia-profesional/${file}`))).toBe(false);
+      expect(existsSync(resolve(`src/app/(core)/experiencia-profesional/${file}`))).toBe(true);
+    }
     for (const path of [
       'src/app/layout.tsx',
       'src/app/(core)/layout.tsx',
       'src/app/(core)/traduccion/page.tsx',
       'src/app/(core)/traduccion/loading.tsx',
+      'src/app/(core)/experiencia-profesional/page.tsx',
+      'src/app/(core)/experiencia-profesional/loading.tsx',
       'src/components/layout/app-shell.tsx',
       'src/components/layout/app-header.tsx',
       'src/components/layout/app-sidebar.tsx',

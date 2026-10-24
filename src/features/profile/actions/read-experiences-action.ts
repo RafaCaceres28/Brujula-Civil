@@ -1,5 +1,6 @@
 'use server';
 
+import { unstable_rethrow } from 'next/navigation';
 import { getCurrentUser } from '@/features/auth/server/get-current-user';
 import type { StructuredExperience } from '@/features/translation/schemas/structured-experience.schema';
 import {
@@ -7,7 +8,7 @@ import {
   domainSuccess,
   type DomainResult,
 } from '../../../lib/contracts/domain-result';
-import { getProfile } from '../server/get-profile';
+import { readCareerHistory } from '../server/read-career-history';
 
 export async function readExperiencesAction(): Promise<
   DomainResult<{ experiences: StructuredExperience[] }>
@@ -19,14 +20,13 @@ export async function readExperiencesAction(): Promise<
         code: 'UNAUTHORIZED',
         message: 'Inicia sesión para consultar tu historial.',
       });
-    const profile = await getProfile(user.id);
-    if (!profile)
-      return domainFailure({
-        code: 'NOT_FOUND',
-        message: 'No se pudo encontrar tu perfil. Reintenta la lectura.',
-      });
-    return domainSuccess({ experiences: profile.careerHistory?.experiences ?? [] });
-  } catch {
+    const result = await readCareerHistory(user.id);
+    if (!result.ok) return result;
+    return domainSuccess({
+      experiences: result.data.state === 'ready' ? result.data.careerHistory.experiences : [],
+    });
+  } catch (error) {
+    unstable_rethrow(error);
     return domainFailure({
       code: 'EXTERNAL_DEPENDENCY_ERROR',
       message: 'No se pudo cargar el historial. Tu borrador se conserva.',
