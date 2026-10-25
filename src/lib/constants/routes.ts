@@ -17,6 +17,7 @@ export const routes = {
     profile: '/perfil',
     profileEdit: '/perfil/editar',
     translation: '/traduccion',
+    professionalProfile: '/perfil-profesional',
     cv: '/cv',
     linkedin: '/linkedin',
     settings: '/ajustes',

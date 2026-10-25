@@ -11,6 +11,7 @@ export const appNav = [
   { label: 'Onboarding', href: routes.app.onboarding },
   { label: 'Perfil', href: routes.app.profile },
   { label: 'Traducción', href: routes.app.translation },
+  { label: 'Perfil profesional', href: routes.app.professionalProfile },
   { label: 'CV', href: routes.app.cv },
   { label: 'LinkedIn', href: routes.app.linkedin },
   { label: 'Ajustes', href: routes.app.settings },
