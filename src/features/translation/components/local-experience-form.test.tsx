@@ -83,6 +83,43 @@ function observeValidation() {
 }
 
 describe('LocalExperienceForm', () => {
+  it('preserves nested confirmation on unrelated edits and withdraws it only on an actual source edit', async () => {
+    const task = {
+      description: 'Revisaba',
+      target: 'Documentos',
+      confirmedDescription: 'Texto confirmado',
+    };
+    const initial: StructuredExperience = {
+      id: 'confirmed-task',
+      activity: 'analysis',
+      otherTasks: [task],
+    };
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    const onSaved = vi.fn();
+    act(() =>
+      root.render(
+        <LocalExperienceForm mode="edit" initialExperience={initial} onSaved={onSaved} />,
+      ),
+    );
+    expect(container.textContent).toContain('su descripción confirmada deberá revisarse de nuevo');
+    mocks.edit.mockImplementation(async ({ expectedExperience, set }) => ({
+      ok: true,
+      data: { experience: { ...expectedExperience, ...set } },
+    }));
+    change('durationRange', 'one_to_five_years');
+    await act(async () => save());
+    expect(mocks.edit.mock.calls[0][0].set).toEqual({ durationRange: 'one_to_five_years' });
+    expect(onSaved.mock.calls[0][0].otherTasks).toEqual([task]);
+    taskText(0, 'target', 'Documentos genéricos');
+    await act(async () => save());
+    expect(mocks.edit.mock.calls[1][0].expectedExperience.otherTasks).toEqual([task]);
+    expect(mocks.edit.mock.calls[1][0].set.otherTasks).toEqual([
+      { description: 'Revisaba', target: 'Documentos genéricos' },
+    ]);
+  });
+
   it('adds multiple tasks, validates partial rows inline, previews raw text and saves only explicitly', async () => {
     setup(vi.fn());
     change('activity', 'analysis');

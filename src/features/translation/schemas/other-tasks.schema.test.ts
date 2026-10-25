@@ -5,6 +5,33 @@ const base = { id: 'other-tasks', activity: 'analysis' };
 const task = { description: 'Revisaba documentos', target: 'Documentación administrativa' };
 
 describe('optional canonical otherTasks', () => {
+  it('accepts a trimmed nested confirmation without altering the required source', () => {
+    expect(
+      structuredExperienceSchema.parse({
+        ...base,
+        otherTasks: [{ ...task, confirmedDescription: ' Texto revisado ' }],
+      }).otherTasks,
+    ).toEqual([{ ...task, confirmedDescription: 'Texto revisado' }]);
+    expect(
+      structuredExperienceSchema.safeParse({
+        ...base,
+        otherTasks: [{ ...task, confirmedDescription: 'a'.repeat(500) }],
+      }).success,
+    ).toBe(true);
+  });
+
+  it.each(['', ' ', null, 'a'.repeat(501)])(
+    'rejects invalid confirmed text: %j',
+    (confirmedDescription) => {
+      expect(
+        structuredExperienceSchema.safeParse({
+          ...base,
+          otherTasks: [{ ...task, confirmedDescription }],
+        }).success,
+      ).toBe(false);
+    },
+  );
+
   it('keeps old experiences unchanged and accepts trimmed tasks for any activity', () => {
     expect(structuredExperienceSchema.parse(base)).toEqual(base);
     for (const activity of ['analysis', 'instruction', 'op_maintenance']) {

@@ -37,6 +37,82 @@ function setup(raw: unknown = {}) {
 describe('experience commands and shared writer CAS', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it('confirms, reloads, edits and unconfirms a nested task with exact baseline and untouched source metadata', async () => {
+    const task = { description: 'Revisaba documentos', target: 'Documentación' };
+    const siblingTask = { description: 'Ordenaba', target: 'Material' };
+    const stored = { ...full, context: 'Taller', otherTasks: [task, siblingTask] };
+    const raw = {
+      metadata: { keep: ['original'] },
+      careerHistory: { ...history, experiences: [stored, { ...experience, id: 'sibling' }] },
+    };
+    const mock = setup(raw);
+    mock.rows.app_user_profiles.push({
+      user_id: 'user-1',
+      display_name: 'Synthetic',
+      email: 'synthetic@example.test',
+    });
+    const confirmed = {
+      ...stored,
+      otherTasks: [
+        { ...task, confirmedDescription: 'Enseñanza y reparación declaradas por mí' },
+        siblingTask,
+      ],
+    };
+    const edit = (expectedExperience: unknown, otherTasks: unknown) =>
+      saveExperience('user-1', {
+        operation: 'edit',
+        id: stored.id,
+        expectedExperience,
+        set: { otherTasks },
+      });
+    expect(await edit(stored, confirmed.otherTasks)).toMatchObject({
+      ok: true,
+      data: { experience: confirmed },
+    });
+    expect(mock.calls.find((call) => call.operation === 'update')?.filters.rawGuard).toEqual(raw);
+    expect((await getProfile('user-1'))!.careerHistory!.experiences[0]).toEqual(confirmed);
+    expect(buildExperienceProposals([structuredExperienceSchema.parse(confirmed)])).toEqual(
+      buildExperienceProposals([structuredExperienceSchema.parse(stored)]),
+    );
+    expect(await edit(stored, [siblingTask, task])).toMatchObject({ error: { code: 'CONFLICT' } });
+    const revised = {
+      ...confirmed,
+      otherTasks: [{ ...task, confirmedDescription: 'Texto corregido' }, siblingTask],
+    };
+    expect(await edit(confirmed, revised.otherTasks)).toMatchObject({
+      ok: true,
+      data: { experience: revised },
+    });
+    expect((await getProfile('user-1'))!.careerHistory!.experiences[0]).toEqual(revised);
+    expect(await edit(revised, stored.otherTasks)).toMatchObject({
+      ok: true,
+      data: { experience: stored },
+    });
+    expect(mock.rows.user_military_profiles[0].raw_profile_jsonb).toEqual(raw);
+  });
+
+  it('does not overwrite a concurrent nested confirmation winner', async () => {
+    const task = { description: 'Revisaba', target: 'Documentos' };
+    const stored = { ...experience, otherTasks: [task] };
+    const mock = setup({ careerHistory: { experiences: [stored] } });
+    const edit = (text: string) =>
+      saveExperience('user-1', {
+        operation: 'edit',
+        id: stored.id,
+        expectedExperience: stored,
+        set: { otherTasks: [{ ...task, confirmedDescription: text }] },
+      });
+    mock.control.beforeUpdate = async () => {
+      expect(await edit('Ganador')).toMatchObject({ ok: true });
+    };
+    expect(await edit('Perdedor')).toMatchObject({ error: { code: 'CONFLICT' } });
+    expect(mock.rows.user_military_profiles[0].raw_profile_jsonb).toEqual({
+      careerHistory: {
+        experiences: [{ ...stored, otherTasks: [{ ...task, confirmedDescription: 'Ganador' }] }],
+      },
+    });
+  });
+
   it('creates, rereads, edits and removes other tasks through existing CAS without changing proposals or unrelated data', async () => {
     const raw = { metadata: { keep: true }, careerHistory: history };
     const mock = setup(raw);

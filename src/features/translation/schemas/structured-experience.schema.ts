@@ -82,6 +82,7 @@ export const structuredExperienceSchema = z
           .object({
             description: z.string().trim().min(1).max(200),
             target: z.string().trim().min(1).max(200),
+            confirmedDescription: optionalNarrativeSchema,
           })
           .strict(),
       )

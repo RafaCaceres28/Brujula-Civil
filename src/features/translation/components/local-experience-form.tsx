@@ -527,7 +527,8 @@ export function LocalExperienceForm({
                     solo tareas genéricas. Selecciona la actividad general que corresponda; puedes
                     añadir hasta 5 tareas no recogidas en las opciones, con 200 caracteres por
                     campo. No se traducen automáticamente ni generan competencias. Revisa tu texto
-                    en la vista previa antes de guardar.
+                    en la vista previa antes de guardar. Si modificas una tarea, su descripción
+                    confirmada deberá revisarse de nuevo.
                   </p>
                   {experience.otherTasks?.map((task, index) => (
                     <fieldset
@@ -572,9 +573,12 @@ export function LocalExperienceForm({
                                 const value = event.target.value;
                                 updateExperience((previous) => ({
                                   ...previous,
-                                  otherTasks: previous.otherTasks!.map((entry, position) =>
-                                    position === index ? { ...entry, [field]: value } : entry,
-                                  ),
+                                  otherTasks: previous.otherTasks!.map((entry, position) => {
+                                    if (position !== index || entry[field] === value) return entry;
+                                    const next = { ...entry, [field]: value };
+                                    delete next.confirmedDescription;
+                                    return next;
+                                  }),
                                 }));
                               }}
                             />

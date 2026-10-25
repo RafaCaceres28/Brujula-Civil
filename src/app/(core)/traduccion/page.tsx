@@ -7,7 +7,7 @@ import { readCareerHistory } from '@/features/profile/server/read-career-history
 import { ExperienceProposals } from '@/features/translation/components/experience-proposals';
 import { buildExperienceProposals } from '@/features/translation/services/experience-proposals.builder';
 import { routes } from '@/lib/constants/routes';
-import { FUNCTION_TYPE_OPTIONS } from '@/features/wizard/config/wizard-catalogs';
+import { OtherTaskDescriptions } from '@/features/translation/components/other-task-descriptions';
 
 export default async function TranslationPage() {
   const user = await getRequiredUser(routes.app.translation);
@@ -40,44 +40,7 @@ export default async function TranslationPage() {
     }
     content = (
       <>
-        {pendingExperiences.length ? (
-          <section
-            aria-labelledby="pending-tasks-title"
-            className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-          >
-            <h2 id="pending-tasks-title" className="text-base font-semibold">
-              Pendientes de interpretación
-            </h2>
-            <p className="text-sm text-slate-700">
-              Tareas declaradas por ti, sin traducción automática. Estas tareas todavía no generan
-              propuestas ni competencias y no se han incorporado a tu CV.
-            </p>
-            {pendingExperiences.map((experience) => (
-              <article key={experience.id} className="space-y-3 border-t border-slate-200 pt-4">
-                <h3 className="text-sm font-medium">
-                  Experiencia {experiences.indexOf(experience) + 1}:{' '}
-                  {experience.activity === 'reporting'
-                    ? 'Elaboración de informes'
-                    : FUNCTION_TYPE_OPTIONS.find((option) => option.value === experience.activity)
-                        ?.label}
-                </h3>
-                {experience.otherTasks!.map((task, index) => (
-                  <dl
-                    key={index}
-                    className="space-y-1 whitespace-pre-wrap break-words text-sm text-slate-700"
-                  >
-                    <dt className="font-medium">
-                      Tu descripción, sin interpretar · Tarea {index + 1}
-                    </dt>
-                    <dd>{task.description}</dd>
-                    <dt className="font-medium">Sobre qué trabajabas</dt>
-                    <dd>{task.target}</dd>
-                  </dl>
-                ))}
-              </article>
-            ))}
-          </section>
-        ) : null}
+        <OtherTaskDescriptions experiences={experiences} />
         {proposals ? (
           proposals.length || !pendingExperiences.length ? (
             <ExperienceProposals proposals={proposals} hasExperiences={experiences.length > 0} />

@@ -120,6 +120,39 @@ function expectReadOnlyCore() {
 }
 
 describe('007.1 /traduccion: layout, auth, shell, lector y builder reales', () => {
+  it('reloads nested confirmations from the canonical reader separately without writes or inferred proposals', async () => {
+    mocks.read.mockResolvedValue({
+      data: {
+        raw_profile_jsonb: {
+          careerHistory: {
+            experiences: [
+              {
+                id: 'confirmed-source',
+                activity: 'instruction',
+                otherTasks: [
+                  {
+                    description: 'Revisaba',
+                    target: 'Documentos',
+                    confirmedDescription: '<b>Texto revisado</b>',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+      error: null,
+    });
+    const html = await renderPage();
+    expect(html).toContain('Descripciones confirmadas por el usuario');
+    expect(html).toContain('&lt;b&gt;Texto revisado&lt;/b&gt;');
+    expect(html).toContain('Retirar confirmación');
+    expect(html).not.toMatch(
+      /Pendientes de interpretación|Descripción propuesta para CV|Enseñanza en|<b>/,
+    );
+    expectReadOnlyCore();
+  });
+
   it('shows canonical free text only as pending interpretation, escaped and without inferred competencies', async () => {
     const otherTasks = [
       {
