@@ -4,9 +4,7 @@ import { PageShell } from '@/components/layout/page-shell';
 import { SectionHeader } from '@/components/layout/section-header';
 import { getRequiredUser } from '@/features/auth/server/get-required-user';
 import { readCareerHistory } from '@/features/profile/server/read-career-history';
-import { resolveCompetencyReview } from '@/features/translation/services/competency-review';
-import { buildExperienceProposals } from '@/features/translation/services/experience-proposals.builder';
-import { FUNCTION_TYPE_OPTIONS } from '@/features/wizard/config/wizard-catalogs';
+import { selectConfirmedProfessionalContent } from '@/features/profile/services/confirmed-professional-content';
 import { routes } from '@/lib/constants/routes';
 
 export default async function ProfessionalProfilePage() {
@@ -24,14 +22,14 @@ export default async function ProfessionalProfilePage() {
     );
   } else {
     const experiences = result.data.state === 'ready' ? result.data.careerHistory.experiences : [];
-    let proposals: ReturnType<typeof buildExperienceProposals> | undefined;
+    let confirmed: ReturnType<typeof selectConfirmedProfessionalContent> | undefined;
     try {
-      proposals = buildExperienceProposals(experiences);
+      confirmed = selectConfirmedProfessionalContent(experiences);
     } catch (error) {
       unstable_rethrow(error);
     }
 
-    if (!proposals) {
+    if (!confirmed) {
       content = (
         <p role="alert">
           No pudimos comprobar las competencias vigentes de tu historial. Recarga la página para
@@ -39,25 +37,7 @@ export default async function ProfessionalProfilePage() {
         </p>
       );
     } else {
-      const sources = experiences.map((experience, index) => ({
-        experience,
-        origin: `${FUNCTION_TYPE_OPTIONS.find((option) => option.value === experience.activity)!.label} · Experiencia ${index + 1}`,
-      }));
-      const descriptions = sources.flatMap(({ experience, origin }) =>
-        (experience.otherTasks ?? []).flatMap((task, index) =>
-          task.confirmedDescription
-            ? [{ id: `${experience.id}:${index}`, sourceId: experience.id, origin, task, index }]
-            : [],
-        ),
-      );
-      const competencies = sources.flatMap(({ experience, origin }) =>
-        proposals.flatMap(({ civilianCompetencyCandidate: candidate }) =>
-          candidate.experienceId === experience.id &&
-          resolveCompetencyReview(candidate, experience) === 'accepted'
-            ? [{ candidate, origin }]
-            : [],
-        ),
-      );
+      const { descriptions, competencies } = confirmed;
 
       content = (
         <>
@@ -142,6 +122,9 @@ export default async function ProfessionalProfilePage() {
       </p>
       {content}
       <div className="flex flex-wrap gap-4 text-sm">
+        <Link href={routes.app.cvDraft} prefetch={false}>
+          Ver borrador de CV
+        </Link>
         <Link href={routes.app.translation} prefetch={false}>
           Revisar en Traducción
         </Link>

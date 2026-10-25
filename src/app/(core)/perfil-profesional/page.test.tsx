@@ -158,6 +158,9 @@ describe('007.5d /perfil-profesional: lectura canónica con helpers reales', () 
       'Información revisada por ti. No acredita titulaciones ni habilitaciones profesionales.',
     );
     expect(container.querySelector('form, button, input, textarea, select')).toBeNull();
+    expect(container.querySelector('a[href="/cv-borrador"]')?.textContent).toBe(
+      'Ver borrador de CV',
+    );
     expect(container.querySelector('main a[href="/traduccion"]')?.textContent).toContain(
       'Revisar en Traducción',
     );
