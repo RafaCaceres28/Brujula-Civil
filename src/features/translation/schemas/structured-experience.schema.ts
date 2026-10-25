@@ -75,6 +75,24 @@ export const structuredExperienceSchema = z
       .optional(),
     context: optionalNarrativeSchema,
     result: optionalNarrativeSchema,
+    competencyReviews: z
+      .array(
+        z
+          .object({
+            // Builder IDs include an encoded experience ID plus rule/material prefixes.
+            competencyId: z.string().min(1).max(512),
+            evidenceKey: z.string().min(1).max(4096),
+            decision: z.enum(['accepted', 'discarded']),
+          })
+          .strict(),
+      )
+      .min(1)
+      .refine(
+        (reviews) =>
+          new Set(reviews.map(({ competencyId }) => competencyId)).size === reviews.length,
+        'Duplicate competency review',
+      )
+      .optional(),
     // Bounded declarations only; these texts do not drive competency proposals.
     otherTasks: z
       .array(

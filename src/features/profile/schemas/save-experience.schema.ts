@@ -29,7 +29,9 @@ export const editExperienceInputSchema = z
   .object({
     id: domainIdSchema,
     expectedExperience: structuredExperienceSchema,
-    set: experienceFieldsSchema.partial(),
+    set: experienceFieldsSchema
+      .extend({ competencyReviews: structuredExperienceSchema.shape.competencyReviews })
+      .partial(),
     clear: z
       .array(
         z.enum([
@@ -41,6 +43,7 @@ export const editExperienceInputSchema = z
           'maintenanceTasks',
           'instructionActivities',
           'otherTasks',
+          'competencyReviews',
         ]),
       )
       .refine((fields) => new Set(fields).size === fields.length, 'Duplicate clear field')

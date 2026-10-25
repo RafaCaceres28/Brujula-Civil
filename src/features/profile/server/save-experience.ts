@@ -21,6 +21,8 @@ import {
 } from '../schemas/save-experience.schema';
 import { militaryProfileJsonSchema } from '../services/profile-json';
 import { updateMilitarySnapshot } from './update-military-snapshot';
+import { buildExperienceProposals } from '../../translation/services/experience-proposals.builder';
+import { competencyEvidenceKey } from '../../translation/services/competency-review';
 
 export async function saveExperience(
   userId: string,
@@ -85,6 +87,30 @@ export async function saveExperience(
       } else {
         const edited = { ...experiences[index], ...command.set };
         command.clear.forEach((field) => delete edited[field]);
+        if (edited.competencyReviews?.length) {
+          const candidates = buildExperienceProposals([structuredExperienceSchema.parse(edited)]);
+          const matches = (
+            review: NonNullable<StructuredExperience['competencyReviews']>[number],
+          ) =>
+            candidates.some(
+              ({ civilianCompetencyCandidate: candidate }) =>
+                candidate.id === review.competencyId &&
+                competencyEvidenceKey(candidate) === review.evidenceKey,
+            );
+          // Explicit decisions must bind to current source evidence. Source edits retire
+          // obsolete decisions, preventing an old acceptance from reviving on a later revert.
+          if (command.set.competencyReviews?.some((review) => !matches(review))) {
+            return domainFailure(
+              createDomainError({
+                code: 'VALIDATION_ERROR',
+                message: 'La competencia o su evidencia no coincide con la experiencia actual',
+              }),
+            );
+          }
+          const reviews = edited.competencyReviews.filter(matches);
+          if (reviews.length) edited.competencyReviews = reviews;
+          else delete edited.competencyReviews;
+        }
         experiences[index] = edited;
       }
       const history = { ...originalHistory, experiences };

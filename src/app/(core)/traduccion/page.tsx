@@ -43,7 +43,11 @@ export default async function TranslationPage() {
         <OtherTaskDescriptions experiences={experiences} />
         {proposals ? (
           proposals.length || !pendingExperiences.length ? (
-            <ExperienceProposals proposals={proposals} hasExperiences={experiences.length > 0} />
+            <ExperienceProposals
+              proposals={proposals}
+              hasExperiences={experiences.length > 0}
+              experiences={experiences}
+            />
           ) : null
         ) : (
           <p role="alert">

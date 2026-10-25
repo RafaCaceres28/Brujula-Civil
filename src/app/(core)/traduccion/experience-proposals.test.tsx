@@ -4,6 +4,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readCareerHistory } from '@/features/profile/server/read-career-history';
 import * as builder from '@/features/translation/services/experience-proposals.builder';
+import { competencyEvidenceKey } from '@/features/translation/services/competency-review';
+import { structuredExperienceSchema } from '@/features/translation/schemas/structured-experience.schema';
 import CoreLayout from '../layout';
 import TranslationPage from './page';
 import TranslationLoadingPage from './loading';
@@ -120,6 +122,78 @@ function expectReadOnlyCore() {
 }
 
 describe('007.1 /traduccion: layout, auth, shell, lector y builder reales', () => {
+  it('reloads evidence-bound competency decisions from canonical history without writes or CV calls', async () => {
+    const source = structuredExperienceSchema.parse(history.experiences[0]);
+    const candidate = builder.buildExperienceProposals([source])[0].civilianCompetencyCandidate;
+    for (const [decision, label] of [
+      ['accepted', 'Aceptada por ti'],
+      ['discarded', 'Descartada por ti'],
+    ] as const) {
+      vi.clearAllMocks();
+      mocks.read.mockResolvedValue({
+        data: {
+          raw_profile_jsonb: {
+            careerHistory: {
+              experiences: [
+                {
+                  ...source,
+                  competencyReviews: [
+                    {
+                      competencyId: candidate.id,
+                      evidenceKey: competencyEvidenceKey(candidate),
+                      decision,
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        error: null,
+      });
+      const html = await renderPage();
+      expect(html).toContain(label);
+      expect(html).toContain('Volver a pendiente');
+      expect(html).not.toContain(candidate.id);
+      expectReadOnlyCore();
+    }
+  });
+
+  it('shows a structurally valid but obsolete review as pending, and malformed stored decisions as integrity errors', async () => {
+    const source = structuredExperienceSchema.parse(history.experiences[0]);
+    const candidate = builder.buildExperienceProposals([source])[0].civilianCompetencyCandidate;
+    const stored = {
+      ...source,
+      competencyReviews: [
+        { competencyId: candidate.id, evidenceKey: 'obsolete', decision: 'accepted' },
+      ],
+    };
+    mocks.read.mockResolvedValue({
+      data: { raw_profile_jsonb: { careerHistory: { experiences: [stored] } } },
+      error: null,
+    });
+    const html = await renderPage();
+    expect(html).toContain('Pendiente de revisión');
+    expect(html).not.toContain('Aceptada por ti');
+    expectReadOnlyCore();
+    mocks.read.mockResolvedValue({
+      data: {
+        raw_profile_jsonb: {
+          careerHistory: {
+            experiences: [
+              {
+                ...stored,
+                competencyReviews: [{ ...stored.competencyReviews[0], decision: 'verified' }],
+              },
+            ],
+          },
+        },
+      },
+      error: null,
+    });
+    expect(await renderPage()).toContain('Hay un problema de integridad');
+  });
+
   it('reloads nested confirmations from the canonical reader separately without writes or inferred proposals', async () => {
     mocks.read.mockResolvedValue({
       data: {
