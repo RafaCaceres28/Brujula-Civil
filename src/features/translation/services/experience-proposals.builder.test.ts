@@ -13,6 +13,172 @@ const experience: StructuredExperience = {
 };
 
 describe('buildExperienceProposals', () => {
+  it.each([
+    [
+      'demonstrated',
+      'Apoyo al instructor mediante demostraciones prácticas.',
+      /impart|prepara|planific/i,
+    ],
+    [
+      'explained_to_peers',
+      'Explicación de procedimientos o contenidos a compañeros.',
+      /prepara|planific/i,
+    ],
+    [
+      'prepared_and_delivered',
+      'Preparación y explicación de contenidos o prácticas formativas.',
+      /director|programa|titul|certific/i,
+    ],
+  ] as const)(
+    'supports %s alone without requiring or adding generic participation',
+    (detail, text, forbidden) => {
+      const proposals = buildExperienceProposals([
+        { id: 'single-detail', activity: 'instruction', instructionActivities: [detail] },
+      ]);
+      expect(proposals).toHaveLength(1);
+      expect(proposals[0].cvDescription.text).toBe(text);
+      expect(JSON.stringify(proposals)).not.toMatch(forbidden);
+    },
+  );
+
+  it.each(['received_training', 'practiced_exercises'] as const)(
+    'does not infer teaching or skills from %s even with legacy instructed',
+    (detail) => {
+      expect(
+        buildExperienceProposals(
+          structuredExperiencesSchema.parse([
+            {
+              id: 'recipient',
+              activity: 'instruction',
+              participation: ['instructed'],
+              instructionActivities: [detail],
+            },
+          ]),
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  it('uses only exact detailed evidence, independently of generic roles or unrelated declarations', () => {
+    const details = [
+      'received_training',
+      'practiced_exercises',
+      'demonstrated',
+      'explained_to_peers',
+      'prepared_and_delivered',
+    ];
+    const input = structuredExperiencesSchema.parse([
+      {
+        id: 'detailed',
+        activity: 'instruction',
+        instructionActivities: details,
+        participation: ['instructed', 'coordinated'],
+        assignmentContext: 'acting_replacement',
+        autonomy: 'autonomous',
+        context: 'Director técnico',
+        stageIds: ['stage-1'],
+      },
+      { id: 'empty-instruction', activity: 'instruction' },
+    ]);
+    const before = JSON.stringify(input);
+    input.forEach((value) => {
+      Object.freeze(value.instructionActivities);
+      Object.freeze(value.participation);
+      Object.freeze(value);
+    });
+    Object.freeze(input);
+    const output = buildExperienceProposals(input);
+    expect(output.map(({ cvDescription }) => cvDescription.text)).toEqual([
+      'Apoyo al instructor mediante demostraciones prácticas.',
+      'Explicación de procedimientos o contenidos a compañeros.',
+      'Preparación y explicación de contenidos o prácticas formativas.',
+    ]);
+    expect(
+      output.map(({ civilianCompetencyCandidate }) => civilianCompetencyCandidate.label),
+    ).toEqual([
+      'Apoyo práctico a actividades formativas',
+      'Explicación de contenidos a compañeros',
+      'Preparación y exposición de contenidos formativos',
+    ]);
+    for (const [index, proposal] of output.entries()) {
+      const evidence = [
+        { experienceId: 'detailed', field: 'structuredExperiences.activity', value: 'instruction' },
+        {
+          experienceId: 'detailed',
+          field: 'structuredExperiences.instructionActivities',
+          value: details[index + 2],
+        },
+      ];
+      expect(proposal.cvDescription.evidence).toEqual(evidence);
+      expect(proposal.civilianCompetencyCandidate.evidence).toEqual(evidence);
+      expect(proposal.cvDescription.evidence).not.toBe(
+        proposal.civilianCompetencyCandidate.evidence,
+      );
+      expect(proposal.cvDescription).toMatchObject({
+        basis: 'direct_declaration',
+        requiresReview: true,
+      });
+      expect(proposal.civilianCompetencyCandidate).toMatchObject({
+        basis: 'direct_declaration',
+        requiresReview: true,
+      });
+    }
+    expect(new Set(output.map(({ id }) => id)).size).toBe(3);
+    expect(
+      buildExperienceProposals(
+        input
+          .map((value) => ({
+            ...value,
+            ...(value.instructionActivities
+              ? { instructionActivities: [...value.instructionActivities].reverse() }
+              : {}),
+          }))
+          .reverse(),
+      ),
+    ).toEqual(output);
+    expect(JSON.stringify(input)).toBe(before);
+    expect(JSON.stringify(output)).not.toMatch(
+      /técnic|Director|mando|por encargo|planific|titul|programa/,
+    );
+  });
+
+  it('does not combine demonstration and explanation into preparation, or fall back after clearing', () => {
+    const detailed = structuredExperiencesSchema.parse([
+      {
+        id: 'pair',
+        activity: 'instruction',
+        instructionActivities: ['demonstrated', 'explained_to_peers'],
+      },
+    ]);
+    expect(buildExperienceProposals(detailed)).toHaveLength(2);
+    expect(JSON.stringify(buildExperienceProposals(detailed))).not.toMatch(
+      /Preparación|preparación/,
+    );
+    expect(
+      buildExperienceProposals([
+        { id: 'pair', activity: 'instruction', participation: ['instructed'] },
+      ]),
+    ).toEqual([]);
+  });
+
+  it.each(['assisted', 'performed', 'coordinated', 'instructed'] as const)(
+    'does not derive instruction proposals from legacy %s or mutate its declarations',
+    (role) => {
+      const participation = [role];
+      const input: StructuredExperience[] = [
+        { id: 'legacy-instruction', activity: 'instruction', participation },
+      ];
+      const before = structuredClone(input);
+      Object.freeze(participation);
+      Object.freeze(input[0]);
+      Object.freeze(input);
+      expect(buildExperienceProposals(input)).toEqual([]);
+      expect(input).toEqual(before);
+      expect(input[0].participation).toBe(participation);
+      expect(input[0]).not.toHaveProperty('instructionActivities');
+    },
+  );
+
   it('groups only declared operations of each material, with distinct competency and exact trace', () => {
     const input = structuredExperiencesSchema.parse([
       {
@@ -222,8 +388,12 @@ describe('buildExperienceProposals', () => {
     for (const activity of ['instruction', 'technical_instruction']) {
       expect(FUNCTION_TYPE_OPTIONS.some((option) => option.value === activity)).toBe(true);
     }
-    const [proposal] = buildExperienceProposals([{ ...experience, activity: 'instruction' }]);
-    expect(proposal.cvDescription.text).toBe('Enseñanza en actividades de formación.');
+    const [proposal] = buildExperienceProposals([
+      { ...experience, activity: 'instruction', instructionActivities: ['explained_to_peers'] },
+    ]);
+    expect(proposal.cvDescription.text).toBe(
+      'Explicación de procedimientos o contenidos a compañeros.',
+    );
     expect(JSON.stringify(proposal)).not.toMatch(/técnic|titulado|certificad|acreditad|mando|años/);
   });
 
@@ -321,14 +491,16 @@ describe('buildExperienceProposals', () => {
       ),
     ).toEqual(output);
     expect(JSON.stringify(input)).toBe(before);
-    expect(new Set(output.map(({ id }) => id)).size).toBe(4);
+    expect(new Set(output.map(({ id }) => id)).size).toBe(2);
     for (const proposal of output) {
       const source = input.find(({ id }) => id === proposal.experienceId)!;
       expect(proposal.cvDescription.evidence[0].value).toBe(source.activity);
       expect(source.participation).toContain(proposal.cvDescription.evidence[1].value);
     }
-    output[0].cvDescription.evidence[0].value = 'technical_instruction';
-    expect(buildExperienceProposals(input)[0].cvDescription.evidence[0].value).toBe('instruction');
-    expect(output[0].civilianCompetencyCandidate.evidence[0].value).toBe('instruction');
+    output[0].cvDescription.evidence[0].value = 'instruction';
+    expect(buildExperienceProposals(input)[0].cvDescription.evidence[0].value).toBe(
+      'technical_instruction',
+    );
+    expect(output[0].civilianCompetencyCandidate.evidence[0].value).toBe('technical_instruction');
   });
 });

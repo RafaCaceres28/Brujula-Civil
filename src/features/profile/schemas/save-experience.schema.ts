@@ -11,6 +11,7 @@ export const experienceFieldsSchema = z.object(structuredExperienceSchema.shape)
   autonomy: true,
   participation: true,
   maintenanceTasks: true,
+  instructionActivities: true,
 });
 
 export const createExperienceInputSchema = z
@@ -37,6 +38,7 @@ export const editExperienceInputSchema = z
           'autonomy',
           'participation',
           'maintenanceTasks',
+          'instructionActivities',
         ]),
       )
       .refine((fields) => new Set(fields).size === fields.length, 'Duplicate clear field')

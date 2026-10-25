@@ -13,6 +13,7 @@ import {
   editExperienceInputSchema,
 } from '@/features/profile/schemas/save-experience.schema';
 import type { DomainError } from '@/lib/contracts/domain-error';
+import { INSTRUCTION_ACTIVITIES, type InstructionActivity } from '../config/instruction-activities';
 import {
   MAINTENANCE_MATERIALS,
   MAINTENANCE_OPERATIONS,
@@ -116,6 +117,7 @@ export function LocalExperienceForm({
     'assignmentContext',
     'participation',
     'maintenanceTasks',
+    'instructionActivities',
   ] as const;
   // Participation is a set for UI dirtiness; CAS still receives the untouched full baseline.
   const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
@@ -131,8 +133,8 @@ export function LocalExperienceForm({
     left: StructuredExperience,
     right: StructuredExperience,
   ) =>
-    field === 'participation'
-      ? same(left.participation?.slice().sort(), right.participation?.slice().sort())
+    field === 'participation' || field === 'instructionActivities'
+      ? same(left[field]?.slice().sort(), right[field]?.slice().sort())
       : field === 'maintenanceTasks'
         ? same(maintenanceSet(left.maintenanceTasks), maintenanceSet(right.maintenanceTasks))
         : same(left[field], right[field]);
@@ -345,9 +347,18 @@ export function LocalExperienceForm({
                         )
                       )
                         return;
+                      if (
+                        activity !== 'instruction' &&
+                        experience.instructionActivities &&
+                        !window.confirm(
+                          'Cambiar de actividad eliminará los detalles de instrucción. ¿Continuar?',
+                        )
+                      )
+                        return;
                       updateExperience((previous) => {
                         const next = { ...previous, activity };
                         if (activity !== 'op_maintenance') delete next.maintenanceTasks;
+                        if (activity !== 'instruction') delete next.instructionActivities;
                         return next;
                       });
                     }}
@@ -457,6 +468,45 @@ export function LocalExperienceForm({
                       )}
                     </div>
                   </details>
+                ) : null}
+                {experience.activity === 'instruction' ? (
+                  <fieldset aria-describedby={`${formId}-instruction-help`} className="space-y-3">
+                    <legend className="text-sm font-medium text-slate-900">
+                      ¿Qué hacías en instrucción? (opcional, puedes elegir varias)
+                    </legend>
+                    {(Object.keys(INSTRUCTION_ACTIVITIES) as InstructionActivity[]).map((value) => (
+                      <label key={value} className="flex min-h-11 items-center gap-3 text-sm">
+                        <input
+                          type="checkbox"
+                          name="instructionActivities"
+                          value={value}
+                          checked={experience.instructionActivities?.includes(value) ?? false}
+                          className="size-5 shrink-0 accent-slate-900"
+                          onChange={() =>
+                            updateExperience((previous) => {
+                              const selected = previous.instructionActivities ?? [];
+                              const values = selected.includes(value)
+                                ? selected.filter((item) => item !== value)
+                                : [...selected, value];
+                              const next = { ...previous };
+                              delete next.instructionActivities;
+                              return values.length
+                                ? { ...next, instructionActivities: values.sort() }
+                                : next;
+                            })
+                          }
+                        />
+                        {INSTRUCTION_ACTIVITIES[value]}
+                      </label>
+                    ))}
+                    <p id={`${formId}-instruction-help`} className="text-sm text-slate-600">
+                      Completa estos detalles para fundamentar propuestas de instrucción; la
+                      participación general no es suficiente. Recibir formación o participar en
+                      prácticas no demuestra por sí solo capacidad para impartirla. No acreditan
+                      titulaciones. Sin estos detalles no se generan propuestas de instrucción,
+                      tampoco si los eliminas.
+                    </p>
+                  </fieldset>
                 ) : null}
                 {renderOptionalField('durationRange')}
                 {renderOptionalField('frequency')}
@@ -601,6 +651,31 @@ export function LocalExperienceForm({
                           <li key={value}>{PARTICIPATION_LABELS[value]}</li>
                         ))}
                       </ul>
+                    </dd>
+                  </div>
+                ) : null}
+                {preview.instructionActivities ? (
+                  <div>
+                    <dt className="font-medium text-slate-600">Detalles de instrucción</dt>
+                    <dd className="mt-1 text-slate-900">
+                      <ul className="list-disc space-y-1 pl-5">
+                        {preview.instructionActivities.map((value) => (
+                          <li key={value}>{INSTRUCTION_ACTIVITIES[value]}</li>
+                        ))}
+                      </ul>
+                      <p>
+                        Estos detalles, no los roles generales, fundamentan las propuestas de
+                        instrucción.
+                      </p>
+                      {preview.instructionActivities.every(
+                        (value) => value === 'received_training' || value === 'practiced_exercises',
+                      ) ? (
+                        <p>
+                          Recibir formación o participar en prácticas no demuestra por sí solo
+                          capacidad para impartirla. No hay evidencia suficiente para proponer una
+                          competencia civil.
+                        </p>
+                      ) : null}
                     </dd>
                   </div>
                 ) : null}

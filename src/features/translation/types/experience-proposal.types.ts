@@ -1,9 +1,18 @@
 import type { StructuredExperience } from '../schemas/structured-experience.schema';
 import type { MaintenanceMaterial, MaintenanceOperation } from '../config/maintenance-catalog';
+import type { InstructionActivity } from '../config/instruction-activities';
 
 export type TrainingParticipation = NonNullable<StructuredExperience['participation']>[number];
 
 export type ExperienceProposalEvidence =
+  | [
+      { experienceId: string; field: 'structuredExperiences.activity'; value: 'instruction' },
+      {
+        experienceId: string;
+        field: 'structuredExperiences.instructionActivities';
+        value: InstructionActivity;
+      },
+    ]
   | [
       {
         experienceId: string;

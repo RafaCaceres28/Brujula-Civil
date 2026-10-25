@@ -36,6 +36,153 @@ function setup(raw: unknown = {}) {
 describe('experience commands and shared writer CAS', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it('creates and reloads instruction detail into the real builder, with idempotency and no role defaults', async () => {
+    const mock = setup({ metadata: { keep: true } });
+    mock.rows.app_user_profiles.push({
+      user_id: 'user-1',
+      display_name: 'Synthetic',
+      email: 'synthetic@example.test',
+    });
+    const declared = {
+      id: 'instruction-1',
+      activity: 'instruction',
+      instructionActivities: ['demonstrated', 'received_training'],
+    };
+    const command = { operation: 'create', experience: declared };
+    expect(await saveExperience('user-1', command)).toMatchObject({
+      ok: true,
+      data: { experience: declared },
+    });
+    expect(await saveExperience('user-1', command)).toMatchObject({ ok: true });
+    expect(
+      await saveExperience('user-1', {
+        ...command,
+        experience: { ...declared, instructionActivities: ['explained_to_peers'] },
+      }),
+    ).toMatchObject({ error: { code: 'CONFLICT' } });
+    const reloaded = (await getProfile('user-1'))!.careerHistory!.experiences;
+    expect(reloaded).toEqual([declared]);
+    expect(reloaded[0]).not.toHaveProperty('participation');
+    expect(buildExperienceProposals(reloaded)).toMatchObject([
+      {
+        experienceId: declared.id,
+        cvDescription: { text: 'Apoyo al instructor mediante demostraciones prácticas.' },
+      },
+    ]);
+    expect(mock.calls.filter((call) => call.operation === 'update')).toHaveLength(1);
+  });
+
+  it('edits and clears instruction detail while preserving stages, siblings, hidden fields and exact CAS guard', async () => {
+    const stored = {
+      ...full,
+      id: 'instruction-edit',
+      activity: 'instruction',
+      context: 'Taller',
+      instructionActivities: ['received_training'],
+      participation: ['instructed'],
+    };
+    const raw = {
+      metadata: { nested: ['keep'] },
+      careerHistory: { ...history, experiences: [stored, experience] },
+    };
+    const mock = setup(raw);
+    mock.rows.app_user_profiles.push({
+      user_id: 'user-1',
+      display_name: 'Synthetic',
+      email: 'synthetic@example.test',
+    });
+    const edited = { ...stored, instructionActivities: ['explained_to_peers'] };
+    expect(
+      await saveExperience('user-1', {
+        operation: 'edit',
+        id: stored.id,
+        expectedExperience: stored,
+        set: { instructionActivities: edited.instructionActivities },
+      }),
+    ).toMatchObject({ ok: true, data: { experience: edited } });
+    expect(mock.calls.find((call) => call.operation === 'update')?.filters.rawGuard).toEqual(raw);
+    expect(
+      await saveExperience('user-1', {
+        operation: 'edit',
+        id: stored.id,
+        expectedExperience: stored,
+        set: { frequency: 'occasional' },
+      }),
+    ).toMatchObject({ error: { code: 'CONFLICT' } });
+    expect(
+      await saveExperience('user-1', {
+        operation: 'edit',
+        id: stored.id,
+        expectedExperience: edited,
+        set: { activity: 'op_maintenance' },
+      }),
+    ).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+    expect(
+      await saveExperience('user-1', {
+        operation: 'edit',
+        id: stored.id,
+        expectedExperience: edited,
+        set: {},
+        clear: ['instructionActivities'],
+      }),
+    ).toMatchObject({ ok: true });
+    const { instructionActivities: removed, ...cleared } = edited;
+    expect(removed).toEqual(['explained_to_peers']);
+    expect(mock.rows.user_military_profiles[0].raw_profile_jsonb).toEqual({
+      ...raw,
+      careerHistory: { ...history, experiences: [cleared, experience] },
+    });
+    const reloaded = (await getProfile('user-1'))!.careerHistory!.experiences;
+    expect(reloaded).toEqual([cleared, experience]);
+    expect(reloaded[0].participation).toEqual(['instructed']);
+    expect(reloaded[0]).not.toHaveProperty('instructionActivities');
+    expect(buildExperienceProposals(reloaded)).toEqual([]);
+  });
+
+  it('detects a concurrent instruction detail change through the unchanged snapshot CAS writer', async () => {
+    const stored = {
+      id: 'instruction-race',
+      activity: 'instruction',
+      instructionActivities: ['received_training'],
+    };
+    const mock = setup({ careerHistory: { experiences: [stored] } });
+    mock.control.beforeUpdate = async () => {
+      expect(
+        await saveExperience('user-1', {
+          operation: 'edit',
+          id: stored.id,
+          expectedExperience: stored,
+          set: { instructionActivities: ['demonstrated'] },
+        }),
+      ).toMatchObject({ ok: true });
+    };
+    expect(
+      await saveExperience('user-1', {
+        operation: 'edit',
+        id: stored.id,
+        expectedExperience: stored,
+        set: { instructionActivities: ['prepared_and_delivered'] },
+      }),
+    ).toMatchObject({ error: { code: 'CONFLICT' } });
+    expect(mock.rows.user_military_profiles[0].raw_profile_jsonb).toEqual({
+      careerHistory: { experiences: [{ ...stored, instructionActivities: ['demonstrated'] }] },
+    });
+  });
+
+  it.each([[], null, ['unknown'], ['demonstrated', 'demonstrated']].map((value) => [value]))(
+    'rejects malformed instruction commands before storage: %j',
+    async (instructionActivities) => {
+      setup();
+      expect(
+        await saveExperience('user-1', {
+          operation: 'create',
+          experience: { id: 'invalid-instruction', activity: 'instruction', instructionActivities },
+        }),
+      ).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+      expect(createClient).not.toHaveBeenCalled();
+    },
+  );
+
   it('saves and reloads maintenance declarations into the real builder; same create is idempotent, changed tasks conflict', async () => {
     const mock = setup({ metadata: { keep: true } });
     mock.rows.app_user_profiles.push({

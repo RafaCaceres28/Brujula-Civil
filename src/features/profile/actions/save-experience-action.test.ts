@@ -16,6 +16,45 @@ it('returns unauthenticated without storage', async () => {
 });
 
 it.each([
+  [
+    createExperienceAction,
+    {
+      experience: {
+        id: 'instruction-1',
+        activity: 'instruction',
+        instructionActivities: ['received_training', 'demonstrated'],
+      },
+    },
+    'create',
+  ],
+  [
+    editExperienceAction,
+    {
+      id: 'instruction-1',
+      expectedExperience: {
+        id: 'instruction-1',
+        activity: 'instruction',
+        instructionActivities: ['demonstrated'],
+      },
+      set: { instructionActivities: ['explained_to_peers'] },
+      clear: [],
+    },
+    'edit',
+  ],
+  [
+    editExperienceAction,
+    {
+      id: 'instruction-1',
+      expectedExperience: {
+        id: 'instruction-1',
+        activity: 'instruction',
+        instructionActivities: ['demonstrated'],
+      },
+      set: { activity: 'technical_instruction' },
+      clear: ['instructionActivities'],
+    },
+    'edit',
+  ],
   [createExperienceAction, { experience: { id: 'exp-1', activity: 'op_maintenance' } }, 'create'],
   [
     createExperienceAction,
@@ -66,6 +105,14 @@ it.each([
 );
 
 it.each([
+  {
+    experience: {
+      id: 'instruction-1',
+      activity: 'technical_instruction',
+      instructionActivities: ['demonstrated'],
+    },
+  },
+  { experience: { id: 'instruction-1', activity: 'instruction', instructionActivities: [] } },
   { userId: 'other', experience: { id: 'exp-1', activity: 'op_maintenance' } },
   { operation: 'edit', experience: { id: 'exp-1', activity: 'op_maintenance' } },
   {

@@ -120,6 +120,69 @@ function expectReadOnlyCore() {
 }
 
 describe('007.1 /traduccion: layout, auth, shell, lector y builder reales', () => {
+  it('presents three distinct instruction proposals from canonical details, without legacy role claims', async () => {
+    mocks.read.mockResolvedValue({
+      data: {
+        raw_profile_jsonb: {
+          careerHistory: {
+            experiences: [
+              {
+                id: 'saved-instruction',
+                activity: 'instruction',
+                participation: ['instructed'],
+                instructionActivities: [
+                  'received_training',
+                  'practiced_exercises',
+                  'demonstrated',
+                  'explained_to_peers',
+                  'prepared_and_delivered',
+                ],
+              },
+            ],
+          },
+        },
+      },
+      error: null,
+    });
+    const html = await renderPage();
+    expect(html).toContain('Apoyo al instructor mediante demostraciones prácticas.');
+    expect(html).toContain('Explicación de procedimientos o contenidos a compañeros.');
+    expect(html).toContain('Preparación y explicación de contenidos o prácticas formativas.');
+    expect(html).toContain('Apoyo práctico a actividades formativas');
+    expect(html).toContain('Explicación de contenidos a compañeros');
+    expect(html).toContain('Preparación y exposición de contenidos formativos');
+    expect(html).toContain('Participación: Realizaba demostraciones para apoyar al instructor');
+    expect(html).not.toMatch(/Enseñanza en|Enseñaba a otros|saved-instruction|received_training/);
+    expectReadOnlyCore();
+  });
+
+  it.each(['received_training', 'practiced_exercises', undefined])(
+    'presents honest empty proposals for %s despite legacy instructed',
+    async (detail) => {
+      mocks.read.mockResolvedValue({
+        data: {
+          raw_profile_jsonb: {
+            careerHistory: {
+              experiences: [
+                {
+                  id: 'recipient',
+                  activity: 'instruction',
+                  participation: ['instructed'],
+                  ...(detail ? { instructionActivities: [detail] } : {}),
+                },
+              ],
+            },
+          },
+        },
+        error: null,
+      });
+      const html = await renderPage();
+      expect(html).toContain('No hay propuestas fundamentadas');
+      expect(html).not.toMatch(/Descripción propuesta para CV|Enseñanza en|Enseñaba a otros/);
+      expectReadOnlyCore();
+    },
+  );
+
   it('reads canonical maintenance tasks through the real builder and presents material-operation evidence without legacy calls', async () => {
     mocks.read.mockResolvedValue({
       data: {

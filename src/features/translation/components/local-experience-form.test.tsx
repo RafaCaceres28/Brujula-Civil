@@ -63,6 +63,154 @@ function observeValidation() {
 }
 
 describe('LocalExperienceForm', () => {
+  it('captures all five instruction choices without generic defaults, previews, saves and clears explicitly', async () => {
+    setup(vi.fn());
+    expect(container.querySelector('[name="instructionActivities"]')).toBeNull();
+    change('activity', 'technical_instruction');
+    expect(container.querySelector('[name="instructionActivities"]')).toBeNull();
+    change('activity', 'instruction');
+    expect(container.textContent).toContain(
+      'Sin estos detalles no se generan propuestas de instrucción',
+    );
+    expect(container.textContent).not.toContain('se utiliza la participación general declarada');
+    const labels = [
+      'Recibía instrucción o formación',
+      'Participaba en ejercicios y prácticas',
+      'Realizaba demostraciones para apoyar al instructor',
+      'Explicaba procedimientos o contenidos a compañeros',
+      'Preparaba y explicaba contenidos o prácticas',
+    ];
+    const choices = Array.from(
+      container.querySelectorAll<HTMLInputElement>('[name="instructionActivities"]'),
+    );
+    expect(choices).toHaveLength(5);
+    expect(choices.map((choice) => choice.labels![0].textContent?.trim())).toEqual(labels);
+    expect(choices.every((choice) => !choice.checked)).toBe(true);
+    toggle('received_training');
+    expect(preview().textContent).toContain(labels[0]);
+    expect(preview().textContent).toContain('No hay evidencia suficiente');
+    choices.slice(1).forEach((choice) => toggle(choice.value));
+    labels.forEach((label) => expect(preview().textContent).toContain(label));
+    expect(preview().textContent).not.toContain('No hay evidencia suficiente');
+    mocks.create.mockImplementation(async ({ experience }) => ({ ok: true, data: { experience } }));
+    await act(async () => save());
+    const saved = mocks.create.mock.calls[0][0].experience;
+    expect(saved.instructionActivities).toEqual(choices.map((choice) => choice.value).sort());
+    expect(saved).not.toHaveProperty('participation');
+    mocks.edit.mockImplementation(async ({ set, clear }) => {
+      const experience = { ...saved, ...set };
+      clear.forEach((field: string) => delete experience[field]);
+      return { ok: true, data: { experience } };
+    });
+    choices.forEach((choice) => toggle(choice.value));
+    await act(async () => save());
+    expect(mocks.edit).toHaveBeenCalledWith({
+      id: saved.id,
+      expectedExperience: saved,
+      set: {},
+      clear: ['instructionActivities'],
+    });
+  });
+
+  it('reloads details, treats choices as a set, keeps focus and hidden baseline fields on edit', async () => {
+    setup();
+    const initial: StructuredExperience = {
+      id: 'instruction-stored',
+      activity: 'instruction',
+      instructionActivities: ['received_training', 'demonstrated'],
+      participation: ['instructed'],
+      stageIds: ['stage-1'],
+      equipment: 'radio_comms',
+      context: 'Contexto',
+      result: 'Resultado',
+    };
+    const dirty = vi.fn();
+    act(() =>
+      root.render(
+        <LocalExperienceForm
+          key="instruction"
+          mode="edit"
+          initialExperience={initial}
+          onSaved={vi.fn()}
+          onDirtyChange={dirty}
+        />,
+      ),
+    );
+    const checkbox = container.querySelector<HTMLInputElement>('input[value="demonstrated"]')!;
+    expect(checkbox.checked).toBe(true);
+    checkbox.focus();
+    toggle('demonstrated');
+    expect(document.activeElement).toBe(checkbox);
+    toggle('demonstrated');
+    expect(dirty).toHaveBeenLastCalledWith(false);
+    change('frequency', 'occasional');
+    mocks.edit.mockResolvedValue({
+      ok: true,
+      data: { experience: { ...initial, frequency: 'occasional' } },
+    });
+    await act(async () => save());
+    expect(mocks.edit).toHaveBeenCalledWith({
+      id: initial.id,
+      expectedExperience: initial,
+      set: { frequency: 'occasional' },
+      clear: [],
+    });
+    expect(initial.instructionActivities).toEqual(['received_training', 'demonstrated']);
+  });
+
+  it('requires confirmation to clear instruction details on activity change, preserving general roles', async () => {
+    setup(vi.fn());
+    change('activity', 'instruction');
+    toggle('received_training');
+    toggle('instructed');
+    mocks.create.mockImplementation(async ({ experience }) => ({ ok: true, data: { experience } }));
+    await act(async () => save());
+    const saved = mocks.create.mock.calls[0][0].experience;
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    change('activity', 'op_maintenance');
+    expect(select('activity').value).toBe('instruction');
+    expect(preview().textContent).toContain('Recibía instrucción o formación');
+    confirm.mockReturnValue(true);
+    change('activity', 'op_maintenance');
+    expect(container.querySelector('[name="instructionActivities"]')).toBeNull();
+    mocks.edit.mockResolvedValue({ ok: false, error: { code: 'CONFLICT' } });
+    await act(async () => save());
+    expect(mocks.edit).toHaveBeenCalledWith({
+      id: saved.id,
+      expectedExperience: saved,
+      set: { activity: 'op_maintenance' },
+      clear: ['instructionActivities'],
+    });
+    expect(preview().textContent).toContain('Enseñaba a otros a realizarla');
+    confirm.mockRestore();
+  });
+
+  it('hydrates stored instruction choices with stable labels and no errors', async () => {
+    const initial: StructuredExperience = {
+      id: 'ssr-instruction',
+      activity: 'instruction',
+      instructionActivities: ['explained_to_peers'],
+    };
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    container.innerHTML = renderToString(
+      <LocalExperienceForm initialExperience={initial} mode="edit" />,
+    );
+    const errors = vi.fn();
+    await act(async () => {
+      root = hydrateRoot(
+        container,
+        <LocalExperienceForm initialExperience={initial} mode="edit" />,
+        { onRecoverableError: errors },
+      );
+    });
+    expect(errors).not.toHaveBeenCalled();
+    expect(
+      container.querySelector<HTMLInputElement>('input[value="explained_to_peers"]')!.checked,
+    ).toBe(true);
+    expect(preview().textContent).toContain('Explicaba procedimientos o contenidos a compañeros');
+  });
+
   it('treats maintenance sets as unordered for dirtiness and omits untouched tasks from metadata edits', async () => {
     setup(vi.fn());
     const initial: StructuredExperience = {

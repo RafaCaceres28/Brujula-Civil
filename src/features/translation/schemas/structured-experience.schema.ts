@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { domainIdSchema } from '../../../lib/contracts/shared.schema';
 import { FUNCTION_TYPE_OPTIONS, TOOL_OPTIONS } from '../../wizard/config/wizard-catalogs';
+import { INSTRUCTION_ACTIVITIES, type InstructionActivity } from '../config/instruction-activities';
 import {
   MAINTENANCE_MATERIALS,
   MAINTENANCE_OPERATIONS,
@@ -75,6 +76,15 @@ export const structuredExperienceSchema = z
     context: optionalNarrativeSchema,
     result: optionalNarrativeSchema,
     maintenanceTasks: maintenanceTasksSchema.optional(),
+    instructionActivities: z
+      .array(
+        z.enum(
+          Object.keys(INSTRUCTION_ACTIVITIES) as [InstructionActivity, ...InstructionActivity[]],
+        ),
+      )
+      .min(1)
+      .refine((values) => new Set(values).size === values.length, 'Duplicate instruction activity')
+      .optional(),
     // Assignment context, not frequency/duration; absence means undeclared.
     // Replacement implies no formal appointment, higher position or replaced person's rank.
     assignmentContext: z
@@ -112,6 +122,11 @@ export const structuredExperienceSchema = z
     (experience) =>
       !Object.hasOwn(experience, 'maintenanceTasks') || experience.activity === 'op_maintenance',
     { path: ['maintenanceTasks'], message: 'Maintenance tasks require op_maintenance' },
+  )
+  .refine(
+    (experience) =>
+      !Object.hasOwn(experience, 'instructionActivities') || experience.activity === 'instruction',
+    { path: ['instructionActivities'], message: 'Instruction details require instruction' },
   );
 
 export const structuredExperiencesSchema = z

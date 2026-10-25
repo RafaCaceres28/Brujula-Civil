@@ -62,6 +62,51 @@ function failure(code: string) {
 }
 
 describe('ProfessionalExperienceEditor', () => {
+  it('rereads instruction detail after conflict without replacing the draft, then loads and clears it explicitly', async () => {
+    const initial: StructuredExperience = {
+      ...saved,
+      activity: 'instruction',
+      instructionActivities: ['received_training'],
+    };
+    setup([initial]);
+    await click('Editar experiencia: Instrucción');
+    act(() => container.querySelector<HTMLInputElement>('[value="explained_to_peers"]')!.click());
+    mocks.edit.mockResolvedValue(failure('CONFLICT'));
+    await click('Guardar cambios');
+    const current: StructuredExperience = { ...initial, instructionActivities: ['demonstrated'] };
+    mocks.read.mockResolvedValue({ ok: true, data: { experiences: [current] } });
+    await click('Consultar versión guardada');
+    expect(container.querySelector<HTMLInputElement>('[value="explained_to_peers"]')!.checked).toBe(
+      true,
+    );
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    await click('Cargar versión guardada');
+    expect(container.querySelector<HTMLInputElement>('[value="received_training"]')!.checked).toBe(
+      true,
+    );
+    confirm.mockReturnValue(true);
+    await click('Cargar versión guardada');
+    expect(container.querySelector<HTMLInputElement>('[value="demonstrated"]')!.checked).toBe(true);
+    expect(button('Guardar cambios').disabled).toBe(true);
+    act(() => container.querySelector<HTMLInputElement>('[value="demonstrated"]')!.click());
+    const cleared = { ...current };
+    delete cleared.instructionActivities;
+    mocks.edit.mockResolvedValue({ ok: true, data: { experience: cleared } });
+    await click('Guardar cambios');
+    expect(mocks.edit).toHaveBeenLastCalledWith({
+      id: initial.id,
+      expectedExperience: current,
+      set: {},
+      clear: ['instructionActivities'],
+    });
+    await click('Editar experiencia: Instrucción');
+    expect(
+      Array.from(
+        container.querySelectorAll<HTMLInputElement>('[name="instructionActivities"]'),
+      ).every((input) => !input.checked),
+    ).toBe(true);
+  });
+
   it('distingue vacío válido y lectura fallida; reintenta sin habilitar creación antes de leer', async () => {
     setup([], 'No se pudo cargar el historial');
     expect(container.querySelector('form')).toBeNull();

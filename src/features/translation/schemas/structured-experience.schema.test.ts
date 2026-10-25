@@ -18,6 +18,52 @@ const EXPERIENCE = {
 };
 
 describe('structuredExperienceSchema', () => {
+  it('preserves optional instruction details without defaults or generic participation', () => {
+    const legacy = { id: 'instruction-1', activity: 'instruction' };
+    expect(structuredExperienceSchema.parse(legacy)).toStrictEqual(legacy);
+    const declared = {
+      ...legacy,
+      instructionActivities: [
+        'received_training',
+        'practiced_exercises',
+        'demonstrated',
+        'explained_to_peers',
+        'prepared_and_delivered',
+      ],
+    };
+    expect(structuredExperienceSchema.parse(declared)).toStrictEqual(declared);
+  });
+
+  it.each(
+    [null, [], ['unknown'], ['demonstrated', 'demonstrated'], [null], 'demonstrated'].map(
+      (value) => [value],
+    ),
+  )('rejects invalid instruction details: %j', (instructionActivities) => {
+    expect(
+      structuredExperienceSchema.safeParse({
+        id: 'instruction-1',
+        activity: 'instruction',
+        instructionActivities,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('restricts instruction details to the exact instruction activity, including explicit undefined', () => {
+    for (const { value: activity } of FUNCTION_TYPE_OPTIONS.filter(
+      ({ value }) => value !== 'instruction',
+    )) {
+      for (const instructionActivities of [['demonstrated'], undefined]) {
+        expect(
+          structuredExperienceSchema.safeParse({
+            id: 'instruction-1',
+            activity,
+            instructionActivities,
+          }).success,
+        ).toBe(false);
+      }
+    }
+  });
+
   it('preserves optional material-only declarations without inventing operations or changing legacy records', () => {
     expect(structuredExperienceSchema.parse(EXPERIENCE)).toStrictEqual(EXPERIENCE);
     const input = {

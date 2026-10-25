@@ -1,5 +1,6 @@
 import { FUNCTION_TYPE_OPTIONS } from '../../wizard/config/wizard-catalogs';
 import type { StructuredExperience } from '../schemas/structured-experience.schema';
+import { INSTRUCTION_ACTIVITIES, type InstructionActivity } from '../config/instruction-activities';
 import {
   MAINTENANCE_MATERIALS,
   MAINTENANCE_OPERATIONS,
@@ -17,6 +18,23 @@ const PARTICIPATION = {
   coordinated: { action: 'Coordinación de', label: 'Coordinaba el trabajo de otras personas' },
   instructed: { action: 'Enseñanza en', label: 'Enseñaba a otros a realizarla' },
 } satisfies Record<TrainingParticipation, { action: string; label: string }>;
+
+const INSTRUCTION_PROPOSALS: Partial<
+  Record<InstructionActivity, { description: string; competency: string }>
+> = {
+  demonstrated: {
+    description: 'Apoyo al instructor mediante demostraciones prácticas.',
+    competency: 'Apoyo práctico a actividades formativas',
+  },
+  explained_to_peers: {
+    description: 'Explicación de procedimientos o contenidos a compañeros.',
+    competency: 'Explicación de contenidos a compañeros',
+  },
+  prepared_and_delivered: {
+    description: 'Preparación y explicación de contenidos o prácticas formativas.',
+    competency: 'Preparación y exposición de contenidos formativos',
+  },
+};
 
 // Only the explicit technical catalog activity supports the technical qualifier.
 // Radio declarations retain their separate, unchanged military-to-civilian mapper.
@@ -120,6 +138,43 @@ export function buildExperienceProposals(
       continue;
     }
     if (activity !== 'instruction' && activity !== 'technical_instruction') continue;
+
+    // Instruction proposals require specific details, never generic participation alone.
+    if (activity === 'instruction') {
+      for (const detail of Object.keys(INSTRUCTION_ACTIVITIES) as InstructionActivity[]) {
+        if (!experience.instructionActivities?.includes(detail)) continue;
+        const content = INSTRUCTION_PROPOSALS[detail];
+        if (!content) continue;
+        const id = `instruction:${encodeURIComponent(experienceId)}:${detail}`;
+        const evidence: ExperienceProposalEvidence = [
+          { experienceId, field: 'structuredExperiences.activity', value: 'instruction' },
+          { experienceId, field: 'structuredExperiences.instructionActivities', value: detail },
+        ];
+        proposals.push({
+          id,
+          experienceId,
+          sourceLabel: FUNCTION_TYPE_OPTIONS.find((option) => option.value === activity)!.label,
+          participationLabel: INSTRUCTION_ACTIVITIES[detail],
+          cvDescription: {
+            id: `cv:${id}`,
+            experienceId,
+            text: content.description,
+            basis: 'direct_declaration',
+            requiresReview: true,
+            evidence,
+          },
+          civilianCompetencyCandidate: {
+            id: `competency:${id}`,
+            experienceId,
+            label: content.competency,
+            basis: 'direct_declaration',
+            requiresReview: true,
+            evidence: structuredClone(evidence),
+          },
+        });
+      }
+      continue;
+    }
 
     for (const role of Object.keys(PARTICIPATION) as TrainingParticipation[]) {
       if (!experience.participation?.includes(role)) continue;
