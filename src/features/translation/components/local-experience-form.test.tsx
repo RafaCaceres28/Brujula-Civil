@@ -52,6 +52,26 @@ function save() {
 
 const SAVED_MESSAGE = 'Experiencia guardada en tu perfil.';
 
+function taskText(index: number, field: 'description' | 'target', value: string) {
+  const input = container.querySelector<HTMLTextAreaElement>(
+    `textarea[name="otherTasks.${index}.${field}"]`,
+  )!;
+  act(() => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(
+      input,
+      value,
+    );
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+
+function taskButton(label: string) {
+  const button = Array.from(container.querySelectorAll('button')).find(
+    (button) => button.textContent === label,
+  )!;
+  act(() => button.click());
+}
+
 function preview() {
   return container.querySelector<HTMLElement>('[aria-label="Vista previa de la experiencia"]')!;
 }
@@ -63,6 +83,112 @@ function observeValidation() {
 }
 
 describe('LocalExperienceForm', () => {
+  it('adds multiple tasks, validates partial rows inline, previews raw text and saves only explicitly', async () => {
+    setup(vi.fn());
+    change('activity', 'analysis');
+    taskButton('Añadir otra tarea');
+    const warning = container.querySelector('[id$="-other-tasks-help"]')!;
+    const input = container.querySelector('textarea')!;
+    expect(warning.textContent).toContain('No incluyas información militar clasificada');
+    expect(warning.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    taskText(0, 'description', '<b>Revisaba documentos</b>');
+    expect(preview().textContent).toContain('<b>Revisaba documentos</b>');
+    expect(preview().querySelector('b')).toBeNull();
+    await act(async () => save());
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(container.querySelector('textarea[aria-invalid="true"]')).toBe(document.activeElement);
+    expect(container.textContent).toContain('Completa ambos campos');
+    taskText(0, 'target', 'Documentación administrativa');
+    taskButton('Añadir otra tarea');
+    taskText(1, 'description', 'Ayudaba a organizar');
+    taskText(1, 'target', 'Equipo de trabajo');
+    expect(mocks.create).not.toHaveBeenCalled();
+    mocks.create.mockImplementation(async ({ experience }) => ({ ok: true, data: { experience } }));
+    await act(async () => save());
+    const saved = mocks.create.mock.calls[0][0].experience;
+    expect(saved.otherTasks).toEqual([
+      { description: '<b>Revisaba documentos</b>', target: 'Documentación administrativa' },
+      { description: 'Ayudaba a organizar', target: 'Equipo de trabajo' },
+    ]);
+    taskButton('Eliminar tarea 1');
+    expect(container.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe(
+      'Ayudaba a organizar',
+    );
+    taskText(0, 'target', 'Documentos');
+    mocks.edit.mockImplementation(async ({ set }) => ({
+      ok: true,
+      data: { experience: { ...saved, ...set } },
+    }));
+    await act(async () => save());
+    const edited = {
+      ...saved,
+      otherTasks: [{ description: 'Ayudaba a organizar', target: 'Documentos' }],
+    };
+    expect(mocks.edit).toHaveBeenLastCalledWith({
+      id: saved.id,
+      expectedExperience: saved,
+      set: { otherTasks: edited.otherTasks },
+      clear: [],
+    });
+    taskButton('Eliminar tarea 1');
+    await act(async () => save());
+    expect(mocks.edit).toHaveBeenLastCalledWith({
+      id: saved.id,
+      expectedExperience: edited,
+      set: {},
+      clear: ['otherTasks'],
+    });
+  });
+
+  it.each(['instruction', 'op_maintenance'])(
+    'reloads other tasks and keeps them independent of %s details and activity changes',
+    async (activity) => {
+      setup();
+      const otherTasks = [{ description: 'Otra tarea guardada', target: 'Documentos' }];
+      const initial = structuredExperienceSchema.parse({
+        id: 'stored-other',
+        activity,
+        otherTasks,
+        stageIds: ['stage-1'],
+        context: 'Contexto',
+        ...(activity === 'instruction'
+          ? { instructionActivities: ['demonstrated'] }
+          : { maintenanceTasks: [{ material: 'light_vehicles' }] }),
+      });
+      const dirty = vi.fn();
+      act(() =>
+        root.render(
+          <LocalExperienceForm
+            key={activity}
+            initialExperience={initial}
+            mode="edit"
+            onSaved={vi.fn()}
+            onDirtyChange={dirty}
+          />,
+        ),
+      );
+      expect(container.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe(
+        otherTasks[0].description,
+      );
+      taskText(0, 'description', 'Edición');
+      expect(dirty).toHaveBeenLastCalledWith(true);
+      taskText(0, 'description', otherTasks[0].description);
+      expect(dirty).toHaveBeenLastCalledWith(false);
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      change('activity', 'analysis');
+      expect(preview().textContent).toContain(otherTasks[0].description);
+      mocks.edit.mockResolvedValue({ ok: false, error: { code: 'CONFLICT' } });
+      await act(async () => save());
+      expect(mocks.edit).toHaveBeenCalledWith({
+        id: initial.id,
+        expectedExperience: initial,
+        set: { activity: 'analysis' },
+        clear: [activity === 'instruction' ? 'instructionActivities' : 'maintenanceTasks'],
+      });
+      confirm.mockRestore();
+    },
+  );
+
   it('captures all five instruction choices without generic defaults, previews, saves and clears explicitly', async () => {
     setup(vi.fn());
     expect(container.querySelector('[name="instructionActivities"]')).toBeNull();
@@ -641,7 +767,10 @@ describe('LocalExperienceForm', () => {
     change('activity', 'analysis');
     change('frequency', 'by_periods');
     toggle('performed');
-    expect(container.querySelector('button')).toBeNull();
+    taskButton('Añadir otra tarea');
+    taskText(0, 'description', 'Borrador privado');
+    taskText(0, 'target', 'Documentos');
+    expect(container.querySelector('button[type="submit"]')).toBeNull();
     expect(container.textContent).toContain(
       'Esta es una vista previa. Todavía no se ha guardado en tu perfil',
     );
@@ -650,12 +779,15 @@ describe('LocalExperienceForm', () => {
     expect(fetch).not.toHaveBeenCalled();
     expect(xhr).not.toHaveBeenCalled();
     for (const spy of [get, set, remove, clear]) expect(spy).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.edit).not.toHaveBeenCalled();
     act(() => root.unmount());
     root = createRoot(container);
     act(() => root.render(<LocalExperienceForm />));
     expect(select('activity').value).toBe('');
     expect(select('frequency').value).toBe('');
     expect(preview().querySelector('dl')).toBeNull();
+    expect(container.querySelector('textarea')).toBeNull();
   });
 
   it('hidrata el HTML de servidor sin errores y conserva IDs y asociaciones de labels', async () => {

@@ -75,6 +75,19 @@ export const structuredExperienceSchema = z
       .optional(),
     context: optionalNarrativeSchema,
     result: optionalNarrativeSchema,
+    // Bounded declarations only; these texts do not drive competency proposals.
+    otherTasks: z
+      .array(
+        z
+          .object({
+            description: z.string().trim().min(1).max(200),
+            target: z.string().trim().min(1).max(200),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(5)
+      .optional(),
     maintenanceTasks: maintenanceTasksSchema.optional(),
     instructionActivities: z
       .array(

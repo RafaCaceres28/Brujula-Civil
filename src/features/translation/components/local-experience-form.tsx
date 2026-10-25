@@ -118,6 +118,7 @@ export function LocalExperienceForm({
     'participation',
     'maintenanceTasks',
     'instructionActivities',
+    'otherTasks',
   ] as const;
   // Participation is a set for UI dirtiness; CAS still receives the untouched full baseline.
   const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
@@ -188,6 +189,11 @@ export function LocalExperienceForm({
     if (!validation.success) {
       if (validation.error.issues.some((issue) => issue.path[0] === 'activity')) {
         document.getElementById(activityId)?.focus();
+      } else if (validation.error.issues.some((issue) => issue.path[0] === 'otherTasks')) {
+        const issue = validation.error.issues.find((issue) => issue.path[0] === 'otherTasks')!;
+        document
+          .getElementById(`${formId}-other-task-${String(issue.path[1])}-${String(issue.path[2])}`)
+          ?.focus();
       } else {
         setSaveError({ code: 'VALIDATION_ERROR', message: 'Revisa los datos antes de guardar.' });
       }
@@ -508,6 +514,121 @@ export function LocalExperienceForm({
                     </p>
                   </fieldset>
                 ) : null}
+                <fieldset
+                  aria-describedby={`${formId}-other-tasks-help`}
+                  className="min-w-0 space-y-4"
+                >
+                  <legend className="text-sm font-medium text-slate-900">
+                    Otras tareas (opcional)
+                  </legend>
+                  <p id={`${formId}-other-tasks-help`} className="text-sm text-slate-600">
+                    No incluyas información militar clasificada, restringida ni operativa sensible:
+                    unidades, ubicaciones, modelos, procedimientos ni nombres de personas. Describe
+                    solo tareas genéricas. Selecciona la actividad general que corresponda; puedes
+                    añadir hasta 5 tareas no recogidas en las opciones, con 200 caracteres por
+                    campo. No se traducen automáticamente ni generan competencias. Revisa tu texto
+                    en la vista previa antes de guardar.
+                  </p>
+                  {experience.otherTasks?.map((task, index) => (
+                    <fieldset
+                      key={index}
+                      className="min-w-0 space-y-3 rounded-xl border border-slate-200 p-3"
+                    >
+                      <legend className="text-sm font-medium">Otra tarea {index + 1}</legend>
+                      {(['description', 'target'] as const).map((field) => {
+                        const id = `${formId}-other-task-${index}-${field}`;
+                        const invalid =
+                          attemptedSave &&
+                          !validation.success &&
+                          validation.error.issues.some(
+                            (issue) =>
+                              issue.path[0] === 'otherTasks' &&
+                              issue.path[1] === index &&
+                              issue.path[2] === field,
+                          );
+                        return (
+                          <div key={field} className="space-y-2">
+                            <label htmlFor={id} className="text-sm font-medium">
+                              {field === 'description' ? 'Qué hacías' : 'Sobre qué trabajabas'}
+                            </label>
+                            {field === 'target' ? (
+                              <p id={`${id}-help`} className="text-sm text-slate-600">
+                                Material, equipo, documentación o personas, sin detalles sensibles.
+                                Por ejemplo: documentación administrativa o equipo de trabajo.
+                              </p>
+                            ) : null}
+                            <textarea
+                              id={id}
+                              name={`otherTasks.${index}.${field}`}
+                              value={task[field]}
+                              required
+                              maxLength={200}
+                              rows={2}
+                              autoComplete="off"
+                              className={SELECT_CLASS_NAME}
+                              aria-invalid={invalid}
+                              aria-describedby={`${formId}-other-tasks-help${field === 'target' ? ` ${id}-help` : ''}${invalid ? ` ${formId}-other-tasks-error` : ''}`}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                updateExperience((previous) => ({
+                                  ...previous,
+                                  otherTasks: previous.otherTasks!.map((entry, position) =>
+                                    position === index ? { ...entry, [field]: value } : entry,
+                                  ),
+                                }));
+                              }}
+                            />
+                          </div>
+                        );
+                      })}
+                      <Button
+                        type="button"
+                        className="min-h-11"
+                        onClick={() =>
+                          updateExperience((previous) => {
+                            const next = { ...previous };
+                            const remaining = previous.otherTasks!.filter(
+                              (_, position) => position !== index,
+                            );
+                            if (remaining.length) next.otherTasks = remaining;
+                            else delete next.otherTasks;
+                            return next;
+                          })
+                        }
+                      >
+                        Eliminar tarea {index + 1}
+                      </Button>
+                    </fieldset>
+                  ))}
+                  {attemptedSave &&
+                  !validation.success &&
+                  validation.error.issues.some((issue) => issue.path[0] === 'otherTasks') ? (
+                    <p
+                      id={`${formId}-other-tasks-error`}
+                      role="alert"
+                      className="text-sm text-red-700"
+                    >
+                      Completa ambos campos de cada tarea con entre 1 y 200 caracteres, o elimina la
+                      tarea. No se ha guardado el borrador incompleto.
+                    </p>
+                  ) : null}
+                  <Button
+                    type="button"
+                    className="min-h-11"
+                    disabled={(experience.otherTasks?.length ?? 0) >= 5}
+                    onClick={() =>
+                      updateExperience((previous) => ({
+                        ...previous,
+                        otherTasks: [
+                          ...(previous.otherTasks ?? []),
+                          { description: '', target: '' },
+                        ],
+                      }))
+                    }
+                  >
+                    Añadir otra tarea
+                  </Button>
+                </fieldset>
                 {renderOptionalField('durationRange')}
                 {renderOptionalField('frequency')}
               </fieldset>
@@ -600,6 +721,23 @@ export function LocalExperienceForm({
         <Card>
           <CardHeader title="Vista previa" description="Se actualiza al cambiar tus respuestas." />
           <CardContent className="space-y-4">
+            {experience.otherTasks?.length ? (
+              <div className="space-y-3 text-sm">
+                <h3 className="font-medium">Tu descripción, sin interpretar</h3>
+                {experience.otherTasks.map((task, index) => (
+                  <dl
+                    key={index}
+                    className="space-y-1 whitespace-pre-wrap break-words rounded-xl bg-slate-50 p-3"
+                  >
+                    <dt className="font-medium">Qué hacías · Tarea {index + 1}</dt>
+                    <dd>{task.description || 'Sin completar'}</dd>
+                    <dt className="font-medium">Sobre qué trabajabas</dt>
+                    <dd>{task.target || 'Sin completar'}</dd>
+                  </dl>
+                ))}
+                <p>Pendientes de interpretación. No generan competencias ni propuestas para CV.</p>
+              </div>
+            ) : null}
             <p className="rounded-xl bg-slate-100 p-3 text-sm font-medium text-slate-900">
               {onSaved
                 ? 'Vista previa de tus respuestas. Solo Guardar confirma los cambios en tu perfil.'

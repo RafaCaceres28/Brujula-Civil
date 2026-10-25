@@ -6,6 +6,7 @@ import { projectWizardToProfiles } from './project-wizard-to-profiles';
 import { getProfile } from './get-profile';
 import { profileClientFixture } from './profile-client.test-helper';
 import { buildExperienceProposals } from '../../translation/services/experience-proposals.builder';
+import { structuredExperienceSchema } from '../../translation/schemas/structured-experience.schema';
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }));
 
@@ -35,6 +36,77 @@ function setup(raw: unknown = {}) {
 
 describe('experience commands and shared writer CAS', () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it('creates, rereads, edits and removes other tasks through existing CAS without changing proposals or unrelated data', async () => {
+    const raw = { metadata: { keep: true }, careerHistory: history };
+    const mock = setup(raw);
+    mock.rows.app_user_profiles.push({
+      user_id: 'user-1',
+      display_name: 'Synthetic',
+      email: 'synthetic@example.test',
+    });
+    const task = { description: 'Reparaba coaxial y enseñaba', target: 'Equipos y compañeros' };
+    const declared = {
+      id: 'other-1',
+      activity: 'instruction',
+      participation: ['instructed'],
+      otherTasks: [task, { description: 'Revisaba', target: 'Documentos' }],
+    };
+    const command = { operation: 'create', experience: declared };
+    expect(await saveExperience('user-1', command)).toMatchObject({
+      ok: true,
+      data: { experience: declared },
+    });
+    expect(await saveExperience('user-1', command)).toMatchObject({ ok: true });
+    expect(
+      await saveExperience('user-1', {
+        ...command,
+        experience: { ...declared, otherTasks: [task] },
+      }),
+    ).toMatchObject({ error: { code: 'CONFLICT' } });
+    expect((await getProfile('user-1'))!.careerHistory!.experiences).toEqual([
+      structuredExperienceSchema.parse(full),
+      declared,
+    ]);
+    const edited = { ...declared, otherTasks: [{ ...task, target: 'Documentación genérica' }] };
+    expect(
+      await saveExperience('user-1', {
+        operation: 'edit',
+        id: declared.id,
+        expectedExperience: declared,
+        set: { otherTasks: edited.otherTasks },
+      }),
+    ).toMatchObject({ ok: true, data: { experience: edited } });
+    expect(
+      await saveExperience('user-1', {
+        operation: 'edit',
+        id: declared.id,
+        expectedExperience: declared,
+        set: { frequency: 'occasional' },
+      }),
+    ).toMatchObject({ error: { code: 'CONFLICT' } });
+    expect(buildExperienceProposals([structuredExperienceSchema.parse(edited)])).toEqual([]);
+    expect(
+      await saveExperience('user-1', {
+        operation: 'edit',
+        id: declared.id,
+        expectedExperience: edited,
+        set: {},
+        clear: ['otherTasks'],
+      }),
+    ).toMatchObject({ ok: true });
+    const { otherTasks: removed, ...cleared } = edited;
+    expect(removed).toHaveLength(1);
+    expect(mock.rows.user_military_profiles[0].raw_profile_jsonb).toEqual({
+      ...raw,
+      careerHistory: { ...history, experiences: [full, cleared] },
+    });
+    expect(mock.calls.find((call) => call.operation === 'update')?.filters.rawGuard).toEqual(raw);
+    expect((await getProfile('user-1'))!.careerHistory!.experiences).toEqual([
+      structuredExperienceSchema.parse(full),
+      cleared,
+    ]);
+  });
 
   it('creates and reloads instruction detail into the real builder, with idempotency and no role defaults', async () => {
     const mock = setup({ metadata: { keep: true } });

@@ -120,6 +120,79 @@ function expectReadOnlyCore() {
 }
 
 describe('007.1 /traduccion: layout, auth, shell, lector y builder reales', () => {
+  it('shows canonical free text only as pending interpretation, escaped and without inferred competencies', async () => {
+    const otherTasks = [
+      {
+        description: '<script>reparaba coaxial y enseñaba</script>',
+        target: '<img src=x onerror=alert(1)>',
+      },
+    ];
+    mocks.read.mockResolvedValue({
+      data: {
+        raw_profile_jsonb: {
+          careerHistory: {
+            experiences: [
+              {
+                id: 'pending-source',
+                activity: 'instruction',
+                participation: ['instructed'],
+                otherTasks,
+              },
+            ],
+          },
+        },
+      },
+      error: null,
+    });
+    const html = await renderPage();
+    expect(html).toContain('Pendientes de interpretación');
+    expect(html).toContain('Tu descripción, sin interpretar');
+    expect(html).toContain('&lt;script&gt;reparaba coaxial y enseñaba&lt;/script&gt;');
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    expect(html).not.toMatch(
+      /<script>|<img |Descripción propuesta para CV|Reparación de cableado coaxial|Enseñanza en|pending-source/,
+    );
+    expectReadOnlyCore();
+  });
+
+  it('keeps maintenance and instruction proposals identical alongside pending tasks', async () => {
+    const experiences = [
+      {
+        id: 'maintenance',
+        activity: 'op_maintenance',
+        maintenanceTasks: [
+          { material: 'communications_equipment', operations: ['coaxial_repair'] },
+        ],
+      },
+      { id: 'instruction', activity: 'instruction', instructionActivities: ['demonstrated'] },
+    ];
+    const build = vi.spyOn(builder, 'buildExperienceProposals');
+    mocks.read.mockResolvedValue({
+      data: { raw_profile_jsonb: { careerHistory: { experiences } } },
+      error: null,
+    });
+    await renderPage();
+    const original = build.mock.results.at(-1)!.value;
+    mocks.read.mockResolvedValue({
+      data: {
+        raw_profile_jsonb: {
+          careerHistory: {
+            experiences: experiences.map((experience) => ({
+              ...experience,
+              otherTasks: [{ description: 'Otra tarea declarada', target: 'Documentación' }],
+            })),
+          },
+        },
+      },
+      error: null,
+    });
+    const html = await renderPage();
+    expect(build.mock.results.at(-1)!.value).toEqual(original);
+    expect(html).toContain('Pendientes de interpretación');
+    expect(html).toContain('Reparación de cableado coaxial en equipos de comunicaciones.');
+    expect(html).toContain('Apoyo al instructor mediante demostraciones prácticas.');
+  });
+
   it('presents three distinct instruction proposals from canonical details, without legacy role claims', async () => {
     mocks.read.mockResolvedValue({
       data: {
