@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   select: vi.fn(),
   eq: vi.fn(),
   read: vi.fn(),
+  readContact: vi.fn(),
   insert: vi.fn(),
   upsert: vi.fn(),
   update: vi.fn(),
@@ -75,6 +76,14 @@ beforeEach(() => {
     delete: mocks.delete,
   };
   mocks.from.mockReturnValue(query);
+  mocks.readContact.mockResolvedValue({ data: null, error: null });
+  mocks.from.mockImplementation((table: string) =>
+    table === 'app_user_profiles'
+      ? {
+          select: () => ({ eq: () => ({ maybeSingle: mocks.readContact }) }),
+        }
+      : query,
+  );
   mocks.select.mockReturnValue(query);
   mocks.eq.mockReturnValue(query);
   mocks.client.mockResolvedValue({
@@ -86,6 +95,51 @@ beforeEach(() => {
 });
 
 describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
+  it('shows only stored contact fields, escapes text and reads fresh contact data', async () => {
+    mocks.readContact.mockResolvedValue({
+      data: {
+        display_name: 'Ana <script>no ejecutar</script>',
+        phone: '+34 600 100 200',
+        contact_email: 'trabajo@example.test',
+        locality_province: 'Sevilla, Sevilla',
+      },
+      error: null,
+    });
+    let container = await renderPage();
+    const header = container.querySelector('[aria-label="Cabecera del borrador de CV"]')!;
+    expect(header.textContent).toContain('Ana <script>no ejecutar</script>');
+    expect(header.textContent).toContain('trabajo@example.test');
+    expect(header.textContent).toContain('Sevilla, Sevilla');
+    expect(header.querySelector('script')).toBeNull();
+    expect(header.querySelector('a')?.getAttribute('href')).toBe('/datos-contacto');
+    mocks.readContact.mockResolvedValue({
+      data: { display_name: 'Ana', phone: null, contact_email: null, locality_province: null },
+      error: null,
+    });
+    container = await renderPage();
+    expect(container.textContent).not.toContain('trabajo@example.test');
+    expect(container.textContent).not.toContain('+34 600 100 200');
+    expect(
+      container.querySelector('[aria-labelledby="cv-missing-data"]')?.textContent,
+    ).not.toContain('no incluye nombre');
+  });
+
+  it('keeps confirmed history when contact reading fails, without inventing identity', async () => {
+    mocks.readContact.mockResolvedValue({
+      data: null,
+      error: { code: 'DB_DOWN', message: 'private detail' },
+    });
+    const container = await renderPage();
+    expect(container.querySelector('article')?.textContent).toContain(candidates[0].label);
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+      'No se pudieron leer tus datos de contacto',
+    );
+    expect(
+      container.querySelector('[aria-label="Cabecera del borrador de CV"] h2')?.textContent,
+    ).toBe('Borrador de currículum');
+    expect(container.textContent).not.toContain('private detail');
+  });
+
   it.each([
     { raw_profile_jsonb: { careerHistory: { experiences: [fixture()] } } },
     null,
@@ -97,14 +151,12 @@ describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
       const container = await renderPage();
       const notice = container.querySelector('[aria-labelledby="cv-missing-data"]')!;
       expect(notice.querySelector('h2')?.textContent).toBe('Datos pendientes para completar el CV');
-      expect(notice.textContent).toContain('no incluye nombre, datos de contacto ni formación');
-      expect(notice.textContent).toContain('no están disponibles en esta vista');
-      expect(notice.textContent).toContain('faltan para completar el CV');
-      expect(notice.textContent).toContain('No se consultan otras fuentes ni se inventan datos');
+      expect(notice.textContent).toContain('Formación todavía no incorporada');
+      expect(notice.textContent).toContain('no se utiliza tu email de acceso ni se inventan datos');
       expect(notice.textContent).toContain(
         'esa parte del CV queda pendiente; no se inventa experiencia',
       );
-      expect(mocks.from.mock.calls).toEqual([['user_military_profiles']]);
+      expect(mocks.from.mock.calls).toEqual([['user_military_profiles'], ['app_user_profiles']]);
       expect(
         container.querySelector('form, button, input, textarea, select, a[download]'),
       ).toBeNull();
@@ -137,7 +189,7 @@ describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
     );
     expect(container.querySelector('a[href^="/cv/"], a[download]')).toBeNull();
     expect(data).toEqual(before);
-    expect(mocks.from.mock.calls).toEqual([['user_military_profiles']]);
+    expect(mocks.from.mock.calls).toEqual([['user_military_profiles'], ['app_user_profiles']]);
     expect(mocks.select).toHaveBeenCalledExactlyOnceWith('raw_profile_jsonb');
     expect(mocks.eq.mock.calls).toEqual([
       ['user_id', 'authenticated-user'],

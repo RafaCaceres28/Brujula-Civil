@@ -122,6 +122,9 @@ export default async function ProfessionalProfilePage() {
       </p>
       {content}
       <div className="flex flex-wrap gap-4 text-sm">
+        <Link href={routes.app.contactDetails} prefetch={false}>
+          Editar datos de contacto
+        </Link>
         <Link href={routes.app.cvDraft} prefetch={false}>
           Ver borrador de CV
         </Link>

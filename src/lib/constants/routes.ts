@@ -19,6 +19,7 @@ export const routes = {
     translation: '/traduccion',
     professionalProfile: '/perfil-profesional',
     cvDraft: '/cv-borrador',
+    contactDetails: '/datos-contacto',
     cv: '/cv',
     linkedin: '/linkedin',
     settings: '/ajustes',

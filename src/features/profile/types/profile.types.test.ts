@@ -132,11 +132,20 @@ describe('profile.types contracts', () => {
         | 'timezone'
         | 'onboarding_completed'
         | 'marketing_opt_in'
+        | 'phone'
+        | 'contact_email'
+        | 'locality_province'
       > &
         Partial<
           Pick<
             AppUserProfileRow,
-            'locale' | 'timezone' | 'onboarding_completed' | 'marketing_opt_in'
+            | 'locale'
+            | 'timezone'
+            | 'onboarding_completed'
+            | 'marketing_opt_in'
+            | 'phone'
+            | 'contact_email'
+            | 'locality_province'
           >
         >
     >();

@@ -4,12 +4,15 @@ import { PageShell } from '@/components/layout/page-shell';
 import { SectionHeader } from '@/components/layout/section-header';
 import { getRequiredUser } from '@/features/auth/server/get-required-user';
 import { readCareerHistory } from '@/features/profile/server/read-career-history';
+import { readContactDetails } from '@/features/profile/server/contact-details';
 import { selectConfirmedProfessionalContent } from '@/features/profile/services/confirmed-professional-content';
 import { routes } from '@/lib/constants/routes';
 
 export default async function CvDraftPage() {
   const user = await getRequiredUser(routes.app.cvDraft);
   const result = await readCareerHistory(user.id);
+  const contactResult = await readContactDetails(user.id);
+  const contact = contactResult.ok ? contactResult.data : null;
   let content;
 
   if (!result.ok) {
@@ -106,6 +109,31 @@ export default async function CvDraftPage() {
       <p className="text-sm text-slate-600">
         Información revisada por ti. No acredita titulaciones ni habilitaciones profesionales.
       </p>
+      <header
+        aria-label="Cabecera del borrador de CV"
+        className="min-w-0 space-y-2 rounded-xl border border-slate-200 bg-white p-4 sm:p-8"
+      >
+        <h2 className="break-words text-xl font-semibold">
+          {contact?.display_name?.trim() || 'Borrador de currículum'}
+        </h2>
+        {contact?.phone?.trim() && <p className="break-words">{contact.phone}</p>}
+        {contact?.contact_email?.trim() && <p className="break-words">{contact.contact_email}</p>}
+        {contact?.locality_province?.trim() && (
+          <p className="break-words">{contact.locality_province}</p>
+        )}
+        {!contactResult.ok && (
+          <p role="alert">
+            No se pudieron leer tus datos de contacto. El historial confirmado se muestra de forma
+            independiente.
+          </p>
+        )}
+        {contactResult.ok && !Object.values(contact ?? {}).some((value) => value?.trim()) && (
+          <p>No has indicado datos de contacto para este borrador.</p>
+        )}
+        <Link href={routes.app.contactDetails} prefetch={false}>
+          Editar datos de contacto
+        </Link>
+      </header>
       <section
         aria-labelledby="cv-missing-data"
         className="min-w-0 space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-slate-700"
@@ -114,9 +142,8 @@ export default async function CvDraftPage() {
           Datos pendientes para completar el CV
         </h2>
         <p>
-          Este borrador no incluye nombre, datos de contacto ni formación: no están disponibles en
-          esta vista y faltan para completar el CV. No se consultan otras fuentes ni se inventan
-          datos.
+          Formación todavía no incorporada a este borrador. Solo se muestran los datos de contacto
+          que hayas indicado; no se utiliza tu email de acceso ni se inventan datos.
         </p>
         <p>
           La experiencia solo se muestra con descripciones confirmadas por ti. Si no has confirmado

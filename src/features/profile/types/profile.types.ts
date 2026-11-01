@@ -19,6 +19,7 @@ type AppUserProfileOptionalDefaults =
   | 'timezone'
   | 'onboarding_completed'
   | 'marketing_opt_in';
+type AppUserProfileOptionalContact = 'phone' | 'contact_email' | 'locality_province';
 
 export type ProfileSupabaseShape = {
   app: AppUserProfileRow | null;
@@ -30,9 +31,11 @@ export type ProfileDomainModel = ProfileReadOutputSchemaInput;
 
 export type AppUserProfileInsert = Omit<
   AppUserProfileRow,
-  DbGeneratedColumns | AppUserProfileOptionalDefaults
+  DbGeneratedColumns | AppUserProfileOptionalDefaults | AppUserProfileOptionalContact
 > &
-  Partial<Pick<AppUserProfileRow, AppUserProfileOptionalDefaults>>;
+  Partial<Pick<AppUserProfileRow, AppUserProfileOptionalDefaults | AppUserProfileOptionalContact>>;
+
+export type AppUserProfileUpdate = Partial<Omit<AppUserProfileRow, DbGeneratedColumns | 'user_id'>>;
 
 export type MilitaryProfileInsert = Omit<UserMilitaryProfileRow, DbGeneratedColumns>;
 
