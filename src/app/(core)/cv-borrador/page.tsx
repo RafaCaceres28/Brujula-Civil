@@ -8,6 +8,7 @@ import { readContactDetails } from '@/features/profile/server/contact-details';
 import { readAcademicEducation } from '@/features/profile/server/academic-education';
 import { selectConfirmedProfessionalContent } from '@/features/profile/services/confirmed-professional-content';
 import { routes } from '@/lib/constants/routes';
+import styles from './cv-draft.module.css';
 
 export default async function CvDraftPage() {
   const user = await getRequiredUser(routes.app.cvDraft);
@@ -16,6 +17,7 @@ export default async function CvDraftPage() {
   const educationResult = await readAcademicEducation(user.id);
   const contact = contactResult.ok ? contactResult.data : null;
   let content;
+  let confirmed: ReturnType<typeof selectConfirmedProfessionalContent> | undefined;
 
   if (!result.ok) {
     content = (
@@ -26,7 +28,6 @@ export default async function CvDraftPage() {
       </p>
     );
   } else {
-    let confirmed: ReturnType<typeof selectConfirmedProfessionalContent> | undefined;
     try {
       confirmed = selectConfirmedProfessionalContent(
         result.data.state === 'ready' ? result.data.careerHistory.experiences : [],
@@ -52,77 +53,131 @@ export default async function CvDraftPage() {
     } else {
       const { descriptions, competencies } = confirmed;
       content = (
-        <article
-          aria-label="Contenido del borrador de CV"
-          className="min-w-0 space-y-8 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-8"
-        >
-          <section aria-labelledby="cv-experience" className="min-w-0 space-y-4">
-            <h2 id="cv-experience" className="text-lg font-semibold">
-              Experiencia profesional
-            </h2>
-            {descriptions.length ? (
-              <ul className="space-y-4">
-                {descriptions.map(({ id, sourceId, origin, task, index }) => (
-                  <li key={id} data-source-experience-id={sourceId} className="space-y-2">
-                    <p className="whitespace-pre-wrap break-words">{task.confirmedDescription}</p>
-                    <p className="text-sm text-slate-600">
-                      Confirmada por ti · Origen: {origin} · Tarea {index + 1}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>Todavía no has confirmado descripciones de tu experiencia profesional.</p>
-            )}
-          </section>
-          <section aria-labelledby="cv-competencies" className="min-w-0 space-y-4">
-            <h2 id="cv-competencies" className="text-lg font-semibold">
-              Competencias profesionales
-            </h2>
-            {competencies.length ? (
-              <ul className="space-y-4">
-                {competencies.map(({ candidate, origin }) => (
-                  <li
-                    key={candidate.id}
-                    data-source-experience-id={candidate.experienceId}
-                    className="space-y-2"
-                  >
-                    <p className="break-words">{candidate.label}</p>
-                    <p className="text-sm text-slate-600">Aceptada por ti · Origen: {origin}</p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>Todavía no tienes competencias aceptadas con evidencia vigente.</p>
-            )}
-          </section>
-        </article>
+        <div className={styles.reviewNotes}>
+          {!descriptions.length && (
+            <p>Todavía no has confirmado descripciones de tu experiencia profesional.</p>
+          )}
+          {!competencies.length && (
+            <p>Todavía no tienes competencias aceptadas con evidencia vigente.</p>
+          )}
+          <details>
+            <summary>Información revisada por ti</summary>
+            <ul>
+              {descriptions.map(({ id, origin, index }) => (
+                <li key={id}>
+                  Confirmada por ti · Origen: {origin} · Tarea {index + 1}
+                </li>
+              ))}
+              {competencies.map(({ candidate, origin }) => (
+                <li key={candidate.id}>Aceptada por ti · Origen: {origin}</li>
+              ))}
+            </ul>
+          </details>
+        </div>
       );
     }
   }
 
   return (
-    <PageShell>
-      <SectionHeader
-        title="Borrador de CV"
-        description="Vista previa de tus descripciones confirmadas y competencias aceptadas con evidencia vigente."
-      />
-      <p className="text-sm font-medium text-slate-700">Solo lectura</p>
-      <p className="text-sm text-slate-600">
-        Información revisada por ti. No acredita titulaciones ni habilitaciones profesionales.
-      </p>
-      <header
-        aria-label="Cabecera del borrador de CV"
-        className="min-w-0 space-y-2 rounded-xl border border-slate-200 bg-white p-4 sm:p-8"
-      >
-        <h2 className="break-words text-xl font-semibold">
-          {contact?.display_name?.trim() || 'Borrador de currículum'}
-        </h2>
-        {contact?.phone?.trim() && <p className="break-words">{contact.phone}</p>}
-        {contact?.contact_email?.trim() && <p className="break-words">{contact.contact_email}</p>}
-        {contact?.locality_province?.trim() && (
-          <p className="break-words">{contact.locality_province}</p>
+    <PageShell className={styles.page}>
+      <div className={styles.screenOnly}>
+        <SectionHeader
+          title="Borrador de CV"
+          description="Vista previa de tus descripciones confirmadas y competencias aceptadas con evidencia vigente."
+        />
+        <p className="text-sm font-medium text-slate-700">Solo lectura</p>
+        <p className="text-sm text-slate-600">
+          Información revisada por ti. No acredita titulaciones ni habilitaciones profesionales.
+        </p>
+        <nav aria-label="Opciones del borrador de CV" className={styles.actions}>
+          <Link href={routes.app.contactDetails} prefetch={false}>
+            Editar datos de contacto
+          </Link>
+          <Link href={routes.app.academicEducation} prefetch={false}>
+            {educationResult.ok && !educationResult.data?.length
+              ? 'Registrar estudios'
+              : 'Editar formación académica'}
+          </Link>
+          <Link href={routes.app.professionalProfile} prefetch={false}>
+            Volver a mi perfil profesional
+          </Link>
+        </nav>
+      </div>
+      <div className={styles.canvas}>
+        {(Object.values(contact ?? {}).some((value) => value?.trim()) ||
+          (educationResult.ok && !!educationResult.data?.length) ||
+          !!confirmed?.descriptions.length ||
+          !!confirmed?.competencies.length) && (
+          <article aria-label="Contenido del borrador de CV" className={styles.document}>
+            {Object.values(contact ?? {}).some((value) => value?.trim()) && (
+              <header aria-label="Cabecera del borrador de CV" className={styles.documentHeader}>
+                {contact?.display_name?.trim() && (
+                  <h2 className={styles.name}>{contact.display_name}</h2>
+                )}
+                <address className={styles.contact}>
+                  {contact?.phone?.trim() && <span>{contact.phone}</span>}
+                  {contact?.contact_email?.trim() && <span>{contact.contact_email}</span>}
+                  {contact?.locality_province?.trim() && <span>{contact.locality_province}</span>}
+                </address>
+              </header>
+            )}
+            {!!confirmed?.descriptions.length && (
+              <section aria-labelledby="cv-experience" className={styles.section}>
+                <h2 id="cv-experience" className={styles.sectionTitle}>
+                  Experiencia profesional
+                </h2>
+                <ul className={styles.entries}>
+                  {confirmed.descriptions.map(({ id, sourceId, task }) => (
+                    <li key={id} data-source-experience-id={sourceId}>
+                      <p>{task.confirmedDescription}</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {educationResult.ok && !!educationResult.data?.length && (
+              <section aria-labelledby="cv-education" className={styles.section}>
+                <h2 id="cv-education" className={styles.sectionTitle}>
+                  Formación académica
+                </h2>
+                <ul className={styles.studies}>
+                  {educationResult.data.map((study) => (
+                    <li key={study.id}>
+                      <h3>{study.title}</h3>
+                      {study.institution && <p>{study.institution}</p>}
+                      <p className={styles.studyStatus}>
+                        <span>{study.status === 'completed' ? 'Finalizado' : 'En curso'}</span>
+                        {study.year !== null && (
+                          <span>
+                            {study.status === 'in_progress'
+                              ? `Finalización prevista: ${study.year}`
+                              : study.year}
+                          </span>
+                        )}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {!!confirmed?.competencies.length && (
+              <section aria-labelledby="cv-competencies" className={styles.section}>
+                <h2 id="cv-competencies" className={styles.sectionTitle}>
+                  Competencias profesionales
+                </h2>
+                <ul className={styles.entries}>
+                  {confirmed.competencies.map(({ candidate }) => (
+                    <li key={candidate.id} data-source-experience-id={candidate.experienceId}>
+                      <p>{candidate.label}</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </article>
         )}
+      </div>
+      <div className={`${styles.screenOnly} ${styles.notices}`}>
         {!contactResult.ok && (
           <p role="alert">
             No se pudieron leer tus datos de contacto. El historial confirmado se muestra de forma
@@ -132,65 +187,26 @@ export default async function CvDraftPage() {
         {contactResult.ok && !Object.values(contact ?? {}).some((value) => value?.trim()) && (
           <p>No has indicado datos de contacto para este borrador.</p>
         )}
-        <Link href={routes.app.contactDetails} prefetch={false}>
-          Editar datos de contacto
-        </Link>
-      </header>
-      <section
-        aria-labelledby="cv-missing-data"
-        className="min-w-0 space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-slate-700"
-      >
-        <h2 id="cv-missing-data" className="font-semibold">
-          Datos pendientes para completar el CV
-        </h2>
-        <p>
-          Solo se muestran los datos de contacto que hayas indicado; no se utiliza tu email de
-          acceso ni se inventan datos.
-        </p>
-        <p>
-          La experiencia solo se muestra con descripciones confirmadas por ti. Si no has confirmado
-          ninguna, esa parte del CV queda pendiente; no se inventa experiencia.
-        </p>
-      </section>
-      <section
-        aria-labelledby="cv-education"
-        className="min-w-0 space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-8"
-      >
-        <h2 id="cv-education" className="text-lg font-semibold">
-          Formación académica
-        </h2>
+        <section aria-labelledby="cv-missing-data" className="min-w-0 space-y-2">
+          <h2 id="cv-missing-data" className="font-semibold">
+            Datos pendientes para completar el CV
+          </h2>
+          <p>
+            Solo se muestran los datos de contacto que hayas indicado; no se utiliza tu email de
+            acceso ni se inventan datos.
+          </p>
+          <p>
+            La experiencia solo se muestra con descripciones confirmadas por ti. Si no has
+            confirmado ninguna, esa parte del CV queda pendiente; no se inventa experiencia.
+          </p>
+        </section>
         {!educationResult.ok ? (
           <p role="alert">{educationResult.error.message}</p>
-        ) : educationResult.data?.length ? (
-          <ul className="space-y-4">
-            {educationResult.data.map((study) => (
-              <li key={study.id} className="min-w-0 space-y-2">
-                <h3 className="break-words font-semibold">{study.title}</h3>
-                {study.institution && <p className="break-words">{study.institution}</p>}
-                <p>{study.status === 'completed' ? 'Finalizado' : 'En curso'}</p>
-                {study.year !== null && (
-                  <p>
-                    {study.status === 'in_progress'
-                      ? `Finalización prevista: ${study.year}`
-                      : study.year}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
-        ) : (
+        ) : !educationResult.data?.length ? (
           <p>No has registrado estudios para este borrador.</p>
-        )}
-        <Link href={routes.app.academicEducation} prefetch={false}>
-          {educationResult.ok && !educationResult.data?.length
-            ? 'Registrar estudios'
-            : 'Editar formación académica'}
-        </Link>
-      </section>
-      {content}
-      <Link href={routes.app.professionalProfile} prefetch={false}>
-        Volver a mi perfil profesional
-      </Link>
+        ) : null}
+        {content}
+      </div>
     </PageShell>
   );
 }

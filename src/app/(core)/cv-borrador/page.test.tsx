@@ -102,6 +102,99 @@ beforeEach(() => {
   storedHistory([fixture()]);
 });
 
+describe('007.5h /cv-borrador: presentación del documento', () => {
+  it('orders actual contact, experience, education and competencies in one document', async () => {
+    mocks.readContact.mockResolvedValue({
+      data: {
+        display_name: 'Ana García',
+        phone: '+34 600 100 200',
+        contact_email: 'trabajo@example.test',
+        locality_province: 'Sevilla',
+      },
+      error: null,
+    });
+    mocks.readEducation.mockResolvedValue({
+      data: {
+        academic_education_jsonb: [
+          {
+            id: 'study-1',
+            title: 'Estudios declarados',
+            institution: 'Centro',
+            status: 'in_progress',
+            year: 2030,
+          },
+        ],
+      },
+      error: null,
+    });
+    const container = await renderPage();
+    const article = container.querySelector('article')!;
+    expect(Array.from(article.children, (node) => node.tagName)).toEqual([
+      'HEADER',
+      'SECTION',
+      'SECTION',
+      'SECTION',
+    ]);
+    expect(
+      Array.from(article.querySelectorAll('section > h2'), (node) => node.textContent),
+    ).toEqual(['Experiencia profesional', 'Formación académica', 'Competencias profesionales']);
+    expect(article.querySelector('header h2')?.textContent).toBe('Ana García');
+    expect(article.querySelector('address')?.textContent).toContain('trabajo@example.test');
+    expect(article.textContent).toContain('Finalización prevista: 2030');
+    expect(article.querySelector('a, button, [role="alert"], [role="status"], details')).toBeNull();
+    expect(article.textContent).not.toMatch(/Solo lectura|Origen:|pendiente|No acredita|Editar/);
+    expect(
+      container.querySelector('[aria-labelledby="cv-missing-data"]')?.closest('article'),
+    ).toBeNull();
+    expect(container.querySelector('details')?.closest('article')).toBeNull();
+  });
+
+  it('shows education alone without placeholder identity or empty professional sections', async () => {
+    mocks.read.mockResolvedValue({ data: null, error: null });
+    mocks.readEducation.mockResolvedValue({
+      data: {
+        academic_education_jsonb: [
+          { id: 'study-1', title: 'Estudios declarados', status: 'completed' },
+        ],
+      },
+      error: null,
+    });
+    const container = await renderPage();
+    const article = container.querySelector('article')!;
+    expect(article.querySelectorAll('section')).toHaveLength(1);
+    expect(article.querySelector('header, #cv-experience, #cv-competencies')).toBeNull();
+    expect(article.textContent).toContain('Estudios declarados');
+    expect(article.textContent).toContain('Finalizado');
+    expect(article.textContent).not.toMatch(/Borrador|No has|todavía|pendiente|Origen:/i);
+    expect(container.querySelector('[role="status"]')?.closest('article')).toBeNull();
+  });
+
+  it('keeps missing sections and read errors outside a contact-only document', async () => {
+    mocks.readContact.mockResolvedValue({
+      data: { display_name: 'Ana', phone: null, contact_email: null, locality_province: null },
+      error: null,
+    });
+    mocks.read.mockResolvedValue({ data: null, error: { code: 'DOWN' } });
+    mocks.readEducation.mockResolvedValue({ data: null, error: { code: 'DOWN' } });
+    const container = await renderPage();
+    const article = container.querySelector('article')!;
+    expect(article.textContent).toBe('Ana');
+    expect(article.querySelector('section, [role="alert"]')).toBeNull();
+    expect(container.querySelectorAll('[role="alert"]')).toHaveLength(2);
+    expect(container.querySelector('a[href="/formacion"]')?.closest('article')).toBeNull();
+  });
+
+  it('preserves long confirmed text and paragraph spacing without splitting or shortening it', async () => {
+    const source = fixture();
+    const text = `${'Descripción confirmada completa. '.repeat(8)}\n\n${'TextoSinEspacios'.repeat(8)}`;
+    source.otherTasks![0].confirmedDescription = text;
+    storedHistory([source]);
+    const container = await renderPage();
+    expect(container.querySelector('#cv-experience + ul p')?.textContent).toBe(text);
+    expect(container.querySelectorAll('#cv-experience + ul li')).toHaveLength(1);
+  });
+});
+
 describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
   it('shows declared academic studies independently, with explicit ongoing labels and escaped text', async () => {
     mocks.readEducation.mockResolvedValue({
@@ -145,9 +238,13 @@ describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
     'offers registration for absent or explicitly empty education (%j)',
     async (academic_education_jsonb) => {
       mocks.readEducation.mockResolvedValue({ data: { academic_education_jsonb }, error: null });
-      const section = (await renderPage()).querySelector('[aria-labelledby="cv-education"]')!;
-      expect(section.textContent).toContain('No has registrado estudios');
-      expect(section.querySelector('a')?.textContent).toBe('Registrar estudios');
+      const container = await renderPage();
+      expect(container.querySelector('[aria-labelledby="cv-education"]')).toBeNull();
+      expect(container.textContent).toContain('No has registrado estudios');
+      expect(container.querySelector('a[href="/formacion"]')?.textContent).toBe(
+        'Registrar estudios',
+      );
+      expect(container.querySelector('article')?.textContent).not.toContain('No has registrado');
     },
   );
   it.each([
@@ -156,11 +253,11 @@ describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
   ])('reports education failures without hiding contacts or history (%#)', async (response) => {
     mocks.readEducation.mockResolvedValue(response);
     const container = await renderPage();
-    const section = container.querySelector('[aria-labelledby="cv-education"]')!;
-    expect(section.querySelector('[role="alert"]')).not.toBeNull();
-    expect(section.textContent).not.toContain('No has registrado estudios');
+    expect(container.querySelector('[aria-labelledby="cv-education"]')).toBeNull();
+    expect(container.querySelector('[role="alert"]')).not.toBeNull();
+    expect(container.textContent).not.toContain('No has registrado estudios');
     expect(container.querySelector('article')?.textContent).toContain(candidates[0].label);
-    expect(container.querySelector('[aria-label="Cabecera del borrador de CV"]')).not.toBeNull();
+    expect(container.querySelector('article [role="alert"]')).toBeNull();
     expect(container.textContent).not.toContain('private detail');
   });
   it('shows only stored contact fields, escapes text and reads fresh contact data', async () => {
@@ -179,7 +276,8 @@ describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
     expect(header.textContent).toContain('trabajo@example.test');
     expect(header.textContent).toContain('Sevilla, Sevilla');
     expect(header.querySelector('script')).toBeNull();
-    expect(header.querySelector('a')?.getAttribute('href')).toBe('/datos-contacto');
+    expect(header.querySelector('a')).toBeNull();
+    expect(container.querySelector('a[href="/datos-contacto"]')).not.toBeNull();
     mocks.readContact.mockResolvedValue({
       data: { display_name: 'Ana', phone: null, contact_email: null, locality_province: null },
       error: null,
@@ -202,9 +300,8 @@ describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
     expect(container.querySelector('[role="alert"]')?.textContent).toContain(
       'No se pudieron leer tus datos de contacto',
     );
-    expect(
-      container.querySelector('[aria-label="Cabecera del borrador de CV"] h2')?.textContent,
-    ).toBe('Borrador de currículum');
+    expect(container.querySelector('[aria-label="Cabecera del borrador de CV"]')).toBeNull();
+    expect(container.querySelector('article [role="alert"]')).toBeNull();
     expect(container.textContent).not.toContain('private detail');
   });
 
@@ -219,9 +316,8 @@ describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
       const container = await renderPage();
       const notice = container.querySelector('[aria-labelledby="cv-missing-data"]')!;
       expect(notice.querySelector('h2')?.textContent).toBe('Datos pendientes para completar el CV');
-      expect(container.querySelector('[aria-labelledby="cv-education"]')?.textContent).toContain(
-        'No has registrado estudios',
-      );
+      expect(container.querySelector('[aria-labelledby="cv-education"]')).toBeNull();
+      expect(container.textContent).toContain('No has registrado estudios');
       expect(notice.textContent).toContain('no se utiliza tu email de acceso ni se inventan datos');
       expect(notice.textContent).toContain(
         'esa parte del CV queda pendiente; no se inventa experiencia',
@@ -252,10 +348,13 @@ describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
     expect(article.textContent).toContain(candidates[0].label);
     expect(article.textContent).not.toContain(candidates[1].label);
     expect(article.textContent).not.toContain(candidates[2].label);
-    expect(article.textContent).toContain(
+    expect(container.textContent).toContain(
       'Confirmada por ti · Origen: Instrucción · Experiencia 1 · Tarea 1',
     );
-    expect(article.textContent).toContain('Aceptada por ti · Origen: Instrucción · Experiencia 1');
+    expect(container.textContent).toContain(
+      'Aceptada por ti · Origen: Instrucción · Experiencia 1',
+    );
+    expect(article.textContent).not.toMatch(/Confirmada por ti|Aceptada por ti|Origen:/);
     expect(article.textContent).not.toMatch(/privad[oa]|training-source|instruction/);
     expect(container.querySelector('script, form, button, input, textarea, select')).toBeNull();
     expect(container.querySelector('main a[href="/perfil-profesional"]')?.textContent).toBe(
@@ -305,8 +404,8 @@ describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
       expect(entries(draft, draftId)).toHaveLength(2);
     }
     const competencies = draft.querySelector('[aria-labelledby="cv-competencies"]')!;
-    expect(competencies.textContent).toContain('Experiencia 1');
-    expect(competencies.textContent).toContain('Experiencia 2');
+    expect(draft.querySelector('details')?.textContent).toContain('Experiencia 1');
+    expect(draft.querySelector('details')?.textContent).toContain('Experiencia 2');
     expect(competencies.querySelectorAll('li p:first-child')[0].textContent).toBe(candidate.label);
     expect(competencies.querySelectorAll('li p:first-child')[1].textContent).toBe(candidate.label);
   });

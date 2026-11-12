@@ -1,0 +1,237 @@
+.page {
+  max-width: 72rem;
+  margin-inline: auto;
+  overflow-wrap: anywhere;
+}
+
+.screenOnly {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.actions a {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.actions a:hover {
+  background: #f1f5f9;
+}
+
+.canvas {
+  padding: clamp(0rem, 2vw, 1.5rem);
+  background: #edf0f1;
+  border-radius: 0.75rem;
+}
+
+.canvas:empty {
+  display: none;
+}
+
+.document {
+  color-scheme: light;
+  width: 100%;
+  max-width: 210mm;
+  margin-inline: auto;
+  padding: clamp(1.25rem, 4vw, 3.5rem);
+  border: 1px solid #dce1e3;
+  background: #fff;
+  color: #202a30;
+  box-shadow: 0 8px 28px rgb(22 39 45 / 7%);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+
+.documentHeader {
+  padding-bottom: 1.75rem;
+  border-bottom: 2px solid #123f42;
+}
+
+.name {
+  color: #202a30;
+  font-size: clamp(1.875rem, 3.5vw, 3rem);
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 1.12;
+}
+
+.contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 1.25rem;
+  margin-top: 1rem;
+  color: #4b5b62;
+  font-size: 0.8125rem;
+  font-style: normal;
+  line-height: 1.6;
+}
+
+.contact:empty {
+  display: none;
+}
+
+.section {
+  margin-top: 2rem;
+}
+
+.section:first-child {
+  margin-top: 0;
+}
+
+.sectionTitle {
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #dce3e3;
+  color: #123f42;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.entries {
+  padding-left: 1.125rem;
+  list-style: disc;
+}
+
+.entries li + li,
+.studies li + li {
+  margin-top: 1rem;
+}
+
+.entries li::marker {
+  color: #123f42;
+}
+
+.entries p {
+  white-space: pre-wrap;
+}
+
+.studies h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.studyStatus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  color: #4b5b62;
+  font-size: 0.8125rem;
+}
+
+.notices {
+  max-width: 210mm;
+  margin-inline: auto;
+  padding: 1.25rem;
+  border-left: 2px solid #cbd5e1;
+  color: #475569;
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+
+.reviewNotes > * + * {
+  margin-top: 0.75rem;
+}
+
+.reviewNotes summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.reviewNotes ul {
+  display: grid;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+}
+
+@page cvDraft {
+  size: A4;
+  margin: 16mm;
+}
+
+@media print {
+  /* Scope shell overrides to this route, even if Next retains this stylesheet. */
+  :global(body):has(.page) {
+    background: #fff;
+  }
+
+  :global(body):has(.page) > :global(div),
+  :global(body):has(.page) :global(div):has(> aside),
+  :global(body):has(.page) :global(div):has(> main) {
+    display: block;
+    min-height: 0;
+    background: #fff;
+  }
+
+  :global(body):has(.page) :global(aside),
+  :global(body):has(.page) :global(div):has(> main) > :global(header),
+  .screenOnly {
+    display: none;
+  }
+
+  :global(body):has(.page) :global(main) {
+    margin: 0;
+    padding: 0;
+  }
+
+  .page {
+    page: cvDraft;
+    max-width: none;
+    margin: 0;
+  }
+
+  .page > *,
+  .canvas {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+  }
+
+  .document {
+    width: auto;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    font-size: 10.5pt;
+  }
+
+  .name {
+    font-size: 30pt;
+  }
+
+  .documentHeader,
+  .entries li,
+  .studies li {
+    break-inside: avoid;
+  }
+
+  .sectionTitle,
+  .studies h3 {
+    break-after: avoid;
+  }
+
+  .document p {
+    orphans: 3;
+    widows: 3;
+  }
+}
