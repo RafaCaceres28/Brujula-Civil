@@ -105,6 +105,7 @@ function buildAppRow(overrides: Partial<AppUserProfileRow>): AppUserProfileRow {
     phone: overrides.phone ?? null,
     contact_email: overrides.contact_email ?? null,
     locality_province: overrides.locality_province ?? null,
+    academic_education_jsonb: overrides.academic_education_jsonb ?? null,
     locale: overrides.locale ?? 'es-ES',
     timezone: overrides.timezone ?? 'Europe/Madrid',
     onboarding_completed: overrides.onboarding_completed ?? false,

@@ -12,6 +12,14 @@ export type WizardStepKeyDb =
   | 'review'
   | 'completed';
 
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
 export type AppUserProfileRow = {
   user_id: string;
   email: string | null;
@@ -19,6 +27,7 @@ export type AppUserProfileRow = {
   phone: string | null;
   contact_email: string | null;
   locality_province: string | null;
+  academic_education_jsonb: JsonValue | null;
   locale: string;
   timezone: string;
   onboarding_completed: boolean;

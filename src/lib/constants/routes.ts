@@ -20,6 +20,7 @@ export const routes = {
     professionalProfile: '/perfil-profesional',
     cvDraft: '/cv-borrador',
     contactDetails: '/datos-contacto',
+    academicEducation: '/formacion',
     cv: '/cv',
     linkedin: '/linkedin',
     settings: '/ajustes',

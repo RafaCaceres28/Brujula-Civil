@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   eq: vi.fn(),
   read: vi.fn(),
   readContact: vi.fn(),
+  readEducation: vi.fn(),
   insert: vi.fn(),
   upsert: vi.fn(),
   update: vi.fn(),
@@ -77,10 +78,17 @@ beforeEach(() => {
   };
   mocks.from.mockReturnValue(query);
   mocks.readContact.mockResolvedValue({ data: null, error: null });
+  mocks.readEducation.mockResolvedValue({ data: null, error: null });
   mocks.from.mockImplementation((table: string) =>
     table === 'app_user_profiles'
       ? {
-          select: () => ({ eq: () => ({ maybeSingle: mocks.readContact }) }),
+          select: (columns: string) => ({
+            eq: () => ({
+              maybeSingle: columns.includes('academic_education_jsonb')
+                ? mocks.readEducation
+                : mocks.readContact,
+            }),
+          }),
         }
       : query,
   );
@@ -95,6 +103,66 @@ beforeEach(() => {
 });
 
 describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
+  it('shows declared academic studies independently, with explicit ongoing labels and escaped text', async () => {
+    mocks.readEducation.mockResolvedValue({
+      data: {
+        academic_education_jsonb: [
+          {
+            id: 'study-1',
+            title: 'Título <script>no ejecutar</script>',
+            institution: 'Centro',
+            year: 2020,
+            status: 'completed',
+          },
+          {
+            id: 'study-2',
+            title: 'Estudios actuales',
+            institution: null,
+            year: 2030,
+            status: 'in_progress',
+          },
+          { id: 'study-3', title: 'Sin año', status: 'in_progress' },
+        ],
+      },
+      error: null,
+    });
+    mocks.read.mockResolvedValue({ data: null, error: { code: 'DB_DOWN' } });
+    const container = await renderPage();
+    const section = container.querySelector('[aria-labelledby="cv-education"]')!;
+    expect(section.querySelector('h2')?.textContent).toBe('Formación académica');
+    expect(section.querySelectorAll('li')).toHaveLength(3);
+    expect(section.textContent).toContain('Título <script>no ejecutar</script>');
+    expect(section.textContent).toContain('Finalizado');
+    expect(section.textContent).toContain('2020');
+    expect(section.textContent).toContain('En curso');
+    expect(section.textContent).toContain('Finalización prevista: 2030');
+    expect(section.textContent).not.toMatch(/obtenid|acreditad/i);
+    expect(section.querySelector('script')).toBeNull();
+    expect(container.textContent).not.toContain('Formación todavía no incorporada');
+    expect(container.querySelector('a[href="/formacion"]')).not.toBeNull();
+  });
+  it.each([null, []])(
+    'offers registration for absent or explicitly empty education (%j)',
+    async (academic_education_jsonb) => {
+      mocks.readEducation.mockResolvedValue({ data: { academic_education_jsonb }, error: null });
+      const section = (await renderPage()).querySelector('[aria-labelledby="cv-education"]')!;
+      expect(section.textContent).toContain('No has registrado estudios');
+      expect(section.querySelector('a')?.textContent).toBe('Registrar estudios');
+    },
+  );
+  it.each([
+    { data: { academic_education_jsonb: [{}] }, error: null },
+    { data: null, error: { code: 'DOWN', message: 'private detail' } },
+  ])('reports education failures without hiding contacts or history (%#)', async (response) => {
+    mocks.readEducation.mockResolvedValue(response);
+    const container = await renderPage();
+    const section = container.querySelector('[aria-labelledby="cv-education"]')!;
+    expect(section.querySelector('[role="alert"]')).not.toBeNull();
+    expect(section.textContent).not.toContain('No has registrado estudios');
+    expect(container.querySelector('article')?.textContent).toContain(candidates[0].label);
+    expect(container.querySelector('[aria-label="Cabecera del borrador de CV"]')).not.toBeNull();
+    expect(container.textContent).not.toContain('private detail');
+  });
   it('shows only stored contact fields, escapes text and reads fresh contact data', async () => {
     mocks.readContact.mockResolvedValue({
       data: {
@@ -151,12 +219,18 @@ describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
       const container = await renderPage();
       const notice = container.querySelector('[aria-labelledby="cv-missing-data"]')!;
       expect(notice.querySelector('h2')?.textContent).toBe('Datos pendientes para completar el CV');
-      expect(notice.textContent).toContain('Formación todavía no incorporada');
+      expect(container.querySelector('[aria-labelledby="cv-education"]')?.textContent).toContain(
+        'No has registrado estudios',
+      );
       expect(notice.textContent).toContain('no se utiliza tu email de acceso ni se inventan datos');
       expect(notice.textContent).toContain(
         'esa parte del CV queda pendiente; no se inventa experiencia',
       );
-      expect(mocks.from.mock.calls).toEqual([['user_military_profiles'], ['app_user_profiles']]);
+      expect(mocks.from.mock.calls).toEqual([
+        ['user_military_profiles'],
+        ['app_user_profiles'],
+        ['app_user_profiles'],
+      ]);
       expect(
         container.querySelector('form, button, input, textarea, select, a[download]'),
       ).toBeNull();
@@ -189,7 +263,11 @@ describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
     );
     expect(container.querySelector('a[href^="/cv/"], a[download]')).toBeNull();
     expect(data).toEqual(before);
-    expect(mocks.from.mock.calls).toEqual([['user_military_profiles'], ['app_user_profiles']]);
+    expect(mocks.from.mock.calls).toEqual([
+      ['user_military_profiles'],
+      ['app_user_profiles'],
+      ['app_user_profiles'],
+    ]);
     expect(mocks.select).toHaveBeenCalledExactlyOnceWith('raw_profile_jsonb');
     expect(mocks.eq.mock.calls).toEqual([
       ['user_id', 'authenticated-user'],

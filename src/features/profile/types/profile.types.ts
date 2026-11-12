@@ -31,9 +31,17 @@ export type ProfileDomainModel = ProfileReadOutputSchemaInput;
 
 export type AppUserProfileInsert = Omit<
   AppUserProfileRow,
-  DbGeneratedColumns | AppUserProfileOptionalDefaults | AppUserProfileOptionalContact
+  | DbGeneratedColumns
+  | AppUserProfileOptionalDefaults
+  | AppUserProfileOptionalContact
+  | 'academic_education_jsonb'
 > &
-  Partial<Pick<AppUserProfileRow, AppUserProfileOptionalDefaults | AppUserProfileOptionalContact>>;
+  Partial<
+    Pick<
+      AppUserProfileRow,
+      AppUserProfileOptionalDefaults | AppUserProfileOptionalContact | 'academic_education_jsonb'
+    >
+  >;
 
 export type AppUserProfileUpdate = Partial<Omit<AppUserProfileRow, DbGeneratedColumns | 'user_id'>>;
 

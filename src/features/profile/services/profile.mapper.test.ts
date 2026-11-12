@@ -20,6 +20,7 @@ const FULL_SHAPE: ProfileSupabaseShape = {
     phone: null,
     contact_email: null,
     locality_province: null,
+    academic_education_jsonb: null,
     locale: 'es-ES',
     timezone: 'Europe/Madrid',
     onboarding_completed: false,

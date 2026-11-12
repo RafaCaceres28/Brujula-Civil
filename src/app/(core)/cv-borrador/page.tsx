@@ -5,6 +5,7 @@ import { SectionHeader } from '@/components/layout/section-header';
 import { getRequiredUser } from '@/features/auth/server/get-required-user';
 import { readCareerHistory } from '@/features/profile/server/read-career-history';
 import { readContactDetails } from '@/features/profile/server/contact-details';
+import { readAcademicEducation } from '@/features/profile/server/academic-education';
 import { selectConfirmedProfessionalContent } from '@/features/profile/services/confirmed-professional-content';
 import { routes } from '@/lib/constants/routes';
 
@@ -12,6 +13,7 @@ export default async function CvDraftPage() {
   const user = await getRequiredUser(routes.app.cvDraft);
   const result = await readCareerHistory(user.id);
   const contactResult = await readContactDetails(user.id);
+  const educationResult = await readAcademicEducation(user.id);
   const contact = contactResult.ok ? contactResult.data : null;
   let content;
 
@@ -142,13 +144,48 @@ export default async function CvDraftPage() {
           Datos pendientes para completar el CV
         </h2>
         <p>
-          Formación todavía no incorporada a este borrador. Solo se muestran los datos de contacto
-          que hayas indicado; no se utiliza tu email de acceso ni se inventan datos.
+          Solo se muestran los datos de contacto que hayas indicado; no se utiliza tu email de
+          acceso ni se inventan datos.
         </p>
         <p>
           La experiencia solo se muestra con descripciones confirmadas por ti. Si no has confirmado
           ninguna, esa parte del CV queda pendiente; no se inventa experiencia.
         </p>
+      </section>
+      <section
+        aria-labelledby="cv-education"
+        className="min-w-0 space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-8"
+      >
+        <h2 id="cv-education" className="text-lg font-semibold">
+          Formación académica
+        </h2>
+        {!educationResult.ok ? (
+          <p role="alert">{educationResult.error.message}</p>
+        ) : educationResult.data?.length ? (
+          <ul className="space-y-4">
+            {educationResult.data.map((study) => (
+              <li key={study.id} className="min-w-0 space-y-2">
+                <h3 className="break-words font-semibold">{study.title}</h3>
+                {study.institution && <p className="break-words">{study.institution}</p>}
+                <p>{study.status === 'completed' ? 'Finalizado' : 'En curso'}</p>
+                {study.year !== null && (
+                  <p>
+                    {study.status === 'in_progress'
+                      ? `Finalización prevista: ${study.year}`
+                      : study.year}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No has registrado estudios para este borrador.</p>
+        )}
+        <Link href={routes.app.academicEducation} prefetch={false}>
+          {educationResult.ok && !educationResult.data?.length
+            ? 'Registrar estudios'
+            : 'Editar formación académica'}
+        </Link>
       </section>
       {content}
       <Link href={routes.app.professionalProfile} prefetch={false}>

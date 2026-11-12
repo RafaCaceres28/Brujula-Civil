@@ -135,6 +135,7 @@ describe('profile.types contracts', () => {
         | 'phone'
         | 'contact_email'
         | 'locality_province'
+        | 'academic_education_jsonb'
       > &
         Partial<
           Pick<
@@ -146,6 +147,7 @@ describe('profile.types contracts', () => {
             | 'phone'
             | 'contact_email'
             | 'locality_province'
+            | 'academic_education_jsonb'
           >
         >
     >();
