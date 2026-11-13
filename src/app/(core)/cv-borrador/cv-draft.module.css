@@ -225,6 +225,8 @@
   }
 
   .document {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
     width: auto;
     max-width: none;
     min-height: 0;

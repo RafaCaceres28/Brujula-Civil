@@ -10,6 +10,7 @@ import { selectConfirmedProfessionalContent } from '@/features/profile/services/
 import { FUNCTION_TYPE_OPTIONS } from '@/features/wizard/config/wizard-catalogs';
 import { routes } from '@/lib/constants/routes';
 import styles from './cv-draft.module.css';
+import { PrintCvButton } from './print-cv-button';
 
 const DURATION_LABELS = {
   less_than_1_year: 'Menos de un año',
@@ -119,6 +120,12 @@ export default async function CvDraftPage() {
             Volver a mi perfil profesional
           </Link>
         </nav>
+        <div>
+          <PrintCvButton />
+          <p className="mt-2 text-sm text-slate-600">
+            En el diálogo de impresión, elige Guardar como PDF
+          </p>
+        </div>
       </div>
       <div className={styles.canvas}>
         {(Object.values(contact ?? {}).some((value) => value?.trim()) ||

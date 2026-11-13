@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { structuredExperienceSchema } from '@/features/translation/schemas/structured-experience.schema';
@@ -6,6 +9,8 @@ import * as builder from '@/features/translation/services/experience-proposals.b
 import CoreLayout from '../layout';
 import ProfessionalProfilePage from '../perfil-profesional/page';
 import CvDraftPage from './page';
+import { PrintCvButton } from './print-cv-button';
+import styles from './cv-draft.module.css';
 
 const mocks = vi.hoisted(() => ({
   client: vi.fn(),
@@ -100,6 +105,52 @@ beforeEach(() => {
     rpc: mocks.rpc,
   });
   storedHistory([fixture()]);
+});
+
+describe('007.5j /cv-borrador: impresión nativa', () => {
+  it('renders a native button without printing and prints exactly once per click', async () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    try {
+      await act(async () => root.render(<PrintCvButton />));
+      const button = container.querySelector('button')!;
+      expect(button.textContent).toBe('Guardar como PDF');
+      expect(button.type).toBe('button');
+      expect(button.disabled).toBe(false);
+      expect(button.tabIndex).toBe(0);
+      expect(print).not.toHaveBeenCalled();
+      await act(async () => button.click());
+      expect(print).toHaveBeenCalledTimes(1);
+      await act(async () => button.click());
+      expect(print).toHaveBeenCalledTimes(2);
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+    }
+  });
+
+  it('does not print during server rendering', () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    expect(renderToStaticMarkup(<PrintCvButton />)).toContain('Guardar como PDF');
+    expect(print).not.toHaveBeenCalled();
+  });
+
+  it('keeps the button and instructions outside the document in the print-hidden wrapper', async () => {
+    const container = await renderPage();
+    const buttons = container.querySelectorAll('button');
+    expect(buttons).toHaveLength(1);
+    const button = buttons[0];
+    expect(button.textContent).toBe('Guardar como PDF');
+    expect(button.closest('article')).toBeNull();
+    const wrapper = button.closest(`.${styles.screenOnly}`)!;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper.textContent).toContain('En el diálogo de impresión, elige Guardar como PDF');
+    expect(wrapper.querySelector('article')).toBeNull();
+    const css = readFileSync('src/app/(core)/cv-borrador/cv-draft.module.css', 'utf8');
+    expect(css.slice(css.indexOf('@media print'))).toMatch(/\.screenOnly\s*\{\s*display: none;/);
+  });
 });
 
 describe('007.5h /cv-borrador: presentación del documento', () => {
@@ -406,9 +457,7 @@ describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
         ['app_user_profiles'],
         ['app_user_profiles'],
       ]);
-      expect(
-        container.querySelector('form, button, input, textarea, select, a[download]'),
-      ).toBeNull();
+      expect(container.querySelector('form, input, textarea, select, a[download]')).toBeNull();
     },
   );
 
@@ -435,7 +484,7 @@ describe('007.5e /cv-borrador: contenido confirmado de solo lectura', () => {
     );
     expect(article.textContent).not.toMatch(/Confirmada por ti|Aceptada por ti|Origen:/);
     expect(article.textContent).not.toMatch(/privad[oa]|training-source|instruction/);
-    expect(container.querySelector('script, form, button, input, textarea, select')).toBeNull();
+    expect(container.querySelector('script, form, input, textarea, select')).toBeNull();
     expect(container.querySelector('main a[href="/perfil-profesional"]')?.textContent).toBe(
       'Volver a mi perfil profesional',
     );
