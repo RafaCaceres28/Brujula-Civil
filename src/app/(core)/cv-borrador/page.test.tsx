@@ -190,8 +190,87 @@ describe('007.5h /cv-borrador: presentación del documento', () => {
     source.otherTasks![0].confirmedDescription = text;
     storedHistory([source]);
     const container = await renderPage();
-    expect(container.querySelector('#cv-experience + ul p')?.textContent).toBe(text);
-    expect(container.querySelectorAll('#cv-experience + ul li')).toHaveLength(1);
+    expect(container.querySelector('[aria-labelledby="cv-experience"] li p')?.textContent).toBe(
+      text,
+    );
+    expect(container.querySelectorAll('[aria-labelledby="cv-experience"] li')).toHaveLength(1);
+  });
+});
+
+describe('007.5i /cv-borrador: experiencia agrupada', () => {
+  it('groups by stable source ID in history order, keeping task order and duplicate texts', async () => {
+    const first = fixture();
+    first.id = 'z-first';
+    first.otherTasks = [
+      { description: 'Privada', target: 'Privado', confirmedDescription: 'Primera descripción' },
+      { description: 'Pendiente privada', target: 'Privado' },
+      {
+        description: 'Otra privada',
+        target: 'Privado',
+        confirmedDescription: 'Segunda descripción',
+      },
+      {
+        description: 'Repetida privada',
+        target: 'Privado',
+        confirmedDescription: 'Primera descripción',
+      },
+    ];
+    const second = { ...fixture(), id: 'a-second' };
+    const withoutDescriptions = { ...fixture(), id: 'no-descriptions', otherTasks: undefined };
+    storedHistory([first, withoutDescriptions, second]);
+    const container = await renderPage();
+    const section = container.querySelector('[aria-labelledby="cv-experience"]')!;
+    const groups = Array.from(section.querySelectorAll(':scope > div[data-source-experience-id]'));
+    expect(groups.map((group) => group.getAttribute('data-source-experience-id'))).toEqual([
+      'z-first',
+      'a-second',
+    ]);
+    for (const group of groups) {
+      expect(group.querySelector('h3')?.textContent).toBe('Actividad declarada: Instrucción');
+      expect(group.getAttribute('aria-labelledby')).toBe(group.querySelector('h3')?.id);
+    }
+    expect(Array.from(groups[0].querySelectorAll('li p'), (node) => node.textContent)).toEqual([
+      'Primera descripción',
+      'Segunda descripción',
+      'Primera descripción',
+    ]);
+    expect(groups[1].querySelector('li p')?.textContent).toBe(
+      experience.otherTasks![0].confirmedDescription,
+    );
+    expect(section.textContent).not.toMatch(/privad[oa]|Empresa|Cargo|z-first|a-second/);
+    expect(section.querySelector('script')).toBeNull();
+  });
+
+  it.each([
+    ['less_than_1_year', 'Menos de un año'],
+    ['one_to_five_years', 'Entre 1 y 5 años'],
+    ['more_than_5_years', 'Más de 5 años'],
+    ['not_sure', null],
+    [undefined, null],
+  ] as const)('shows only an informed approximate duration (%s)', async (durationRange, label) => {
+    storedHistory([{ ...fixture(), durationRange, frequency: 'by_periods' }]);
+    const container = await renderPage();
+    const section = container.querySelector('[aria-labelledby="cv-experience"]')!;
+    const duration = section.querySelector('h3 + p');
+    if (label) {
+      expect(duration?.textContent).toBe(
+        `Periodo aproximado de actividad: ${label}. No indica dedicación continua.`,
+      );
+    } else {
+      expect(duration).toBeNull();
+      expect(section.textContent).not.toMatch(/Periodo|No lo recuerdo|not_sure/);
+    }
+    expect(section.textContent).not.toMatch(/\b(?:19|20)\d{2}\b|actualidad|jornada completa/i);
+  });
+
+  it('keeps accepted competencies independent without creating an empty experience group', async () => {
+    storedHistory([{ ...fixture(), otherTasks: undefined, durationRange: 'one_to_five_years' }]);
+    const container = await renderPage();
+    expect(container.querySelector('[aria-labelledby="cv-experience"]')).toBeNull();
+    expect(container.querySelector('[aria-labelledby="cv-competencies"]')?.textContent).toContain(
+      candidates[0].label,
+    );
+    expect(container.querySelector('article')?.textContent).not.toContain('Periodo aproximado');
   });
 });
 

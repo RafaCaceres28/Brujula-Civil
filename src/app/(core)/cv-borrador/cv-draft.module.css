@@ -121,6 +121,26 @@
   white-space: pre-wrap;
 }
 
+.experienceGroup + .experienceGroup {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #dce3e3;
+}
+
+.experienceHeading {
+  margin-bottom: 0.625rem;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.experienceDuration {
+  margin-bottom: 0.75rem;
+  color: #4b5b62;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
 .studies h3 {
   font-size: 1rem;
   font-weight: 700;
@@ -226,8 +246,18 @@
   }
 
   .sectionTitle,
+  .experienceHeading,
+  .experienceDuration,
   .studies h3 {
     break-after: avoid;
+  }
+
+  .experienceGroup .entries li {
+    break-inside: auto;
+  }
+
+  .experienceGroup .entries li:first-child {
+    break-before: avoid;
   }
 
   .document p {

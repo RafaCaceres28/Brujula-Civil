@@ -7,8 +7,15 @@ import { readCareerHistory } from '@/features/profile/server/read-career-history
 import { readContactDetails } from '@/features/profile/server/contact-details';
 import { readAcademicEducation } from '@/features/profile/server/academic-education';
 import { selectConfirmedProfessionalContent } from '@/features/profile/services/confirmed-professional-content';
+import { FUNCTION_TYPE_OPTIONS } from '@/features/wizard/config/wizard-catalogs';
 import { routes } from '@/lib/constants/routes';
 import styles from './cv-draft.module.css';
+
+const DURATION_LABELS = {
+  less_than_1_year: 'Menos de un año',
+  one_to_five_years: 'Entre 1 y 5 años',
+  more_than_5_years: 'Más de 5 años',
+};
 
 export default async function CvDraftPage() {
   const user = await getRequiredUser(routes.app.cvDraft);
@@ -78,6 +85,16 @@ export default async function CvDraftPage() {
     }
   }
 
+  const experienceGroups =
+    result.ok && result.data.state === 'ready' && confirmed
+      ? result.data.careerHistory.experiences.flatMap((experience) => {
+          const descriptions = confirmed.descriptions.filter(
+            ({ sourceId }) => sourceId === experience.id,
+          );
+          return descriptions.length ? [{ experience, descriptions }] : [];
+        })
+      : [];
+
   return (
     <PageShell className={styles.page}>
       <div className={styles.screenOnly}>
@@ -121,18 +138,40 @@ export default async function CvDraftPage() {
                 </address>
               </header>
             )}
-            {!!confirmed?.descriptions.length && (
+            {!!experienceGroups.length && (
               <section aria-labelledby="cv-experience" className={styles.section}>
                 <h2 id="cv-experience" className={styles.sectionTitle}>
                   Experiencia profesional
                 </h2>
-                <ul className={styles.entries}>
-                  {confirmed.descriptions.map(({ id, sourceId, task }) => (
-                    <li key={id} data-source-experience-id={sourceId}>
-                      <p>{task.confirmedDescription}</p>
-                    </li>
-                  ))}
-                </ul>
+                {experienceGroups.map(({ experience, descriptions }) => (
+                  <div
+                    key={experience.id}
+                    data-source-experience-id={experience.id}
+                    aria-labelledby={`cv-experience-${experience.id}`}
+                    className={styles.experienceGroup}
+                  >
+                    <h3 id={`cv-experience-${experience.id}`} className={styles.experienceHeading}>
+                      Actividad declarada:{' '}
+                      {
+                        FUNCTION_TYPE_OPTIONS.find(({ value }) => value === experience.activity)!
+                          .label
+                      }
+                    </h3>
+                    {experience.durationRange && experience.durationRange !== 'not_sure' && (
+                      <p className={styles.experienceDuration}>
+                        Periodo aproximado de actividad: {DURATION_LABELS[experience.durationRange]}
+                        . No indica dedicación continua.
+                      </p>
+                    )}
+                    <ul className={styles.entries}>
+                      {descriptions.map(({ id, sourceId, task }) => (
+                        <li key={id} data-source-experience-id={sourceId}>
+                          <p>{task.confirmedDescription}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </section>
             )}
             {educationResult.ok && !!educationResult.data?.length && (
